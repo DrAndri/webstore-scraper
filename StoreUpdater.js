@@ -69,7 +69,7 @@ class StoreUpdater {
         .timestamp(timestamp);
 
       this.inFluxWriteApi.writePoint(point);
-      resolve(1);
+      this.inFluxWriteApi.resolve(1);
     });
   }
 }

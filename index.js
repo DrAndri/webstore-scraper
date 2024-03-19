@@ -2,6 +2,7 @@ import pLimit from "p-limit";
 import https from "https";
 import concat from "concat-stream";
 import { InfluxDB } from "@influxdata/influxdb-client";
+import { MongoClient } from "mongodb";
 import { XMLParser, XMLValidator } from "fast-xml-parser";
 import cron from "node-cron";
 
@@ -11,9 +12,10 @@ import config from "./config.js";
 import * as dotenv from "dotenv";
 dotenv.config();
 
-const url = process.env.INFLUXDB_URL;
-const token = process.env.INFLUXDB_TOKEN;
-const org = process.env.INFLUXDB_ORG;
+const INFLUXDB_URL = process.env.INFLUXDB_URL;
+const INFLUXDB_TOKEN = process.env.INFLUXDB_TOKEN;
+const INFLUXDB_ORG = process.env.INFLUXDB_ORG;
+const MONGODB_URL = process.env.MONGODB_URL;
 
 const limit = pLimit(4);
 
@@ -39,18 +41,22 @@ function downloadFeed(url) {
 }
 
 function updateAllStores() {
-  const inFluxClient = new InfluxDB({ url: url, token: token });
-  const inFluxQueryApi = inFluxClient.getQueryApi(org);
+  const inFluxClient = new InfluxDB({
+    url: INFLUXDB_URL,
+    token: INFLUXDB_TOKEN,
+  });
+  const inFluxQueryApi = inFluxClient.getQueryApi(INFLUXDB_ORG);
+  const mongoClient = new MongoClient(MONGODB_URL);
   for (const store of config) {
     console.log("UPDATING", store.bucket);
-    const inFluxWriteApi = inFluxClient.getWriteApi(org, store.bucket);
+    const inFluxWriteApi = inFluxClient.getWriteApi(INFLUXDB_ORG, store.bucket);
     const storeUpdater = new StoreUpdater(
       inFluxQueryApi,
       inFluxWriteApi,
       store.bucket
     );
+    const timestamp = new Date();
     downloadFeed(store.feedUrl).then((jsonObj) => {
-      const timestamp = new Date();
       let promises = [];
       for (const item of jsonObj.rss.channel.item) {
         promises.push(
