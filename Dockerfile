@@ -1,9 +1,31 @@
-FROM node:lts-alpine
-ENV NODE_ENV=production
+FROM node as builder
+
+# Create app directory
 WORKDIR /usr/src/app
-COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
-RUN npm install --production --silent && mv node_modules ../
+
+# Install app dependencies
+COPY package.json yarn.lock ./
+
+RUN yarn install --frozen-lockfile
+
 COPY . .
-RUN chown -R node /usr/src/app
+
+RUN yarn build
+
+FROM node:slim
+
+ENV NODE_ENV production
 USER node
-CMD ["node", "index.js"]
+
+# Create app directory
+WORKDIR /usr/src/app
+
+# Install app dependencies
+COPY package.json yarn.lock ./
+
+RUN yarn install --production --frozen-lockfile
+
+COPY --from=builder /usr/src/app/dist ./dist
+
+EXPOSE 8080
+CMD [ "node", "dist/index.js" ]

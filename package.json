@@ -1,21 +1,29 @@
 {
   "name": "google-shopping-scraper",
-  "type": "module",
   "version": "1.0.0",
-  "description": "Scrapes google shopping feeds and stores results in InfluxDB",
-  "main": "index.js",
+  "description": "Scrapes google shopping feeds and stores results in mongodb",
+  "main": "dist/app.js",
+  "types": "types.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc -p ."
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@influxdata/influxdb-client": "^1.33.0",
+    "@types/node": "^20.11.30",
+    "D": "^1.0.0",
     "concat-stream": "^2.0.0",
     "dotenv": "^16.0.3",
     "fast-xml-parser": "^4.0.12",
     "mongodb": "^6.5.0",
     "node-cron": "^3.0.2",
-    "p-limit": "^4.0.0"
+    "p-limit": "^4.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.2"
+  },
+  "devDependencies": {
+    "@types/node-cron": "^3.0.11"
   }
 }

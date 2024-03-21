@@ -5,22 +5,36 @@ services:
     build:
       dockerfile: Dockerfile
     environment:
-      - INFLUXDB_URL=${INFLUXDB_URL}
-      - INFLUXDB_TOKEN=${INFLUXDB_TOKEN}
-      - INFLUXDB_ORG=${INFLUXDB_ORG}
-  influxdb:
-    image: influxdb:latest
-    container_name: influxdb
-    volumes:
-      # Mount for influxdb data directory and configuration
-      - ./influxdb:/var/lib/influxdb2:rw
+      - MONGODB_URI=${MONGODB_URI}
+  mongo:
+    image: mongo
+    restart: always
     environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=test
-      - DOCKER_INFLUXDB_INIT_PASSWORD=testtest
-      - DOCKER_INFLUXDB_INIT_ORG=my-org
-      - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
+      MONGO_INITDB_ROOT_USERNAME: andri
+      MONGO_INITDB_ROOT_PASSWORD: MongoMasterMikael
+
+  mongo-express:
+    image: mongo-express
+    restart: always
     ports:
-      - "8086:8086"
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: andri
+      ME_CONFIG_MONGODB_ADMINPASSWORD: MongoAdminMatti
+      ME_CONFIG_MONGODB_URL: ${MONGODB_URI}
+  # influxdb:
+  #   image: influxdb:latest
+  #   container_name: influxdb
+  #   volumes:
+  #     # Mount for influxdb data directory and configuration
+  #     - ./influxdb:/var/lib/influxdb2:rw
+  #   environment:
+  #     - DOCKER_INFLUXDB_INIT_MODE=setup
+  #     - DOCKER_INFLUXDB_INIT_USERNAME=test
+  #     - DOCKER_INFLUXDB_INIT_PASSWORD=testtest
+  #     - DOCKER_INFLUXDB_INIT_ORG=my-org
+  #     - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
+  #   ports:
+  #     - "8086:8086"
 volumes:
   influxdb2:
