@@ -34,25 +34,20 @@ class StoreUpdaterMongo {
   updateProduct(
     product: GoogleMerchantProduct,
     timestamp: number
-  ): Array<Promise<void>> {
+  ): Promise<void>[] {
+    const onSale = this.isOnSale(product);
     const promises = [];
-    const productMetadata = this.getProductMetadata(product, timestamp);
+    const productMetadata = this.getProductMetadata(product, onSale, timestamp);
     this.metadataDocuments.push(productMetadata);
     promises.push(
-      new Promise<void>((resolve) => {
-        this.hasPriceChanged(product, false).then((changed) => {
-          if (changed) this.addPriceChange(product, false, timestamp);
-          resolve();
-        });
+      this.hasPriceChanged(product, false).then((changed) => {
+        if (changed) this.addPriceChange(product, false, timestamp);
       })
     );
-    if (this.isOnSale(product)) {
+    if (onSale) {
       promises.push(
-        new Promise<void>((resolve) => {
-          this.hasPriceChanged(product, true).then((changed) => {
-            if (changed) this.addPriceChange(product, true, timestamp);
-            resolve();
-          });
+        this.hasPriceChanged(product, true).then((changed) => {
+          if (changed) this.addPriceChange(product, true, timestamp);
         })
       );
     }
@@ -75,7 +70,7 @@ class StoreUpdaterMongo {
       .find({ sku: product['g:id'], sale_price: salePrice, store: this.store })
       .sort({ timestamp: -1 })
       .limit(1);
-    let price: number = 0;
+    let price = 0;
     if (salePrice) {
       price = product['g:sale_price'] ?? 0;
     } else {
@@ -91,12 +86,13 @@ class StoreUpdaterMongo {
 
   getProductMetadata(
     product: GoogleMerchantProduct,
+    onSale: boolean,
     timestamp: number
   ): MongodbProductMetadata {
     const productMetadata: MongodbProductMetadata = {
       sku: product['g:id'],
       lastSeen: timestamp,
-      salePriceLastSeen: this.isOnSale(product) ? timestamp : undefined,
+      salePriceLastSeen: onSale ? timestamp : undefined,
       store: this.store
     };
     return productMetadata;
@@ -146,7 +142,7 @@ class StoreUpdaterMongo {
     documents: MongodbDocument[],
     collection: Collection<Document>
   ): Promise<UpsertManyResult> {
-    const promises: Array<Promise<UpdateResult>> = [];
+    const promises: Promise<UpdateResult>[] = [];
     const options = { upsert: true };
     for (const document of documents) {
       const filter = { sku: document.sku, store: document.store };

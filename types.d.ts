@@ -1,8 +1,4 @@
-import { type Document } from 'mongodb';
-
-export interface Env {
-  MONGODB_URI: string;
-}
+import { type Document, type InsertManyResult } from 'mongodb';
 
 export interface StoreConfig {
   feedUrl: string;
