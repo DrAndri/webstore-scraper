@@ -1,7 +1,7 @@
 {
   "name": "google-shopping-scraper",
   "version": "1.0.0",
-  "type": "module",
+
   "description": "Scrapes google shopping feeds and stores results in mongodb",
   "main": "dist/app.js",
   "types": "types.d.ts",
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@types/node-cron": "^3.0.11",
     "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
     "tslint-config-prettier": "^1.18.0",
     "typescript": "^5.4.3",
     "typescript-eslint": "^7.3.1"

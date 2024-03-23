@@ -50,7 +50,7 @@ class StoreUpdaterMongo {
       promises.push(
         new Promise<void>((resolve) => {
           this.hasPriceChanged(product, true).then((changed) => {
-            if (changed) this.addPriceChange(product, true, timestamp); 
+            if (changed) this.addPriceChange(product, true, timestamp);
             resolve();
           });
         })
@@ -107,7 +107,9 @@ class StoreUpdaterMongo {
     salePrice: boolean,
     timestamp: number
   ): void {
-    const price: number | undefined = salePrice ? product['g:sale_price'] : product['g:price'];
+    const price: number | undefined = salePrice
+      ? product['g:sale_price']
+      : product['g:price'];
     if (price && this.isNumber(price)) {
       const document: MongodbProductPrice = {
         sku: product['g:id'],
