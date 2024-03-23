@@ -26,8 +26,8 @@ export interface MongodbDocument extends Document {
 
 export interface MongodbProductMetadata extends MongodbDocument {
   sku: string;
-  salePriceLastSeen: number | undefined;
   lastSeen: number;
+  salePriceLastSeen?: number;
 }
 
 export interface MongodbProductPrice extends MongodbDocument {

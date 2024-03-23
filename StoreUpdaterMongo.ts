@@ -92,9 +92,11 @@ class StoreUpdaterMongo {
     const productMetadata: MongodbProductMetadata = {
       sku: product['g:id'],
       lastSeen: timestamp,
-      salePriceLastSeen: onSale ? timestamp : undefined,
       store: this.store
     };
+    if (onSale) {
+      productMetadata.salePriceLastSeen = timestamp;
+    }
     return productMetadata;
   }
 
