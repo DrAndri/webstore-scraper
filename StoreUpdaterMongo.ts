@@ -1,19 +1,19 @@
 import {
-  Collection,
-  Db,
-  MongoClient,
-  Document,
-  UpdateResult,
-  InsertManyResult,
-} from "mongodb";
+  type Collection,
+  type Db,
+  type MongoClient,
+  type Document,
+  type UpdateResult,
+  type InsertManyResult
+} from 'mongodb';
 import {
-  GoogleMerchantProduct,
-  MongodbDocument,
-  MongodbProductMetadata,
-  MongodbProductPrice,
-  StoreUpdateResult,
-  UpsertManyResult,
-} from "./types";
+  type GoogleMerchantProduct,
+  type MongodbDocument,
+  type MongodbProductMetadata,
+  type MongodbProductPrice,
+  type StoreUpdateResult,
+  type UpsertManyResult
+} from './types';
 
 class StoreUpdaterMongo {
   database: Db;
@@ -24,29 +24,33 @@ class StoreUpdaterMongo {
     this.store = store;
     this.priceDocuments = [];
     this.metadataDocuments = [];
-    this.database = mongoClient.db("google-shopping-scraper");
-  }
-  isNumber(val: any) {
-    return typeof val === "number" && val === val;
+    this.database = mongoClient.db('google-shopping-scraper');
   }
 
-  updateProduct(product: GoogleMerchantProduct, timestamp: number) {
-    let promises = [];
+  isNumber(val: unknown): boolean {
+    return typeof val === 'number' && val === val;
+  }
+
+  updateProduct(
+    product: GoogleMerchantProduct,
+    timestamp: number
+  ): Array<Promise<void>> {
+    const promises = [];
     const productMetadata = this.getProductMetadata(product, timestamp);
     this.metadataDocuments.push(productMetadata);
     promises.push(
-      new Promise<void>((resolve, reject) => {
+      new Promise<void>((resolve) => {
         this.hasPriceChanged(product, false).then((changed) => {
           if (changed) this.addPriceChange(product, false, timestamp);
           resolve();
         });
       })
     );
-    if (productMetadata.on_sale) {
+    if (this.isOnSale(product)) {
       promises.push(
-        new Promise<void>((resolve, reject) => {
+        new Promise<void>((resolve) => {
           this.hasPriceChanged(product, true).then((changed) => {
-            if (changed) this.addPriceChange(product, true, timestamp);
+            if (changed) this.addPriceChange(product, true, timestamp); 
             resolve();
           });
         })
@@ -55,10 +59,10 @@ class StoreUpdaterMongo {
     return promises;
   }
 
-  isOnSale(product: GoogleMerchantProduct) {
+  isOnSale(product: GoogleMerchantProduct): boolean {
     return (
-      product["g:sale_price"] !== undefined &&
-      product["g:sale_price"] < product["g:price"]
+      product['g:sale_price'] !== undefined &&
+      product['g:sale_price'] < product['g:price']
     );
   }
 
@@ -67,21 +71,21 @@ class StoreUpdaterMongo {
     salePrice: boolean
   ): Promise<boolean> {
     const cursor = this.database
-      .collection<MongodbProductPrice>("priceChanges")
-      .find({ sku: product["g:id"], sale_price: salePrice, store: this.store })
+      .collection<MongodbProductPrice>('priceChanges')
+      .find({ sku: product['g:id'], sale_price: salePrice, store: this.store })
       .sort({ timestamp: -1 })
       .limit(1);
     let price: number = 0;
     if (salePrice) {
-      price = product["g:sale_price"] ? product["g:sale_price"] : 0;
+      price = product['g:sale_price'] ?? 0;
     } else {
-      price = product["g:price"];
+      price = product['g:price'];
     }
     const doc = await cursor.next();
-    if (doc) {
-      return Promise.resolve(price !== doc?.price);
+    if (doc != null) {
+      return await Promise.resolve(price !== doc?.price);
     } else {
-      return Promise.resolve(true);
+      return await Promise.resolve(true);
     }
   }
 
@@ -90,69 +94,68 @@ class StoreUpdaterMongo {
     timestamp: number
   ): MongodbProductMetadata {
     const productMetadata: MongodbProductMetadata = {
-      sku: product["g:id"],
+      sku: product['g:id'],
       lastSeen: timestamp,
       salePriceLastSeen: this.isOnSale(product) ? timestamp : undefined,
-      store: this.store,
+      store: this.store
     };
     return productMetadata;
   }
 
   addPriceChange(
     product: GoogleMerchantProduct,
-    sale_price: boolean,
+    salePrice: boolean,
     timestamp: number
-  ) {
-    const price: any = sale_price
-      ? product["g:sale_price"]
-      : product["g:price"];
-    if (this.isNumber(price)) {
-      const numberPrice: number = price;
+  ): void {
+    const price: number | undefined = salePrice ? product['g:sale_price'] : product['g:price'];
+    if (price && this.isNumber(price)) {
       const document: MongodbProductPrice = {
-        sku: product["g:id"],
-        price: numberPrice,
+        sku: product['g:id'],
+        price: price,
         store: this.store,
-        sale_price: sale_price,
-        timestamp: timestamp,
+        sale_price: salePrice,
+        timestamp
       };
       this.priceDocuments.push(document);
     }
   }
 
-  async submitAllDocuments() {
-    let results: StoreUpdateResult = {
+  async submitAllDocuments(): Promise<StoreUpdateResult> {
+    const results: StoreUpdateResult = {
       productMetadataResult: undefined,
-      priceChangesResult: undefined,
+      priceChangesResult: undefined
     };
-    if (this.priceDocuments.length > 0)
+    if (this.priceDocuments.length > 0) {
       results.priceChangesResult = await this.insertDocumentArray(
         this.priceDocuments,
-        this.database.collection("priceChanges")
+        this.database.collection('priceChanges')
       );
-    if (this.metadataDocuments.length > 0)
+    }
+    if (this.metadataDocuments.length > 0) {
       results.productMetadataResult = await this.upsertProductMetadata(
         this.metadataDocuments,
-        this.database.collection("productMetadata")
+        this.database.collection('productMetadata')
       );
+    }
     return results;
   }
 
   async upsertProductMetadata(
     documents: MongodbDocument[],
     collection: Collection<Document>
-  ) {
-    let promises: Promise<UpdateResult>[] = [];
+  ): Promise<UpsertManyResult> {
+    const promises: Array<Promise<UpdateResult>> = [];
     const options = { upsert: true };
     for (const document of documents) {
       const filter = { sku: document.sku, store: document.store };
       const update = { $set: document };
       promises.push(collection.updateOne(filter, update, options));
     }
-    return Promise.all(promises).then((results) => {
-      let result: UpsertManyResult = {
+    return await Promise.all(promises).then((results) => {
+      const result: UpsertManyResult = {
         matchedCount: 0,
         modifiedCount: 0,
-        upsertedCount: 0,
+        upsertedCount: 0
       };
       for (const oneResult of results) {
         result.matchedCount += oneResult.matchedCount;
@@ -166,7 +169,7 @@ class StoreUpdaterMongo {
   async insertDocumentArray(
     documents: MongodbDocument[],
     collection: Collection<Document>
-  ) {
+  ): Promise<InsertManyResult> {
     return await collection.insertMany(documents);
   }
 }

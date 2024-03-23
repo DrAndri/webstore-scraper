@@ -1,6 +1,7 @@
 {
   "name": "google-shopping-scraper",
   "version": "1.0.0",
+  "type": "module",
   "description": "Scrapes google shopping feeds and stores results in mongodb",
   "main": "dist/app.js",
   "types": "types.d.ts",
@@ -20,17 +21,14 @@
     "mongodb": "^6.5.0",
     "node-cron": "^3.0.2",
     "p-limit": "^4.0.0",
-    "ts-node": "^10.9.2",
-    "typescript": "*"
+    "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/node-cron": "^3.0.11",
-    "@typescript-eslint/eslint-plugin": "^6.4.0",
-    "eslint": "^8.0.1",
-    "eslint-config-standard-with-typescript": "^43.0.1",
-    "eslint-plugin-import": "^2.25.2",
-    "eslint-plugin-n": "^15.0.0 || ^16.0.0 ",
-    "eslint-plugin-promise": "^6.0.0"
+    "eslint": "^8.57.0",
+    "tslint-config-prettier": "^1.18.0",
+    "typescript": "^5.4.3",
+    "typescript-eslint": "^7.3.1"
   },
   "repository": "https://github.com/DrAndri/google-shopping-scraper.git"
 }

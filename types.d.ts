@@ -1,4 +1,4 @@
-import { Document } from "mongodb";
+import { type Document } from 'mongodb';
 
 export interface Env {
   MONGODB_URI: string;
@@ -18,9 +18,9 @@ export interface GoogleMerchantFeed {
 }
 
 export interface GoogleMerchantProduct {
-  "g:id": string;
-  "g:price": number;
-  "g:sale_price"?: number;
+  'g:id': string;
+  'g:price': number;
+  'g:sale_price'?: number;
 }
 
 export interface MongodbDocument extends Document {
