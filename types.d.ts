@@ -2,7 +2,7 @@ import { type Document, type InsertManyResult } from 'mongodb';
 
 export interface StoreConfig {
   feedUrl: string;
-  storeName: string;
+  name: string;
 }
 
 export interface GoogleMerchantFeed {

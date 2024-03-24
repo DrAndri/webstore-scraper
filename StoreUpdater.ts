@@ -14,7 +14,7 @@ import {
   type MongodbProductPrice,
   type StoreUpdateResult,
   type UpsertManyResult
-} from './types';
+} from './types.js';
 
 class StoreUpdater {
   database: Db;
@@ -68,7 +68,11 @@ class StoreUpdater {
   ): Promise<boolean> {
     const cursor = this.database
       .collection<MongodbProductPrice>('priceChanges')
-      .find({ sku: product['g:id'], sale_price: salePrice, store: this.store.storeName })
+      .find({
+        sku: product['g:id'],
+        sale_price: salePrice,
+        store: this.store.name
+      })
       .sort({ timestamp: -1 })
       .limit(1);
     let price = 0;
@@ -93,7 +97,7 @@ class StoreUpdater {
     const productMetadata: MongodbProductMetadata = {
       sku: product['g:id'],
       lastSeen: timestamp,
-      store: this.store.storeName
+      store: this.store.name
     };
     if (onSale) {
       productMetadata.salePriceLastSeen = timestamp;
@@ -113,7 +117,7 @@ class StoreUpdater {
       const document: MongodbProductPrice = {
         sku: product['g:id'],
         price: price,
-        store: this.store.storeName,
+        store: this.store.name,
         sale_price: salePrice,
         timestamp
       };

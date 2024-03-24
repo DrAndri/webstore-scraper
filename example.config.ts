@@ -1,12 +1,12 @@
-import { type StoreConfig } from './types';
+import { type StoreConfig } from './types.js';
 
 const config: StoreConfig[] = [
   {
-    storeName: 'store1',
+    name: 'store1',
     feedUrl: 'https://url.to/shopping-feed-1.xml'
   },
   {
-    storeName: 'store2',
+    name: 'store2',
     feedUrl: 'https://url.to/shopping-feed-2.xml'
   }
 ];
