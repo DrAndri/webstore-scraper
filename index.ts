@@ -133,11 +133,12 @@ if (process.env.IMPORT_INFLUXDB === 'true') {
     .then(() => console.log('Finished importing'))
     .catch((error) => console.log('Error importing from influx', error));
 } else {
-  console.log('Running startup update');
   const mongoDb = await getMongodb();
-  initMongodbCollections(mongoDb)
-    .then(() => updateAllStores(mongoDb))
-    .catch((error) => console.log(error));
+  await initMongodbCollections(mongoDb);
+  if (process.env.RUN_STARTUP_UPDATE === 'true') {
+    console.log('Running startup update');
+    updateAllStores(mongoDb).catch((error) => console.log(error));
+  }
 
   cron.schedule('00 12 * * *', () => {
     console.log('Updating all stores');
