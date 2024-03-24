@@ -100,7 +100,6 @@ function updateAllStores(mongodbUri: string): void {
           });
       }
     })
-    .then(() => mongoClient.close())
     .catch((error) => {
       console.log('Error connecting to mongodb', error);
     });
@@ -117,7 +116,6 @@ function initMongodbCollections(mongodbUri: string): void {
         db.collection('stores').createIndex({ storeName: 1 })
       ]);
     })
-    .then(() => mongoClient.close())
     .catch((error) => {
       console.log('Error initializing mongodb', error);
     });
@@ -157,7 +155,7 @@ if (MONGODB_URI === undefined) {
               )
           );
         }
-        return Promise.all(promises).then(() => mongoClient.close());
+        return Promise.all(promises);
       })
       .catch((error) => console.log('Error importing from influx', error));
   }
