@@ -41,7 +41,7 @@ async function updateStore(
   store: StoreConfig,
   storeUpdater: StoreUpdater
 ): Promise<StoreUpdateResult> {
-  const timestamp = new Date().getTime();
+  const timestamp = Math.floor(new Date().getTime() / 1000);
   return downloadFeed(new URL(store.feedUrl))
     .then((feed) => {
       const promises = [];

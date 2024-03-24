@@ -66,16 +66,18 @@ class InfluxImporter {
         .then((metadata) => {
           if (!metadata) {
             const onlySalePrices = value.filter((price) => price.sale_price);
+            const timestamp = Math.floor(
+              value[value.length - 1].timestamp / 1000
+            );
             const doc: MongodbProductMetadata = {
               sku: key,
-              lastSeen: value[value.length - 1].timestamp,
+              lastSeen: timestamp,
               store: this.store.name
             };
             if (onlySalePrices.length > 0) {
               doc.salePriceLastSeen =
                 onlySalePrices[onlySalePrices.length - 1].timestamp;
             }
-            console.log('inserting new metadata', doc);
             return this.mongodb.collection('productMetadata').insertOne(doc);
           }
         })
