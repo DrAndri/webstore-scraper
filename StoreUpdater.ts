@@ -1,7 +1,6 @@
 import {
   type Collection,
   type Db,
-  type MongoClient,
   type Document,
   type UpdateResult,
   type InsertManyResult
@@ -9,7 +8,6 @@ import {
 import {
   StoreConfig,
   type GoogleMerchantProduct,
-  type MongodbDocument,
   type MongodbProductMetadata,
   type MongodbProductPrice,
   type StoreUpdateResult,
@@ -21,11 +19,11 @@ class StoreUpdater {
   store: StoreConfig;
   priceDocuments: MongodbProductPrice[];
   metadataDocuments: MongodbProductMetadata[];
-  constructor(mongoClient: MongoClient, store: StoreConfig) {
+  constructor(mongodb: Db, store: StoreConfig) {
     this.store = store;
     this.priceDocuments = [];
     this.metadataDocuments = [];
-    this.database = mongoClient.db('google-shopping-scraper');
+    this.database = mongodb;
   }
 
   isNumber(val: unknown): boolean {
@@ -68,11 +66,18 @@ class StoreUpdater {
   ): Promise<boolean> {
     const cursor = this.database
       .collection<MongodbProductPrice>('priceChanges')
-      .find({
-        sku: product['g:id'],
-        sale_price: salePrice,
-        store: this.store.name
-      })
+      .find(
+        {
+          sku: product['g:id'],
+          sale_price: salePrice,
+          store: this.store.name
+        },
+        {
+          projection: {
+            price: 1
+          }
+        }
+      )
       .sort({ timestamp: -1 })
       .limit(1);
     let price = 0;
@@ -95,9 +100,12 @@ class StoreUpdater {
     timestamp: number
   ): MongodbProductMetadata {
     const productMetadata: MongodbProductMetadata = {
+      store: this.store.name,
       sku: product['g:id'],
-      lastSeen: timestamp,
-      store: this.store.name
+      name: product['g:title'],
+      brand: product['g:brand'],
+      ean: product['g:gtin'],
+      lastSeen: timestamp
     };
     if (onSale) {
       productMetadata.salePriceLastSeen = timestamp;
@@ -132,7 +140,7 @@ class StoreUpdater {
       store: this.store
     };
     if (this.priceDocuments.length > 0) {
-      results.priceChangesResult = await this.insertDocumentArray(
+      results.priceChangesResult = await this.insertProductPrices(
         this.priceDocuments,
         this.database.collection('priceChanges')
       );
@@ -147,7 +155,7 @@ class StoreUpdater {
   }
 
   async upsertProductMetadata(
-    documents: MongodbDocument[],
+    documents: MongodbProductMetadata[],
     collection: Collection<Document>
   ): Promise<UpsertManyResult> {
     const promises: Promise<UpdateResult>[] = [];
@@ -172,8 +180,8 @@ class StoreUpdater {
     });
   }
 
-  async insertDocumentArray(
-    documents: MongodbDocument[],
+  async insertProductPrices(
+    documents: MongodbProductPrice[],
     collection: Collection<Document>
   ): Promise<InsertManyResult> {
     return await collection.insertMany(documents);

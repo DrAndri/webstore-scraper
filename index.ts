@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { Db, MongoClient } from 'mongodb';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import cron from 'node-cron';
 import fetch from 'node-fetch';
@@ -75,88 +75,75 @@ function reportResults(results: StoreUpdateResult): void {
   );
 }
 
-async function getAllStores(mongoClient: MongoClient): Promise<StoreConfig[]> {
-  const cursor = mongoClient
-    .db('google-shopping-scraper')
-    .collection<StoreConfig>('stores')
-    .find();
+async function getAllStores(db: Db): Promise<StoreConfig[]> {
+  const cursor = db.collection<StoreConfig>('stores').find();
   return await cursor.toArray();
 }
 
-function updateAllStores(mongodbUri: string): void {
-  const mongoClient = new MongoClient(mongodbUri);
-  mongoClient
+function updateAllStores(mongodb: Db): Promise<void> {
+  return getAllStores(mongodb).then((stores) => {
+    for (const store of stores) {
+      console.log('UPDATING', store.name);
+      const storeUpdater = new StoreUpdater(mongodb, store);
+
+      updateStore(store, storeUpdater)
+        .then(reportResults)
+        .catch((error) => {
+          console.log('Error updating store', error);
+        });
+    }
+  });
+}
+function initMongodbCollections(db: Db): Promise<void> {
+  return Promise.all([
+    db.collection('priceChanges').createIndex({ store: 1, sku: 1 }),
+    db.collection('productMetadata').createIndex({ store: 1, sku: 1 }),
+    db.collection('stores').createIndex({ storeName: 1 })
+  ]).then();
+}
+
+function getMongodb(): Promise<Db> {
+  if (MONGODB_URI === undefined) {
+    throw new Error('MONGODB_URI not set');
+  }
+  const mongoClient = new MongoClient(MONGODB_URI);
+  return mongoClient
     .connect()
-    .then(() => getAllStores(mongoClient))
+    .then(() => mongoClient.db('google-shopping-scraper'));
+}
+
+if (process.env.IMPORT_INFLUXDB === 'true') {
+  console.log('Importing from influx');
+  const mongodb = await getMongodb();
+  getAllStores(mongodb)
     .then((stores) => {
+      const promises = [];
       for (const store of stores) {
-        console.log('UPDATING', store.name);
-        const storeUpdater = new StoreUpdater(mongoClient, store);
-
-        updateStore(store, storeUpdater)
-          .then(reportResults)
-          .catch((error) => {
-            console.log('Error updating store', error);
-          });
+        const influxImporter = new InfluxImporter(mongodb, store);
+        promises.push(
+          influxImporter
+            .getAllPricePointsFromInfluxdb()
+            .then((priceChanges) =>
+              influxImporter.insertPricePointsToMongo(priceChanges)
+            )
+        );
       }
+      return Promise.all(promises);
     })
-    .catch((error) => {
-      console.log('Error connecting to mongodb', error);
-    });
-}
-function initMongodbCollections(mongodbUri: string): void {
-  const mongoClient = new MongoClient(mongodbUri);
-  mongoClient
-    .connect()
-    .then(() => {
-      const db = mongoClient.db('google-shopping-scraper');
-      return Promise.all([
-        db.collection('priceChanges').createIndex({ store: 1, sku: 1 }),
-        db.collection('productMetadata').createIndex({ store: 1, sku: 1 }),
-        db.collection('stores').createIndex({ storeName: 1 })
-      ]);
-    })
-    .catch((error) => {
-      console.log('Error initializing mongodb', error);
-    });
-}
-
-if (MONGODB_URI === undefined) {
-  console.log('MONGODB_URI not set');
+    .then(() => console.log('Finished importing'))
+    .catch((error) => console.log('Error importing from influx', error));
 } else {
   console.log('Running startup update');
-  initMongodbCollections(MONGODB_URI);
-  updateAllStores(MONGODB_URI);
+  const mongoDb = await getMongodb();
+  initMongodbCollections(mongoDb)
+    .then(() => updateAllStores(mongoDb))
+    .catch((error) => console.log(error));
 
   cron.schedule('00 12 * * *', () => {
     console.log('Updating all stores');
-    updateAllStores(MONGODB_URI);
+    getMongodb()
+      .then(updateAllStores)
+      .catch((error) => console.log(error));
   });
   console.log('Cron schedule started');
-
-  if (process.env.IMPORT_INFLUXDB === 'true') {
-    console.log('Importing from influx');
-    const mongoClient = new MongoClient(MONGODB_URI);
-    mongoClient
-      .connect()
-      .then(() => getAllStores(mongoClient))
-      .then((stores) => {
-        const promises = [];
-        for (const store of stores) {
-          const influxImporter = new InfluxImporter(
-            mongoClient.db('google-shopping-scraper'),
-            store
-          );
-          promises.push(
-            influxImporter
-              .getAllPricePointsFromInfluxdb()
-              .then((priceChanges) =>
-                influxImporter.insertPricePointsToMongo(priceChanges)
-              )
-          );
-        }
-        return Promise.all(promises);
-      })
-      .catch((error) => console.log('Error importing from influx', error));
-  }
 }
