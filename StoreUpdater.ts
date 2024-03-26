@@ -82,6 +82,7 @@ class StoreUpdater {
         },
         {
           projection: {
+            _id: 0,
             price: 1
           }
         }

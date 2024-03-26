@@ -76,7 +76,9 @@ function reportResults(results: StoreUpdateResult): void {
 }
 
 async function getAllStores(db: Db): Promise<StoreConfig[]> {
-  const cursor = db.collection<StoreConfig>('stores').find();
+  const cursor = db
+    .collection<StoreConfig>('stores')
+    .find({}, { projection: { _id: 0, feedUrl: 1, name: 1 } });
   return await cursor.toArray();
 }
 
