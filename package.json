@@ -12,21 +12,21 @@
   "author": "Andri Þórhallsson <andrithorhalls@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@influxdata/influxdb-client": "^1.33.0",
-    "@types/node": "^22.7.5",
-    "dotenv": "^16.0.3",
-    "fast-xml-parser": "^4.5.0",
-    "mongodb": "^6.9.0",
+    "@influxdata/influxdb-client": "^1.35.0",
+    "@types/node": "^22.13.10",
+    "dotenv": "^16.4.7",
+    "fast-xml-parser": "^5.0.9",
+    "mongodb": "^6.15.0",
     "node-cron": "^3.0.2",
     "node-fetch": "^3.3.2",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
     "@types/node-cron": "^3.0.11",
-    "eslint": "^9.12.0",
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3",
-    "typescript-eslint": "^8.8.1"
+    "eslint": "^9.22.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.26.1"
   },
   "repository": "https://github.com/DrAndri/google-shopping-scraper.git"
 }
