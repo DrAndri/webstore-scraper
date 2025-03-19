@@ -144,6 +144,7 @@ if (process.env.IMPORT_INFLUXDB === 'true') {
     const filter = { store: 'Origo' };
     const update = { $set: { store: 'Ofar' } };
     await mongoDb.collection('priceChanges').updateMany(filter, update);
+    await mongoDb.collection('productMetadata').updateMany(filter, update);
     console.log('done');
     //updateAllStores(mongoDb).catch((error) => console.log(error));
   }
