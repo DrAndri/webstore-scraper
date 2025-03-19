@@ -140,7 +140,12 @@ if (process.env.IMPORT_INFLUXDB === 'true') {
   await initMongodbCollections(mongoDb);
   if (process.env.RUN_STARTUP_UPDATE === 'true') {
     console.log('Running startup update');
-    updateAllStores(mongoDb).catch((error) => console.log(error));
+    console.log('Changing all Origo to Ofar');
+    const filter = { store: 'Origo' };
+    const update = { $set: document };
+    await mongoDb.collection('priceChanges').updateMany(filter, update);
+    console.log('done');
+    //updateAllStores(mongoDb).catch((error) => console.log(error));
   }
 
   cron.schedule('00 12 * * *', () => {
