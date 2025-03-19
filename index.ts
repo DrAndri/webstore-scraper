@@ -142,7 +142,7 @@ if (process.env.IMPORT_INFLUXDB === 'true') {
     console.log('Running startup update');
     console.log('Changing all Origo to Ofar');
     const filter = { store: 'Origo' };
-    const update = { $set: document };
+    const update = { $set: { store: 'Ofar' } };
     await mongoDb.collection('priceChanges').updateMany(filter, update);
     console.log('done');
     //updateAllStores(mongoDb).catch((error) => console.log(error));
