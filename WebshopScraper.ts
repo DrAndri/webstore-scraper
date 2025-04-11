@@ -23,7 +23,7 @@ export default class WebshopScraper {
     let products: ProductSnapshot[] = [];
     products = products.concat(await this.scrapePage(page));
     let pageNumber = 1;
-    while (products.length < totalProducts && products.length < 200) {
+    while (products.length < totalProducts) {
       pageNumber++;
       await this.sleep(5);
       const nextUrl = catalogSearchUrl + '&' + pageParameter + '=' + pageNumber;

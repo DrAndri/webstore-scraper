@@ -74,8 +74,8 @@ export default class StoreUpdater {
 
   sanitizeProduct(product: ProductSnapshot): ProductSnapshot {
     product.id = String(product.id);
-    product.gtin = String(product.gtin);
-    product.brand = String(product.brand);
+    if (product.gtin) product.gtin = String(product.gtin);
+    if (product.brand) product.brand = String(product.brand);
     product.title = String(product.title);
     if (typeof product.price !== 'number')
       throw new Error('price is not a number');
@@ -87,9 +87,7 @@ export default class StoreUpdater {
     product: ProductSnapshot,
     salePrice: boolean
   ): boolean {
-    return (
-      price.price !== (salePrice ? product.sale_price : product.price)
-    );
+    return price.price !== (salePrice ? product.sale_price : product.price);
   }
 
   isOnSale(product: ProductSnapshot): boolean {
