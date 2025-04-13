@@ -1,4 +1,4 @@
-import { type Collection, type Db, type UpdateResult } from 'mongodb';
+import { WithId, type Collection, type Db, type UpdateResult } from 'mongodb';
 import {
   type StoreConfig,
   type ProductSnapshot,
@@ -11,11 +11,11 @@ import {
 export default class StoreUpdater {
   pricesCollection: Collection<MongodbProductPrice>;
   metadataCollection: Collection<MongodbProductMetadata>;
-  store: StoreConfig;
-  priceUpdateDocuments: MongodbProductPrice[];
+  store: WithId<StoreConfig>;
+  priceUpdateDocuments: WithId<MongodbProductPrice>[];
   newPriceDocuments: MongodbProductPrice[];
   metadataDocuments: MongodbProductMetadata[];
-  constructor(mongodb: Db, store: StoreConfig) {
+  constructor(mongodb: Db, store: WithId<StoreConfig>) {
     this.store = store;
     this.priceUpdateDocuments = [];
     this.newPriceDocuments = [];
@@ -101,7 +101,7 @@ export default class StoreUpdater {
   async getLastPrice(
     product: ProductSnapshot,
     salePrice: boolean
-  ): Promise<MongodbProductPrice | null> {
+  ): Promise<WithId<MongodbProductPrice> | null> {
     const cursor = this.pricesCollection
       .find({
         sku: product.sku,
@@ -126,7 +126,7 @@ export default class StoreUpdater {
   }
 
   updatePriceTimestamp(
-    priceDocument: MongodbProductPrice,
+    priceDocument: WithId<MongodbProductPrice>,
     timestamp: number
   ): void {
     priceDocument.end = timestamp;
@@ -182,7 +182,7 @@ export default class StoreUpdater {
   }
 
   async updatePrices(
-    documents: MongodbProductPrice[],
+    documents: WithId<MongodbProductPrice>[],
     collection: Collection<MongodbProductPrice>
   ): Promise<UpsertManyResult> {
     const promises: Promise<UpdateResult>[] = [];

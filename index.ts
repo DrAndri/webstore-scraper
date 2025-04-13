@@ -1,4 +1,4 @@
-import { Db, MongoClient } from 'mongodb';
+import { Db, MongoClient, WithId } from 'mongodb';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import cron from 'node-cron';
 import fetch from 'node-fetch';
@@ -107,7 +107,7 @@ function reportResults(results: StoreUpdateResult): void {
   );
 }
 
-async function getAllStores(db: Db): Promise<StoreConfig[]> {
+async function getAllStores(db: Db): Promise<WithId<StoreConfig>[]> {
   const cursor = db.collection<StoreConfig>('stores').find(
     {},
     {
@@ -166,7 +166,9 @@ const mongoDb = await getMongodb();
 await initMongodbCollections(mongoDb);
 
 if (process.env.RUN_MIGRATION === 'true') {
+  console.log('doing migration!!!');
   await addStoreObjectIdFieldToCollections(mongoDb);
+  console.log('exiting');
   exit(0);
 }
 

@@ -1,7 +1,6 @@
 import { type ObjectId } from 'mongodb';
 
 export interface StoreConfig {
-  _id: ObjectId;
   name: string;
   type: StoreType;
   scraperEnabled: boolean;
@@ -10,7 +9,6 @@ export interface StoreConfig {
 }
 
 export interface MongodbProductMetadata {
-  _id?: ObjectId;
   sku: string;
   store?: string;
   store_id: ObjectId;
@@ -20,7 +18,6 @@ export interface MongodbProductMetadata {
 }
 
 export interface MongodbProductPrice {
-  _id?: ObjectId;
   sku: string;
   store_id: ObjectId;
   store?: string;

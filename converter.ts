@@ -1,10 +1,10 @@
-import { Db } from 'mongodb';
+import { Db, WithId } from 'mongodb';
 import {
   MongodbProductMetadata,
   MongodbProductPrice,
   StoreConfig
 } from './types/index.js';
-async function getAllStores(db: Db): Promise<StoreConfig[]> {
+async function getAllStores(db: Db): Promise<WithId<StoreConfig>[]> {
   const cursor = db
     .collection<StoreConfig>('stores')
     .find(
@@ -23,7 +23,7 @@ export const addStoreObjectIdFieldToCollections = async (mongodb: Db) => {
       .collection<MongodbProductMetadata>('productMetadata')
       .updateMany(filter, update);
     await mongodb
-      .collection<MongodbProductPrice>('productPrices')
+      .collection<MongodbProductPrice>('priceChanges')
       .updateMany(filter, update);
   }
 };
