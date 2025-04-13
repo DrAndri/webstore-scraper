@@ -73,7 +73,7 @@ export default class StoreUpdater {
   }
 
   sanitizeProduct(product: ProductSnapshot): ProductSnapshot {
-    product.id = String(product.id);
+    product.sku = String(product.sku);
     if (product.gtin) product.gtin = String(product.gtin);
     if (product.brand) product.brand = String(product.brand);
     product.title = String(product.title);
@@ -104,9 +104,9 @@ export default class StoreUpdater {
   ): Promise<MongodbProductPrice | null> {
     const cursor = this.pricesCollection
       .find({
-        sku: product.id,
+        sku: product.sku,
         salePrice: salePrice,
-        store: this.store.name
+        store_id: this.store._id
       })
       .sort({ end: -1 })
       .limit(1);
@@ -116,8 +116,8 @@ export default class StoreUpdater {
 
   getProductMetadata(product: ProductSnapshot): MongodbProductMetadata {
     const productMetadata: MongodbProductMetadata = {
-      store: this.store.name,
-      sku: product.id,
+      store_id: this.store._id,
+      sku: product.sku,
       name: product.title,
       brand: product.brand,
       ean: product.gtin
@@ -143,9 +143,9 @@ export default class StoreUpdater {
       : product.price;
     if (price && this.isNumber(price)) {
       const document: MongodbProductPrice = {
-        sku: product.id,
+        sku: product.sku,
         price: price,
-        store: this.store.name,
+        store_id: this.store._id,
         salePrice: salePrice,
         start: timestamp,
         end: timestamp

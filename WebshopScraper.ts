@@ -44,7 +44,7 @@ export default class WebshopScraper {
       await page.goto(nextUrl);
       nextProducts = await this.scrapePage(page);
       for (const product of nextProducts) {
-        productMap.set(product.id, product);
+        productMap.set(product.sku, product);
       }
       console.log(this.store.name + ' products size: ', productMap.size);
       pageNumber++;
@@ -69,7 +69,7 @@ export default class WebshopScraper {
       const listPrice = oldPrice ? oldPrice : price;
       const salePrice = price;
       const product: ProductSnapshot = {
-        id: await this.evalSku(productItemClasses.skuClass, element),
+        sku: await this.evalSku(productItemClasses.skuClass, element),
         price: listPrice,
         sale_price: salePrice,
         title: await this.evalText(productItemClasses.nameClass, element)

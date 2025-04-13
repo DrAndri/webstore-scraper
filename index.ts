@@ -14,6 +14,8 @@ import {
   FeedOptions
 } from './types/index.js';
 import WebshopScraper from './WebshopScraper.js';
+import { exit } from 'process';
+import { addStoreObjectIdFieldToCollections } from './converter.js';
 
 dotenv.config();
 
@@ -52,7 +54,7 @@ async function updateStore(
         const promises = [];
         for (const item of feed.rss.channel.item) {
           const snapshot: ProductSnapshot = {
-            id: item['g:id'],
+            sku: item['g:id'],
             sale_price: item['g:sale_price'],
             price: item['g:price'],
             title: item['g:title'],
@@ -106,12 +108,19 @@ function reportResults(results: StoreUpdateResult): void {
 }
 
 async function getAllStores(db: Db): Promise<StoreConfig[]> {
-  const cursor = db
-    .collection<StoreConfig>('stores')
-    .find(
-      {},
-      { projection: { _id: 0, feedUrl: 1, name: 1, options: 1, type: 1 } }
-    );
+  const cursor = db.collection<StoreConfig>('stores').find(
+    {},
+    {
+      projection: {
+        _id: 1,
+        feedUrl: 1,
+        name: 1,
+        options: 1,
+        type: 1,
+        scraperEnabled: 1
+      }
+    }
+  );
   return await cursor.toArray();
 }
 
@@ -119,15 +128,19 @@ function updateAllStores(mongodb: Db): Promise<void> {
   return getAllStores(mongodb).then((stores) => {
     console.log(stores);
     for (const store of stores) {
-      console.log('UPDATING', store.name);
+      if (store.scraperEnabled) {
+        console.log('UPDATING', store.name);
 
-      const storeUpdater = new StoreUpdater(mongodb, store);
+        const storeUpdater = new StoreUpdater(mongodb, store);
 
-      updateStore(store, storeUpdater)
-        .then(reportResults)
-        .catch((error) => {
-          console.log('Error updating store', error);
-        });
+        updateStore(store, storeUpdater)
+          .then(reportResults)
+          .catch((error) => {
+            console.log('Error updating store', error);
+          });
+      } else {
+        console.log('Store is disabled: ', store.name);
+      }
     }
   });
 }
@@ -151,6 +164,12 @@ function getMongodb(): Promise<Db> {
 
 const mongoDb = await getMongodb();
 await initMongodbCollections(mongoDb);
+
+if (process.env.RUN_MIGRATION === 'true') {
+  await addStoreObjectIdFieldToCollections(mongoDb);
+  exit(0);
+}
+
 if (process.env.RUN_STARTUP_UPDATE === 'true') {
   console.log('Running startup update');
   updateAllStores(mongoDb).catch((error) => console.log(error));

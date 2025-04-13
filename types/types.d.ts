@@ -9,7 +9,7 @@ export interface GoogleMerchantFeed {
 }
 
 export interface ProductSnapshot {
-  id: string;
+  sku: string;
   price: number;
   title: string;
   brand?: string;
