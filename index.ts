@@ -37,7 +37,7 @@ async function downloadFeed(url: URL): Promise<GoogleMerchantFeed> {
         }
       });
       resolve(parser.parse(response) as GoogleMerchantFeed);
-    } else reject();
+    } else reject(new Error('Validation failed'));
   });
 }
 
@@ -86,7 +86,7 @@ async function updateStore(
     return Promise.all(promises).then(() => {
       return storeUpdater.submitAllDocuments();
     });
-  } else return Promise.reject();
+  } else return Promise.reject(new Error('Type not supported: ' + store.type));
 }
 
 function reportResults(results: StoreUpdateResult): void {
@@ -109,7 +109,7 @@ function reportResults(results: StoreUpdateResult): void {
 
 async function getAllStores(db: Db): Promise<WithId<StoreConfig>[]> {
   const cursor = db.collection<StoreConfig>('stores').find(
-    {},
+    { scraperEnabled: true },
     {
       projection: {
         _id: 1,
@@ -128,26 +128,22 @@ function updateAllStores(mongodb: Db): Promise<void> {
   return getAllStores(mongodb).then((stores) => {
     console.log(stores);
     for (const store of stores) {
-      if (store.scraperEnabled) {
-        console.log('UPDATING', store.name);
+      console.log('UPDATING', store.name);
 
-        const storeUpdater = new StoreUpdater(mongodb, store);
+      const storeUpdater = new StoreUpdater(mongodb, store);
 
-        updateStore(store, storeUpdater)
-          .then(reportResults)
-          .catch((error) => {
-            console.log('Error updating store', error);
-          });
-      } else {
-        console.log('Store is disabled: ', store.name);
-      }
+      updateStore(store, storeUpdater)
+        .then(reportResults)
+        .catch((error) => {
+          console.log('Error updating store', error);
+        });
     }
   });
 }
 function initMongodbCollections(db: Db): Promise<void> {
   return Promise.all([
-    db.collection('priceChanges').createIndex({ store: 1, sku: 1 }),
-    db.collection('productMetadata').createIndex({ store: 1, sku: 1 }),
+    db.collection('priceChanges').createIndex({ store_id: 1, sku: 1 }),
+    db.collection('productMetadata').createIndex({ store_id: 1, sku: 1 }),
     db.collection('stores').createIndex({ name: 1 })
   ]).then();
 }

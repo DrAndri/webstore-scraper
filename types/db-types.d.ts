@@ -19,8 +19,8 @@ export interface MongodbProductMetadata {
 
 export interface MongodbProductPrice {
   sku: string;
-  store_id: ObjectId;
   store?: string;
+  store_id: ObjectId;
   salePrice: boolean;
   price: number;
   start: number;

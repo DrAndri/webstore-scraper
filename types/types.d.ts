@@ -1,4 +1,5 @@
-import { ObjectId, type InsertManyResult } from 'mongodb';
+import { type WithId, type InsertManyResult } from 'mongodb';
+import { StoreConfig } from './db-types.js';
 
 export interface GoogleMerchantFeed {
   rss: {
@@ -34,7 +35,7 @@ export interface StoreUpdateResult {
   productMetadataUpsert: UpsertManyResult | undefined;
   newPrices: InsertManyResult | undefined;
   priceUpdate: UpsertManyResult | undefined;
-  store: StoreConfig;
+  store: WithId<StoreConfig>;
 }
 
 export interface UpsertManyResult {

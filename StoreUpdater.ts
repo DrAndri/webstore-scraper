@@ -215,7 +215,7 @@ export default class StoreUpdater {
     const promises: Promise<UpdateResult>[] = [];
     const options = { upsert: true };
     for (const document of documents) {
-      const filter = { sku: document.sku, store: document.store };
+      const filter = { sku: document.sku, store_id: document.store_id };
       const update = { $set: document };
       promises.push(collection.updateOne(filter, update, options));
     }

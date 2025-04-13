@@ -49,7 +49,7 @@ export default class WebshopScraper {
       console.log(this.store.name + ' products size: ', productMap.size);
       pageNumber++;
     }
-    return Array.from(productMap, ([name, value]) => value);
+    return Array.from(productMap, ([, value]) => value);
   }
 
   async scrapePage(page: Page): Promise<ProductSnapshot[]> {
@@ -57,24 +57,33 @@ export default class WebshopScraper {
     const products: ProductSnapshot[] = [];
     const elements = await page.$$(productItemClasses.itemClass);
     for (const element of elements) {
-      const oldPriceElement = await element.$(productItemClasses.oldPriceClass);
-      const oldPrice = oldPriceElement
-        ? parseInt(
-            await this.evalPrice(productItemClasses.oldPriceClass, element)
-          )
-        : undefined;
-      const price = parseInt(
-        await this.evalPrice(productItemClasses.listPriceClass, element)
-      );
-      const listPrice = oldPrice ? oldPrice : price;
-      const salePrice = price;
-      const product: ProductSnapshot = {
-        sku: await this.evalSku(productItemClasses.skuClass, element),
-        price: listPrice,
-        sale_price: salePrice,
-        title: await this.evalText(productItemClasses.nameClass, element)
-      };
-      products.push(product);
+      try {
+        const oldPriceElement = await element.$(
+          productItemClasses.oldPriceClass
+        );
+        const oldPrice = oldPriceElement
+          ? parseInt(
+              await this.evalPrice(productItemClasses.oldPriceClass, element)
+            )
+          : undefined;
+        const price = parseInt(
+          await this.evalPrice(productItemClasses.listPriceClass, element)
+        );
+        const listPrice = oldPrice ?? price;
+        const salePrice = price;
+        const product: ProductSnapshot = {
+          sku: await this.evalSku(productItemClasses.skuClass, element),
+          price: listPrice,
+          sale_price: salePrice,
+          title: await this.evalText(productItemClasses.nameClass, element)
+        };
+        products.push(product);
+      } catch (e) {
+        console.log(
+          'Error processing product from store ' + this.store.name,
+          e
+        );
+      }
     }
     return products;
   }

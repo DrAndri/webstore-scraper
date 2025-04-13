@@ -1,4 +1,4 @@
-import { Db, WithId } from 'mongodb';
+import { Db, UpdateFilter, WithId } from 'mongodb';
 import {
   MongodbProductMetadata,
   MongodbProductPrice,
@@ -18,7 +18,10 @@ export const addStoreObjectIdFieldToCollections = async (mongodb: Db) => {
   const stores = await getAllStores(mongodb);
   for (const store of stores) {
     const filter = { store: store.name };
-    const update = { $set: { store_id: store._id } };
+    const update: UpdateFilter<MongodbProductPrice> = {
+      $set: { store_id: store._id },
+      $unset: { store: '' }
+    };
     await mongodb
       .collection<MongodbProductMetadata>('productMetadata')
       .updateMany(filter, update);
@@ -26,4 +29,12 @@ export const addStoreObjectIdFieldToCollections = async (mongodb: Db) => {
       .collection<MongodbProductPrice>('priceChanges')
       .updateMany(filter, update);
   }
+  const filter = {};
+  const update: UpdateFilter<MongodbProductPrice> = { $unset: { store: '' } };
+  await mongodb
+    .collection<MongodbProductMetadata>('productMetadata')
+    .updateMany(filter, update);
+  await mongodb
+    .collection<MongodbProductPrice>('priceChanges')
+    .updateMany(filter, update);
 };
