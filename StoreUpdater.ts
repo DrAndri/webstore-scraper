@@ -145,10 +145,10 @@ export default class StoreUpdater {
       const document: MongodbProductPrice = {
         sku: product.sku,
         price: price,
-        store_id: this.store._id,
         salePrice: salePrice,
         start: timestamp,
-        end: timestamp
+        end: timestamp,
+        store_id: this.store._id
       };
       this.newPriceDocuments.push(document);
     }
