@@ -16,6 +16,21 @@ export interface ProductSnapshot {
   brand?: string;
   gtin?: string;
   sale_price?: number;
+  image?: string;
+  description?: string;
+  inStock?: boolean;
+  attributes?: ProductAttributeGroup[];
+  url?: string;
+}
+
+export interface ProductAttributeGroup {
+  name: string;
+  attributes: ProductAttribute[];
+}
+
+export interface ProductAttribute {
+  name: string;
+  value: string | number | boolean;
 }
 
 export interface GoogleMerchantProduct {

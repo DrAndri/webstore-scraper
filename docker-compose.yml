@@ -6,7 +6,6 @@ services:
     environment:
       MONGODB_URI: ${MONGODB_URI}
       RUN_STARTUP_UPDATE: ${RUN_STARTUP_UPDATE}
-      RUN_MIGRATION: ${RUN_MIGRATION}
 
   price-api:
     container_name: price-api

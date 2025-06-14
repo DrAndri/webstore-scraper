@@ -5,7 +5,7 @@ export interface StoreConfig {
   type: StoreType;
   scraperEnabled: boolean;
   apiEnabled: boolean;
-  options: WebScraperOptions | FeedOptions;
+  options: WebScraperOptions | FeedOptions | WebshopCrawlerOptions;
 }
 
 export interface MongodbProductMetadata {
@@ -27,6 +27,13 @@ export interface MongodbProductPrice {
   end: number;
 }
 
+export interface WebshopCrawlerOptions {
+  startUrl: string;
+  selectors: ProductSelectors;
+  sanitizers?: ProductSanitizers;
+  productPageIdentifier: string;
+}
+
 export interface WebScraperOptions {
   catalogSearchUrl: string;
   productItemClasses: ProductItemClasses;
@@ -44,6 +51,29 @@ export interface ProductSanitizer {
   replace: string;
 }
 
+export interface ProductSelectors {
+  productPage: string;
+  oldPrice: string;
+  listPrice: string;
+  name: string;
+  sku: string;
+  image: string;
+  brand?: string;
+  description: string;
+  inStock?: string;
+  clickers?: string[];
+  attributes: AttributeSelectors;
+}
+
+export interface AttributeSelectors {
+  attributesTable: string;
+  attributeGroup?: string;
+  attribute: string;
+  attributeLabel: string;
+  attributeValue: string;
+  attributeGroupName?: string;
+}
+
 export interface ProductItemClasses {
   itemClass: string;
   oldPriceClass: string;
@@ -57,4 +87,11 @@ export interface ProductItemClasses {
 
 export interface FeedOptions {
   feedUrl: string;
+}
+
+export interface StorePage {
+  url: string;
+  lastCrawled: number;
+  store_id: ObjectId;
+  sku: string;
 }

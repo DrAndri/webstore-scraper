@@ -37,6 +37,8 @@ COPY package.json yarn.lock ./
 
 RUN yarn install --production --frozen-lockfile
 
+RUN npx playwright install
+
 COPY --from=builder /usr/src/app/dist ./dist
 
 EXPOSE 8080

@@ -14,7 +14,7 @@ import {
   FeedOptions
 } from './types/index.js';
 import WebshopScraper from './WebshopScraper.js';
-import { exit } from 'process';
+import WebshopCrawler from './WebshopCrawler.js';
 
 dotenv.config();
 
@@ -85,6 +85,11 @@ async function updateStore(
     return Promise.all(promises).then(() => {
       return storeUpdater.submitAllDocuments();
     });
+  } else if (store.type === 'crawler') {
+    const crawler = new WebshopCrawler(store);
+    const products = await crawler.crawlSite();
+    console.log('products: ', products);
+    return storeUpdater.submitAllDocuments();
   } else return Promise.reject(new Error('Type not supported: ' + store.type));
 }
 
