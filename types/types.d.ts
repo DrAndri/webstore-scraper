@@ -41,10 +41,6 @@ export interface GoogleMerchantProduct {
   'g:gtin'?: string;
   'g:sale_price'?: number;
 }
-enum StoreType {
-  scraper = 'scraper',
-  feed = 'feed'
-}
 
 export interface StoreUpdateResult {
   productMetadataUpsert: UpsertManyResult | undefined;

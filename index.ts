@@ -13,7 +13,7 @@ import {
   ProductSnapshot,
   FeedOptions
 } from './types/index.js';
-import WebshopScraper from './WebshopScraper.js';
+// import WebshopScraper from './WebshopScraper.js';
 import WebshopCrawler from './WebshopCrawler.js';
 
 dotenv.config();
@@ -73,9 +73,21 @@ async function updateStore(
       .then(() => {
         return storeUpdater.submitAllDocuments();
       });
-  } else if (store.type === 'scraper') {
-    const scraper = new WebshopScraper(store);
-    const products = await scraper.scrapeSite();
+    // } else if (store.type === 'scraper') {
+    //   const scraper = new WebshopScraper(store);
+    //   const products = await scraper.scrapeSite();
+    //   const promises = [];
+    //   for (const item of products) {
+    //     promises.push(
+    //       ...storeUpdater.updateProduct(item, timestamp, thresholdTimestamp)
+    //     );
+    //   }
+    //   return Promise.all(promises).then(() => {
+    //     return storeUpdater.submitAllDocuments();
+    //   });
+  } else if (store.type === 'crawler') {
+    const crawler = new WebshopCrawler(store, timestamp);
+    const products = await crawler.crawlSite();
     const promises = [];
     for (const item of products) {
       promises.push(
@@ -85,12 +97,10 @@ async function updateStore(
     return Promise.all(promises).then(() => {
       return storeUpdater.submitAllDocuments();
     });
-  } else if (store.type === 'crawler') {
-    const crawler = new WebshopCrawler(store);
-    const products = await crawler.crawlSite();
-    console.log('products: ', products);
-    return storeUpdater.submitAllDocuments();
-  } else return Promise.reject(new Error('Type not supported: ' + store.type));
+  } else
+    return Promise.reject(
+      new Error('Type not supported for store ' + store.name)
+    );
 }
 
 function reportResults(results: StoreUpdateResult): void {

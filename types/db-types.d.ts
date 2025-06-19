@@ -1,8 +1,9 @@
 import { type ObjectId } from 'mongodb';
+import { ProductAttributeGroup } from './types.js';
 
 export interface StoreConfig {
   name: string;
-  type: StoreType;
+  type: 'crawler' | 'scraper' | 'feed';
   scraperEnabled: boolean;
   apiEnabled: boolean;
   options: WebScraperOptions | FeedOptions | WebshopCrawlerOptions;
@@ -10,16 +11,19 @@ export interface StoreConfig {
 
 export interface MongodbProductMetadata {
   sku: string;
-  store?: string;
   store_id: ObjectId;
   name?: string;
   brand?: string;
   ean?: string;
+  attributes?: ProductAttributeGroup[];
+  image?: string;
+  description?: string;
+  inStock?: boolean;
+  url?: string;
 }
 
 export interface MongodbProductPrice {
   sku: string;
-  store?: string;
   store_id: ObjectId;
   salePrice: boolean;
   price: number;
@@ -95,3 +99,34 @@ export interface StorePage {
   store_id: ObjectId;
   sku: string;
 }
+
+// export interface ScrapedGroup {
+//   name: string;
+//   attributes: ScrapedAttribute[];
+// }
+
+// export interface ScrapedAttribute {
+//   name: string;
+//   value: string;
+//   unit?: string;
+//   // linked_attribute?: ObjectId;
+// }
+
+// export interface Attribute {
+//   _id: ObjectId;
+//   name: string;
+//   group_id: ObjectId;
+//   valueType: 'string' | 'number' | 'boolean';
+//   unit?: string;
+// }
+
+// export interface AttributeValue {
+//   _id: ObjectId;
+//   attribute_id: ObjectId;
+//   value: string | number | boolean;
+// }
+
+// export interface AttributeGroup {
+//   _id: ObjectId;
+//   name: string;
+// }

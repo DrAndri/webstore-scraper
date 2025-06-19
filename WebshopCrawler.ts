@@ -14,31 +14,37 @@ const absoluteUrlRegExp = new RegExp('^(?:[a-z+]+:)?//', 'i');
 export default class WebshopCrawler {
   store: StoreConfig;
   options: WebshopCrawlerOptions;
-  constructor(store: StoreConfig) {
+  batchTimestamp: number;
+  constructor(store: StoreConfig, batchTimestamp: number) {
     this.store = store;
     this.options = store.options as WebshopCrawlerOptions;
+    this.batchTimestamp = batchTimestamp;
   }
 
-  // isInternalURL(url: string, origin: string): boolean {
-  //   return new URL(url).origin === origin;
-  // }
-
   async crawlSite(): Promise<ProductSnapshot[]> {
-    const { startUrl, selectors, productPageIdentifier } = this.options;
+    const { startUrl, selectors, productPageIdentifier, sanitizers } =
+      this.options;
+    const store = this.store;
+    const batchTimestamp = this.batchTimestamp;
 
     async function scrapeProductPage(page: Page, logger: Logger) {
       const productLocator = page.locator(selectors.productPage);
       if ((await productLocator.count()) > 0) {
         if (selectors.clickers) {
           for (const selector of selectors.clickers) {
-            await productLocator.locator(selector).click();
+            try {
+              await productLocator.locator(selector).click();
+            } catch (e) {
+              logger.log('warn', 'Clicker %s did not match', selector);
+              logger.log('debug', e);
+            }
           }
         }
         const oldPriceLocator = selectors.oldPrice
           ? productLocator.locator(selectors.oldPrice)
           : null;
         const oldPrice =
-          oldPriceLocator && (await oldPriceLocator?.count()) > 0
+          oldPriceLocator && (await oldPriceLocator.count()) > 0
             ? parseInt(await evalPrice(selectors.oldPrice, productLocator))
             : undefined;
         const price = parseInt(
@@ -99,6 +105,9 @@ export default class WebshopCrawler {
                   .locator(selectors.attributes.attribute)
                   .filter({
                     has: page.locator(selectors.attributes.attributeLabel)
+                  })
+                  .filter({
+                    has: page.locator(selectors.attributes.attributeValue)
                   });
                 const attributes: ProductAttribute[] = [];
                 for (const oneAttribute of await attributeLocator.all()) {
@@ -148,9 +157,12 @@ export default class WebshopCrawler {
             ? await evalText(selectors.brand, productLocator)
             : undefined,
           image: selectors.image
-            ? await evalText(selectors.image, productLocator)
+            ? await evalTextOptional(selectors.image, productLocator)
             : undefined,
-          description: await evalText(selectors.description, productLocator),
+          description: await evalTextOptional(
+            selectors.description,
+            productLocator
+          ),
           inStock: inStock,
           attributes: attributeGroups.length > 0 ? attributeGroups : undefined,
           url: page.url()
@@ -166,6 +178,14 @@ export default class WebshopCrawler {
       }
     }
 
+    async function evalTextOptional(selector: string, locator: Locator) {
+      const textLocator = locator.locator(selector);
+      if ((await textLocator.count()) > 0) {
+        const text = await textLocator.textContent();
+        return text ?? '';
+      } else return undefined;
+    }
+
     async function evalText(selector: string, locator: Locator) {
       const textLocator = locator.locator(selector);
       const text = await textLocator.textContent();
@@ -178,13 +198,10 @@ export default class WebshopCrawler {
     }
 
     async function evalSku(selector: string, locator: Locator) {
-      const string = await evalText(selector, locator);
-      // if (this.options.sanitizers?.sku) {
-      //   string = string.replace(
-      //     this.options.sanitizers.sku.value,
-      //     this.options.sanitizers.sku.replace
-      //   );
-      // }
+      let string = await evalText(selector, locator);
+      if (sanitizers?.sku) {
+        string = string.replace(sanitizers.sku.value, sanitizers.sku.replace);
+      }
       return string;
     }
 
@@ -202,9 +219,13 @@ export default class WebshopCrawler {
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
       async requestHandler({ request, page }) {
-        const logger = createLogger(page.url());
+        const logger = createLogger(page.url(), store.name, batchTimestamp);
         await page.waitForLoadState('load');
-        await page.waitForTimeout(10000);
+        // await page.waitForTimeout(10000);
+        //TODO: duplicated code
+        const productLocator = page.locator(selectors.productPage);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const temp = await productLocator.count();
         const content = await page.content();
 
         if (content.includes(productPageIdentifier)) {
@@ -256,11 +277,17 @@ export default class WebshopCrawler {
 
         logger.close();
 
+        const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+
         // Finally, we have to add the URLs to the queue
-        await crawler.addRequests(sameHostnameLinks);
+        await crawler.addRequests(
+          sameHostnameLinks.filter(
+            (url) => !badPathEndings.find((ending) => url.endsWith(ending))
+          )
+        );
       },
-      maxRequestsPerCrawl: 500, // Limitation for only 10 requests (do not use if you want to crawl all links)
-      maxRequestsPerMinute: 10,
+      //maxRequestsPerCrawl: 500, // Limitation for only 10 requests (do not use if you want to crawl all links)
+      maxRequestsPerMinute: 30,
       requestHandlerTimeoutSecs: 1800
     });
 
