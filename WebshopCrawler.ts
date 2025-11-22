@@ -6,29 +6,142 @@ import {
   StoreConfig,
   WebshopCrawlerOptions
 } from './types/index.js';
-import { Locator, Page } from 'playwright';
+import { Locator } from 'playwright';
 import { createLogger } from './logger.js';
 import { Logger } from 'winston';
 const absoluteUrlRegExp = new RegExp('^(?:[a-z+]+:)?//', 'i');
 
 export default class WebshopCrawler {
   store: StoreConfig;
-  options: WebshopCrawlerOptions;
   batchTimestamp: number;
   constructor(store: StoreConfig, batchTimestamp: number) {
     this.store = store;
-    this.options = store.options as WebshopCrawlerOptions;
     this.batchTimestamp = batchTimestamp;
   }
 
   async crawlSite(): Promise<ProductSnapshot[]> {
-    const { startUrl, selectors, productPageIdentifier, sanitizers } =
-      this.options;
+    const { startUrl, selectors, productPageIdentifier, sanitizers } = this
+      .store.options as WebshopCrawlerOptions;
     const store = this.store;
     const batchTimestamp = this.batchTimestamp;
 
-    async function scrapeProductPage(page: Page, logger: Logger) {
-      const productLocator = page.locator(selectors.productPage);
+    async function scrapePrices(productLocator: Locator): Promise<{
+      listPrice: number;
+      salePrice: number;
+    }> {
+      const oldPriceLocator = selectors.oldPrice
+        ? productLocator.locator(selectors.oldPrice)
+        : null;
+      const oldPrice =
+        oldPriceLocator && (await oldPriceLocator.count()) > 0
+          ? parseInt(await evalPrice(selectors.oldPrice, productLocator))
+          : undefined;
+      const price = parseInt(
+        await evalPrice(selectors.listPrice, productLocator)
+      );
+      const listPrice = oldPrice ?? price;
+      const salePrice = price;
+
+      return { listPrice, salePrice };
+    }
+
+    async function scrapeAttributes(productLocator: Locator, logger: Logger) {
+      let attributeGroups: ProductAttributeGroup[] = [];
+      if (
+        selectors.attributes?.attribute &&
+        selectors.attributes.attributeLabel &&
+        selectors.attributes.attributeValue &&
+        selectors.attributes.attributesTable
+      ) {
+        logger.log('debug', 'checking attributes');
+        const attributeTableLocator = productLocator
+          .locator(selectors.attributes.attributesTable)
+          .filter({
+            has: selectors.attributes.attributeGroup
+              ? productLocator
+                  .locator(selectors.attributes.attributeGroup)
+                  .locator(selectors.attributes.attribute)
+                  .locator(selectors.attributes.attributeValue)
+              : productLocator
+                  .locator(selectors.attributes.attribute)
+                  .locator(selectors.attributes.attributeValue)
+          });
+        if ((await attributeTableLocator.count()) == 1) {
+          logger.log('debug', 'found table');
+          const attributeGroupsLocator = selectors.attributes.attributeGroup
+            ? attributeTableLocator
+                .locator(selectors.attributes.attributeGroup)
+                .filter({
+                  has: attributeTableLocator
+                    .locator(selectors.attributes.attribute)
+                    .locator(selectors.attributes.attributeLabel)
+                })
+            : attributeTableLocator;
+          const groupCount = await attributeGroupsLocator.count();
+          logger.log('debug', 'group count %d', groupCount);
+          if (groupCount > 0) {
+            attributeGroups = [];
+            for (const attributeGroupLocator of await attributeGroupsLocator.all()) {
+              const groupName = selectors.attributes.attributeGroupName
+                ? await evalText(
+                    selectors.attributes.attributeGroupName,
+                    attributeGroupLocator
+                  )
+                : 'Eiginleikar';
+              const attributeLocator = attributeGroupLocator
+                .locator(selectors.attributes.attribute)
+                .filter({
+                  has: attributeGroupLocator.locator(
+                    selectors.attributes.attributeLabel
+                  )
+                })
+                .filter({
+                  has: attributeGroupLocator.locator(
+                    selectors.attributes.attributeValue
+                  )
+                });
+              const attributes: ProductAttribute[] = [];
+              for (const oneAttribute of await attributeLocator.all()) {
+                try {
+                  attributes.push({
+                    value: await evalText(
+                      selectors.attributes.attributeValue,
+                      oneAttribute
+                    ),
+                    name: await evalText(
+                      selectors.attributes.attributeLabel,
+                      oneAttribute
+                    )
+                  });
+                } catch (e) {
+                  logger.log('debug', 'Error getting attribute: %O', e);
+                  logger.log(
+                    'debug',
+                    'Attribute: %s',
+                    await oneAttribute.textContent()
+                  );
+                }
+              }
+              attributeGroups.push({
+                name: groupName,
+                attributes: attributes
+              });
+            }
+          } else {
+            logger.log('debug', 'No groups found');
+          }
+        } else {
+          logger.log(
+            'debug',
+            'Table count %d != 1',
+            await attributeTableLocator.count()
+          );
+        }
+      }
+      return attributeGroups;
+    }
+
+    async function scrapeProductPage(productLocator: Locator, logger: Logger) {
       if ((await productLocator.count()) > 0) {
         if (selectors.clickers) {
           for (const selector of selectors.clickers) {
@@ -40,113 +153,25 @@ export default class WebshopCrawler {
             }
           }
         }
-        const oldPriceLocator = selectors.oldPrice
-          ? productLocator.locator(selectors.oldPrice)
-          : null;
-        const oldPrice =
-          oldPriceLocator && (await oldPriceLocator.count()) > 0
-            ? parseInt(await evalPrice(selectors.oldPrice, productLocator))
-            : undefined;
-        const price = parseInt(
-          await evalPrice(selectors.listPrice, productLocator)
-        );
-        const listPrice = oldPrice ?? price;
-        const salePrice = price;
+
+        const { listPrice, salePrice } = await scrapePrices(productLocator);
 
         const inStock = selectors.inStock
-          ? (await productLocator.locator(selectors.inStock).count()) > 0
+          ? (await productLocator
+              .locator(selectors.inStock)
+              .filter({ hasText: selectors.inStockText })
+              .count()) > 0
             ? true
             : false
           : undefined;
 
-        let attributeGroups: ProductAttributeGroup[] = [];
-        if (
-          selectors.attributes?.attribute &&
-          selectors.attributes.attributeLabel &&
-          selectors.attributes.attributeValue &&
-          selectors.attributes.attributesTable
-        ) {
-          logger.log('debug', 'checking attributes');
-          const attributeTableLocator = productLocator
-            .locator(selectors.attributes.attributesTable)
-            .filter({
-              has: selectors.attributes.attributeGroup
-                ? page
-                    .locator(selectors.attributes.attributeGroup)
-                    .locator(selectors.attributes.attribute)
-                    .locator(selectors.attributes.attributeValue)
-                : page
-                    .locator(selectors.attributes.attribute)
-                    .locator(selectors.attributes.attributeValue)
-            });
-          if ((await attributeTableLocator.count()) == 1) {
-            logger.log('debug', 'found table');
-            const attributeGroupsLocator = selectors.attributes.attributeGroup
-              ? attributeTableLocator
-                  .locator(selectors.attributes.attributeGroup)
-                  .filter({
-                    has: page
-                      .locator(selectors.attributes.attribute)
-                      .locator(selectors.attributes.attributeLabel)
-                  })
-              : attributeTableLocator;
-            const groupCount = await attributeGroupsLocator.count();
-            logger.log('debug', 'group count %d', groupCount);
-            if (groupCount > 0) {
-              attributeGroups = [];
-              for (const attributeGroupLocator of await attributeGroupsLocator.all()) {
-                const groupName = selectors.attributes.attributeGroupName
-                  ? await evalText(
-                      selectors.attributes.attributeGroupName,
-                      attributeGroupLocator
-                    )
-                  : 'Eiginleikar';
-                const attributeLocator = attributeGroupLocator
-                  .locator(selectors.attributes.attribute)
-                  .filter({
-                    has: page.locator(selectors.attributes.attributeLabel)
-                  })
-                  .filter({
-                    has: page.locator(selectors.attributes.attributeValue)
-                  });
-                const attributes: ProductAttribute[] = [];
-                for (const oneAttribute of await attributeLocator.all()) {
-                  try {
-                    attributes.push({
-                      value: await evalText(
-                        selectors.attributes.attributeValue,
-                        oneAttribute
-                      ),
-                      name: await evalText(
-                        selectors.attributes.attributeLabel,
-                        oneAttribute
-                      )
-                    });
-                  } catch (e) {
-                    logger.log('debug', 'Error getting attribute: %O', e);
-                    logger.log(
-                      'debug',
-                      'Attribute: %s',
-                      await oneAttribute.textContent()
-                    );
-                  }
-                }
-                attributeGroups.push({
-                  name: groupName,
-                  attributes: attributes
-                });
-              }
-            } else {
-              logger.log('debug', 'No groups found');
-            }
-          } else {
-            logger.log(
-              'debug',
-              'Table count %d != 1',
-              await attributeTableLocator.count()
-            );
-          }
-        }
+        const image = selectors.image
+          ? ((await productLocator
+              .locator(selectors.image)
+              .getAttribute('src')) ?? undefined)
+          : undefined;
+
+        const attributeGroups = await scrapeAttributes(productLocator, logger);
         logger.log('info', 'evaluating product');
         const product: ProductSnapshot = {
           sku: await evalSku(selectors.sku, productLocator),
@@ -156,16 +181,19 @@ export default class WebshopCrawler {
           brand: selectors.brand
             ? await evalText(selectors.brand, productLocator)
             : undefined,
-          image: selectors.image
-            ? await evalTextOptional(selectors.image, productLocator)
-            : undefined,
+          image: image,
           description: await evalTextOptional(
             selectors.description,
             productLocator
           ),
           inStock: inStock,
           attributes: attributeGroups.length > 0 ? attributeGroups : undefined,
-          url: page.url()
+          url: productLocator.page().url(),
+          categories: await evalCategories(
+            productLocator,
+            selectors.categories,
+            selectors.categorySplitter
+          )
         };
         logger.log('info', 'Found product: %O', product);
         if (product.attributes) {
@@ -175,6 +203,30 @@ export default class WebshopCrawler {
           }
         }
         return product;
+      }
+    }
+
+    async function evalCategories(
+      productLocator: Locator,
+      selector: string,
+      splitter?: string,
+      categoryItemLocator?: string
+    ) {
+      const locator = productLocator.locator(selector);
+
+      if (categoryItemLocator) {
+        const categories = [];
+        const categoryItems = locator.locator(categoryItemLocator);
+        for (const categoryItemLocator of await categoryItems.all()) {
+          const category = await categoryItemLocator.textContent();
+          if (category) categories.push(category);
+        }
+        return categories;
+      } else {
+        const categoriesString = await locator.textContent();
+        if (!categoriesString) return [];
+        if (splitter) return categoriesString.split(splitter);
+        return [categoriesString];
       }
     }
 
@@ -218,20 +270,25 @@ export default class WebshopCrawler {
       // },
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
+      //maxRequestsPerCrawl: 500, // Limitation for only 10 requests (do not use if you want to crawl all links)
+      maxRequestsPerMinute: 30,
+      requestHandlerTimeoutSecs: 1800,
       async requestHandler({ request, page }) {
         const logger = createLogger(page.url(), store.name, batchTimestamp);
         await page.waitForLoadState('load');
-        // await page.waitForTimeout(10000);
-        //TODO: duplicated code
         const productLocator = page.locator(selectors.productPage);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const temp = await productLocator.count();
-        const content = await page.content();
+        const count = await productLocator.count();
 
-        if (content.includes(productPageIdentifier)) {
+        if (
+          count > 0 &&
+          (await page.content()).includes(productPageIdentifier)
+        ) {
           logger.log('info', 'processing url: %s', request.loadedUrl);
           try {
-            const scrapedProduct = await scrapeProductPage(page, logger);
+            const scrapedProduct = await scrapeProductPage(
+              productLocator,
+              logger
+            );
             if (scrapedProduct !== undefined)
               productMap.set(scrapedProduct.sku, scrapedProduct);
           } catch (e) {
@@ -285,10 +342,7 @@ export default class WebshopCrawler {
             (url) => !badPathEndings.find((ending) => url.endsWith(ending))
           )
         );
-      },
-      //maxRequestsPerCrawl: 500, // Limitation for only 10 requests (do not use if you want to crawl all links)
-      maxRequestsPerMinute: 30,
-      requestHandlerTimeoutSecs: 1800
+      }
     });
 
     // Run the crawler with initial request

@@ -21,6 +21,7 @@ export interface ProductSnapshot {
   inStock?: boolean;
   attributes?: ProductAttributeGroup[];
   url?: string;
+  categories?: string[];
 }
 
 export interface ProductAttributeGroup {

@@ -12,26 +12,26 @@
   "author": "Andri Þórhallsson <andrithorhalls@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "@types/node": "^24.0.3",
-    "crawlee": "^3.13.8",
-    "dotenv": "^16.5.0",
-    "fast-xml-parser": "^5.2.5",
-    "mongodb": "^6.17.0",
-    "node-cron": "^4.1.0",
+    "@types/node": "^24.10.1",
+    "crawlee": "^3.15.3",
+    "dotenv": "^17.2.3",
+    "fast-xml-parser": "^5.3.2",
+    "mongodb": "^7.0.0",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
-    "playwright": "^1.53.1",
+    "playwright": "^1.56.1",
     "ts-node": "^10.9.2",
-    "winston": "^3.17.0"
+    "winston": "^3.18.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.29.0",
+    "@eslint/js": "^9.39.1",
     "@types/node-cron": "^3.0.11",
-    "eslint": "^9.29.0",
-    "globals": "^16.2.0",
-    "prettier": "^3.5.3",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.34.1"
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0"
   },
   "repository": "https://github.com/DrAndri/google-shopping-scraper.git"
 }

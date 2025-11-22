@@ -14,16 +14,16 @@ export const createLogger = (
   return new Logger({
     levels: config.npm.levels,
     transports: [
-      // new transports.Console({
-      //   level: 'debug',
-      //   format: combine(
-      //     colorize(),
-      //     splat(),
-      //     timestamp(),
-      //     errors({ stack: true }),
-      //     customFormat
-      //   )
-      // }),
+      new transports.Console({
+        level: 'error',
+        format: combine(
+          colorize(),
+          splat(),
+          timestamp(),
+          errors({ stack: true }),
+          customFormat
+        )
+      }),
       new transports.File({
         filename: `/logs/${storeName}/${batchTimestamp}/${label}.log`,
         level: 'debug',

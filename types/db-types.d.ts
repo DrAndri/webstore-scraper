@@ -65,8 +65,11 @@ export interface ProductSelectors {
   brand?: string;
   description: string;
   inStock?: string;
+  inStockText?: string;
   clickers?: string[];
-  attributes: AttributeSelectors;
+  categories: string;
+  categorySplitter?: string;
+  attributes?: AttributeSelectors;
 }
 
 export interface AttributeSelectors {
@@ -99,34 +102,3 @@ export interface StorePage {
   store_id: ObjectId;
   sku: string;
 }
-
-// export interface ScrapedGroup {
-//   name: string;
-//   attributes: ScrapedAttribute[];
-// }
-
-// export interface ScrapedAttribute {
-//   name: string;
-//   value: string;
-//   unit?: string;
-//   // linked_attribute?: ObjectId;
-// }
-
-// export interface Attribute {
-//   _id: ObjectId;
-//   name: string;
-//   group_id: ObjectId;
-//   valueType: 'string' | 'number' | 'boolean';
-//   unit?: string;
-// }
-
-// export interface AttributeValue {
-//   _id: ObjectId;
-//   attribute_id: ObjectId;
-//   value: string | number | boolean;
-// }
-
-// export interface AttributeGroup {
-//   _id: ObjectId;
-//   name: string;
-// }

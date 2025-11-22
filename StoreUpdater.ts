@@ -124,7 +124,8 @@ export default class StoreUpdater {
       attributes: product.attributes,
       image: product.image,
       description: product.description,
-      url: product.url
+      url: product.url,
+      inStock: product.inStock
     };
     return productMetadata;
   }
