@@ -59,13 +59,16 @@ export default class WebshopCrawler {
           .filter({
             has: selectors.attributes.attributeGroup
               ? productLocator
+                  .page()
                   .locator(selectors.attributes.attributeGroup)
                   .locator(selectors.attributes.attribute)
                   .locator(selectors.attributes.attributeValue)
               : productLocator
+                  .page()
                   .locator(selectors.attributes.attribute)
                   .locator(selectors.attributes.attributeValue)
           });
+        await attributeTableLocator.waitFor({ timeout: 5000 });
         if ((await attributeTableLocator.count()) == 1) {
           logger.log('debug', 'found table');
           const attributeGroupsLocator = selectors.attributes.attributeGroup
@@ -73,6 +76,7 @@ export default class WebshopCrawler {
                 .locator(selectors.attributes.attributeGroup)
                 .filter({
                   has: attributeTableLocator
+                    .page()
                     .locator(selectors.attributes.attribute)
                     .locator(selectors.attributes.attributeLabel)
                 })
@@ -91,14 +95,14 @@ export default class WebshopCrawler {
               const attributeLocator = attributeGroupLocator
                 .locator(selectors.attributes.attribute)
                 .filter({
-                  has: attributeGroupLocator.locator(
-                    selectors.attributes.attributeLabel
-                  )
+                  has: attributeGroupLocator
+                    .page()
+                    .locator(selectors.attributes.attributeLabel)
                 })
                 .filter({
-                  has: attributeGroupLocator.locator(
-                    selectors.attributes.attributeValue
-                  )
+                  has: attributeGroupLocator
+                    .page()
+                    .locator(selectors.attributes.attributeValue)
                 });
               const attributes: ProductAttribute[] = [];
               for (const oneAttribute of await attributeLocator.all()) {
@@ -131,6 +135,7 @@ export default class WebshopCrawler {
             logger.log('debug', 'No groups found');
           }
         } else {
+          logger.log('debug', await productLocator.innerHTML());
           logger.log(
             'debug',
             'Table count %d != 1',
@@ -146,9 +151,16 @@ export default class WebshopCrawler {
         if (selectors.clickers) {
           for (const selector of selectors.clickers) {
             try {
-              await productLocator.locator(selector).click();
+              const clickLocator = productLocator.locator(selector);
+              if ((await clickLocator.count()) != 1)
+                logger.log(
+                  'warn',
+                  'Clicker %s did not match 1 element',
+                  selector
+                );
+              await clickLocator.click({ force: true, timeout: 5000 });
             } catch (e) {
-              logger.log('warn', 'Clicker %s did not match', selector);
+              logger.log('warn', 'Clicker %s errored', selector);
               logger.log('debug', e);
             }
           }
@@ -192,7 +204,8 @@ export default class WebshopCrawler {
           categories: await evalCategories(
             productLocator,
             selectors.categories,
-            selectors.categorySplitter
+            selectors.categorySplitter,
+            selectors.categoryItemLocator
           )
         };
         logger.log('info', 'Found product: %O', product);
@@ -274,9 +287,15 @@ export default class WebshopCrawler {
       maxRequestsPerMinute: 30,
       requestHandlerTimeoutSecs: 1800,
       async requestHandler({ request, page }) {
-        const logger = createLogger(page.url(), store.name, batchTimestamp);
-        await page.waitForLoadState('load');
+        const urlParts = page.url().split('/');
+        const logger = createLogger(
+          urlParts[urlParts.length - 1],
+          store.name,
+          batchTimestamp
+        );
+        await page.waitForLoadState('networkidle');
         const productLocator = page.locator(selectors.productPage);
+        await productLocator.waitFor({ timeout: 5000 });
         const count = await productLocator.count();
 
         if (

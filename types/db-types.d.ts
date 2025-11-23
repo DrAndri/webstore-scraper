@@ -69,6 +69,7 @@ export interface ProductSelectors {
   clickers?: string[];
   categories: string;
   categorySplitter?: string;
+  categoryItemLocator?: string;
   attributes?: AttributeSelectors;
 }
 

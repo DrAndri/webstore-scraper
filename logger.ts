@@ -28,7 +28,6 @@ export const createLogger = (
         filename: `/logs/${storeName}/${batchTimestamp}/${label}.log`,
         level: 'debug',
         format: combine(
-          colorize(),
           splat(),
           timestamp(),
           errors({ stack: true }),
