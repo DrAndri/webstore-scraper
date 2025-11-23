@@ -10,6 +10,7 @@ import { Locator } from 'playwright';
 import { createLogger } from './logger.js';
 import { Logger } from 'winston';
 const absoluteUrlRegExp = new RegExp('^(?:[a-z+]+:)?//', 'i');
+const categoryBanList = ['forsíða', 'heim', 'vörur', 'allar vörur', 'til baka'];
 
 export default class WebshopCrawler {
   store: StoreConfig;
@@ -43,6 +44,35 @@ export default class WebshopCrawler {
       const salePrice = price;
 
       return { listPrice, salePrice };
+    }
+
+    function isValidCategory(category: string) {
+      if (category.length < 2) return false;
+      const lowerCased = category.toLocaleLowerCase();
+      if (categoryBanList.find((item) => item == lowerCased)) return false;
+      return true;
+    }
+
+    async function scrapeCategories(productLocator: Locator) {
+      const { categorySplitter, categoryItemLocator } = selectors;
+
+      const locator = productLocator.locator(selectors.categories);
+
+      if (categoryItemLocator) {
+        const categories = [];
+        const categoryItems = locator.locator(categoryItemLocator);
+        for (const categoryItemLocator of await categoryItems.all()) {
+          const category = await categoryItemLocator.textContent();
+          if (category != null && isValidCategory(category))
+            categories.push(category);
+        }
+        return categories;
+      } else {
+        const categoriesString = await locator.textContent();
+        if (!categoriesString) return [];
+        if (categorySplitter) return categoriesString.split(categorySplitter);
+        return [categoriesString];
+      }
     }
 
     async function scrapeAttributes(productLocator: Locator, logger: Logger) {
@@ -201,12 +231,7 @@ export default class WebshopCrawler {
           inStock: inStock,
           attributes: attributeGroups.length > 0 ? attributeGroups : undefined,
           url: productLocator.page().url(),
-          categories: await evalCategories(
-            productLocator,
-            selectors.categories,
-            selectors.categorySplitter,
-            selectors.categoryItemLocator
-          )
+          categories: await scrapeCategories(productLocator)
         };
         logger.log('info', 'Found product: %O', product);
         if (product.attributes) {
@@ -216,30 +241,6 @@ export default class WebshopCrawler {
           }
         }
         return product;
-      }
-    }
-
-    async function evalCategories(
-      productLocator: Locator,
-      selector: string,
-      splitter?: string,
-      categoryItemLocator?: string
-    ) {
-      const locator = productLocator.locator(selector);
-
-      if (categoryItemLocator) {
-        const categories = [];
-        const categoryItems = locator.locator(categoryItemLocator);
-        for (const categoryItemLocator of await categoryItems.all()) {
-          const category = await categoryItemLocator.textContent();
-          if (category) categories.push(category);
-        }
-        return categories;
-      } else {
-        const categoriesString = await locator.textContent();
-        if (!categoriesString) return [];
-        if (splitter) return categoriesString.split(splitter);
-        return [categoriesString];
       }
     }
 
