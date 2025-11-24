@@ -98,7 +98,7 @@ export default class WebshopCrawler {
                   .locator(selectors.attributes.attribute)
                   .locator(selectors.attributes.attributeValue)
           });
-        await attributeTableLocator.waitFor({ timeout: 5000 });
+        //await attributeTableLocator.waitFor({ timeout: 5000 });
         if ((await attributeTableLocator.count()) == 1) {
           logger.log('debug', 'found table');
           const attributeGroupsLocator = selectors.attributes.attributeGroup
