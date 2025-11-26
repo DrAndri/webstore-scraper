@@ -35,11 +35,9 @@ export default class WebshopCrawler {
         : null;
       const oldPrice =
         oldPriceLocator && (await oldPriceLocator.count()) > 0
-          ? parseInt(await evalPrice(selectors.oldPrice, productLocator))
+          ? await evalPrice(selectors.oldPrice, productLocator)
           : undefined;
-      const price = parseInt(
-        await evalPrice(selectors.listPrice, productLocator)
-      );
+      const price = await evalPrice(selectors.listPrice, productLocator);
       const listPrice = oldPrice ?? price;
       const salePrice = price;
 
@@ -53,7 +51,10 @@ export default class WebshopCrawler {
       return true;
     }
 
-    async function scrapeCategories(productLocator: Locator) {
+    async function scrapeCategories(
+      productLocator: Locator,
+      productName: string
+    ) {
       const { categorySplitter, categoryItemLocator } = selectors;
 
       const locator = productLocator.locator(selectors.categories);
@@ -63,7 +64,11 @@ export default class WebshopCrawler {
         const categoryItems = locator.locator(categoryItemLocator);
         for (const categoryItemLocator of await categoryItems.all()) {
           const category = await categoryItemLocator.textContent();
-          if (category != null && isValidCategory(category))
+          if (
+            category != null &&
+            isValidCategory(category) &&
+            category != productName
+          )
             categories.push(category);
         }
         return categories;
@@ -165,7 +170,6 @@ export default class WebshopCrawler {
             logger.log('debug', 'No groups found');
           }
         } else {
-          logger.log('debug', await productLocator.innerHTML());
           logger.log(
             'debug',
             'Table count %d != 1',
@@ -214,24 +218,31 @@ export default class WebshopCrawler {
           : undefined;
 
         const attributeGroups = await scrapeAttributes(productLocator, logger);
+        const sku = await evalSku(selectors.sku, productLocator);
+        const name = await evalText(selectors.name, productLocator);
+        const brand = selectors.brand
+          ? await evalText(selectors.brand, productLocator)
+          : undefined;
+
+        const description = await evalTextOptional(
+          selectors.description,
+          productLocator
+        );
+        const categories = await scrapeCategories(productLocator, name);
+
         logger.log('info', 'evaluating product');
         const product: ProductSnapshot = {
-          sku: await evalSku(selectors.sku, productLocator),
+          sku: sku,
           price: listPrice,
           sale_price: salePrice,
-          title: await evalText(selectors.name, productLocator),
-          brand: selectors.brand
-            ? await evalText(selectors.brand, productLocator)
-            : undefined,
+          title: name,
+          brand: brand,
           image: image,
-          description: await evalTextOptional(
-            selectors.description,
-            productLocator
-          ),
+          description: description,
           inStock: inStock,
           attributes: attributeGroups.length > 0 ? attributeGroups : undefined,
           url: productLocator.page().url(),
-          categories: await scrapeCategories(productLocator)
+          categories: categories
         };
         logger.log('info', 'Found product: %O', product);
         if (product.attributes) {
@@ -260,7 +271,7 @@ export default class WebshopCrawler {
 
     async function evalPrice(selector: string, locator: Locator) {
       const string = await evalText(selector, locator);
-      return string.replace(/\D/g, '');
+      return parseInt(string.replace(/\D/g, ''));
     }
 
     async function evalSku(selector: string, locator: Locator) {
@@ -268,6 +279,7 @@ export default class WebshopCrawler {
       if (sanitizers?.sku) {
         string = string.replace(sanitizers.sku.value, sanitizers.sku.replace);
       }
+      if (string.length < 2) throw new Error(`Sku ${string} is not valid`);
       return string;
     }
 
@@ -286,7 +298,11 @@ export default class WebshopCrawler {
       requestQueue: requestQueue,
       //maxRequestsPerCrawl: 500, // Limitation for only 10 requests (do not use if you want to crawl all links)
       maxRequestsPerMinute: 30,
+      maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 1800,
+      respectRobotsTxtFile: false,
+      retryOnBlocked: true,
+
       async requestHandler({ request, page }) {
         const urlParts = page.url().split('/');
         const logger = createLogger(
@@ -294,7 +310,7 @@ export default class WebshopCrawler {
           store.name,
           batchTimestamp
         );
-        await page.waitForLoadState('networkidle');
+        await page.waitForLoadState('load');
         const productLocator = page.locator(selectors.productPage);
         await productLocator.waitFor({ timeout: 5000 });
         const count = await productLocator.count();
