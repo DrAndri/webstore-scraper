@@ -12,11 +12,11 @@ export interface GoogleMerchantFeed {
 export interface ProductSnapshot {
   sku: string;
   price: number;
-  title: string;
+  title?: string;
   brand?: string;
   gtin?: string;
   sale_price?: number;
-  image?: string;
+  image?: string | null;
   description?: string;
   inStock?: boolean;
   attributes?: ProductAttributeGroup[];

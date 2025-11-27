@@ -53,7 +53,7 @@ export default class WebshopCrawler {
 
     async function scrapeCategories(
       productLocator: Locator,
-      productName: string
+      productName: string | undefined
     ) {
       const { categorySplitter, categoryItemLocator } = selectors;
 
@@ -88,7 +88,6 @@ export default class WebshopCrawler {
         selectors.attributes.attributeValue &&
         selectors.attributes.attributesTable
       ) {
-        logger.log('debug', 'checking attributes');
         const attributeTableLocator = productLocator
           .locator(selectors.attributes.attributesTable)
           .filter({
@@ -103,7 +102,6 @@ export default class WebshopCrawler {
                   .locator(selectors.attributes.attribute)
                   .locator(selectors.attributes.attributeValue)
           });
-        //await attributeTableLocator.waitFor({ timeout: 5000 });
         if ((await attributeTableLocator.count()) == 1) {
           logger.log('debug', 'found table');
           const attributeGroupsLocator = selectors.attributes.attributeGroup
@@ -180,6 +178,28 @@ export default class WebshopCrawler {
       return attributeGroups;
     }
 
+    async function scrapeInStock(productLocator: Locator) {
+      if (!selectors.inStock) return undefined;
+      const count = await productLocator
+        .locator(selectors.inStock)
+        .filter({ hasText: selectors.inStockText })
+        .count();
+      return count > 0;
+    }
+
+    async function scrapeImage(productLocator: Locator) {
+      if (!selectors.image) return undefined;
+      const locator = productLocator.locator(selectors.image);
+      const src = await locator.getAttribute('src');
+      return src ?? undefined;
+    }
+
+    async function scrapeBrand(productLocator: Locator) {
+      return selectors.brand
+        ? await evalText(selectors.brand, productLocator)
+        : undefined;
+    }
+
     async function scrapeProductPage(productLocator: Locator, logger: Logger) {
       if ((await productLocator.count()) > 0) {
         if (selectors.clickers) {
@@ -199,36 +219,43 @@ export default class WebshopCrawler {
             }
           }
         }
-
+        const sku = await evalSku(productLocator);
         const { listPrice, salePrice } = await scrapePrices(productLocator);
 
-        const inStock = selectors.inStock
-          ? (await productLocator
-              .locator(selectors.inStock)
-              .filter({ hasText: selectors.inStockText })
-              .count()) > 0
-            ? true
-            : false
-          : undefined;
-
-        const image = selectors.image
-          ? ((await productLocator
-              .locator(selectors.image)
-              .getAttribute('src')) ?? undefined)
-          : undefined;
-
+        const inStock = await scrapeInStock(productLocator).catch((e) => {
+          logger.log('warn', 'Error scraping inStock: %O', e);
+          return undefined;
+        });
+        const image = await scrapeImage(productLocator).catch((e) => {
+          logger.log('warn', 'Error scraping image: %O', e);
+          return undefined;
+        });
         const attributeGroups = await scrapeAttributes(productLocator, logger);
-        const sku = await evalSku(selectors.sku, productLocator);
-        const name = await evalText(selectors.name, productLocator);
-        const brand = selectors.brand
-          ? await evalText(selectors.brand, productLocator)
-          : undefined;
 
-        const description = await evalTextOptional(
+        const name = await evalText(selectors.name, productLocator).catch(
+          (e) => {
+            logger.log('warn', 'Error scraping name: %O', e);
+            return undefined;
+          }
+        );
+        const brand = await scrapeBrand(productLocator).catch((e) => {
+          logger.log('warn', 'Error scraping brand: %O', e);
+          return undefined;
+        });
+
+        const description = await evalText(
           selectors.description,
           productLocator
+        ).catch((e) => {
+          logger.log('warn', 'Error scraping description: %O', e);
+          return undefined;
+        });
+        const categories = await scrapeCategories(productLocator, name).catch(
+          (e) => {
+            logger.log('warn', 'Error scraping categories: %O', e);
+            return undefined;
+          }
         );
-        const categories = await scrapeCategories(productLocator, name);
 
         logger.log('info', 'evaluating product');
         const product: ProductSnapshot = {
@@ -255,14 +282,6 @@ export default class WebshopCrawler {
       }
     }
 
-    async function evalTextOptional(selector: string, locator: Locator) {
-      const textLocator = locator.locator(selector);
-      if ((await textLocator.count()) > 0) {
-        const text = await textLocator.textContent();
-        return text ?? '';
-      } else return undefined;
-    }
-
     async function evalText(selector: string, locator: Locator) {
       const textLocator = locator.locator(selector);
       const text = await textLocator.textContent();
@@ -274,8 +293,8 @@ export default class WebshopCrawler {
       return parseInt(string.replace(/\D/g, ''));
     }
 
-    async function evalSku(selector: string, locator: Locator) {
-      let string = await evalText(selector, locator);
+    async function evalSku(locator: Locator) {
+      let string = await evalText(selectors.sku, locator);
       if (sanitizers?.sku) {
         string = string.replace(sanitizers.sku.value, sanitizers.sku.replace);
       }
