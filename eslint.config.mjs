@@ -38,7 +38,7 @@ export default defineConfig([
 
       parserOptions: {
         project: './tsconfig.json',
-        tsconfigRootDir: 'C:\\Projects\\google-shopping-scraper'
+        tsconfigRootDir: 'C:\\Projects\\webstore-scraper'
       }
     }
   },

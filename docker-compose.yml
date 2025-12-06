@@ -1,6 +1,6 @@
 services:
-  price-scraper:
-    container_name: price-scraper
+  webstore-scraper:
+    container_name: webstore-scraper
     build:
       dockerfile: Dockerfile
     environment:
