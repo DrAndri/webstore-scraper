@@ -16,7 +16,7 @@ export interface ProductSnapshot {
   brand?: string;
   gtin?: string;
   sale_price?: number;
-  image?: string | null;
+  image?: string;
   description?: string;
   inStock?: boolean;
   attributes?: ProductAttributeGroup[];
