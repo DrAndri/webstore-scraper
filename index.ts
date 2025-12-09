@@ -14,7 +14,7 @@ import {
   FeedOptions
 } from './types/index.js';
 // import WebshopScraper from './WebshopScraper.js';
-import WebshopCrawler from './WebshopCrawler.js';
+import WebshopCrawler from './crawler/WebshopCrawler.js';
 
 dotenv.config();
 

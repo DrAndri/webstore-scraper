@@ -9,10 +9,10 @@ services:
     volumes:
       - ./logs:/logs
 
-  price-api:
-    container_name: price-api
+  webstore-api:
+    container_name: webstore-api
     build:
-      context: ../google-shopping-history
+      context: ../webstore-api
       dockerfile: Dockerfile
     environment:
       MONGODB_URI: ${MONGODB_URI}
