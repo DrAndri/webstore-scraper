@@ -16,7 +16,7 @@
     "dotenv": "^16.5.0",
     "fast-xml-parser": "^5.2.0",
     "mongodb": "^6.15.0",
-    "node-cron": "^3.0.2",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "puppeteer": "^24.6.1",
     "ts-node": "^10.9.2"
