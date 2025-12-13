@@ -25,7 +25,7 @@ export const createLogger = (
         )
       }),
       new transports.File({
-        filename: `/logs/${storeName}/${batchTimestamp}/${label}.log`,
+        filename: `/logs/${storeName}/${batchTimestamp}/${label.substring(0, 100)}.log`,
         level: 'debug',
         format: combine(
           splat(),

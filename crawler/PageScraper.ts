@@ -10,6 +10,7 @@ import {
   ProductSnapshot
 } from '../types/types.js';
 import { Logger } from 'winston';
+import sanitizeHtml from 'sanitize-html';
 
 export default class PageScraper {
   selectors: ProductSelectors;
@@ -36,7 +37,7 @@ export default class PageScraper {
       ? productLocator.locator(this.selectors.oldPrice)
       : null;
     const oldPrice =
-      oldPriceLocator && (await oldPriceLocator.count()) > 0
+      oldPriceLocator && (await oldPriceLocator.count()) === 1
         ? await this.evalPrice(this.selectors.oldPrice, productLocator)
         : undefined;
     const price = await this.evalPrice(
@@ -95,7 +96,7 @@ export default class PageScraper {
     selectors: AttributeSelectors | undefined,
     logger: Logger
   ) {
-    let attributeGroups: ProductAttributeGroup[] = [];
+    const attributeGroups: ProductAttributeGroup[] = [];
     if (
       !selectors?.attribute ||
       !selectors.attributeLabel ||
@@ -103,7 +104,7 @@ export default class PageScraper {
       !selectors.attributesTable
     ) {
       logger.log('warn', 'Selectors missing from attribute config');
-      return attributeGroups;
+      return undefined;
     }
     const attributeTableLocator = productLocator
       .locator(selectors.attributesTable)
@@ -132,7 +133,6 @@ export default class PageScraper {
       const groupCount = await attributeGroupsLocator.count();
       logger.log('debug', 'group count %d', groupCount);
       if (groupCount > 0) {
-        attributeGroups = [];
         for (const attributeGroupLocator of await attributeGroupsLocator.all()) {
           const groupName = selectors.attributeGroupName
             ? ((await this.evalText(
@@ -194,7 +194,7 @@ export default class PageScraper {
       );
     }
 
-    return attributeGroups;
+    return attributeGroups.length > 0 ? attributeGroups : undefined;
   }
 
   async scrapeInStock(productLocator: Locator) {
@@ -217,6 +217,12 @@ export default class PageScraper {
     return this.selectors.brand
       ? await this.evalText(this.selectors.brand, productLocator)
       : undefined;
+  }
+
+  async scrapeDescription(productLocator: Locator) {
+    const locator = productLocator.locator(this.selectors.description);
+    const html = await locator.innerHTML();
+    return sanitizeHtml(html);
   }
 
   async scrapeProductPage(productLocator: Locator, logger: Logger) {
@@ -267,13 +273,12 @@ export default class PageScraper {
         return undefined;
       });
 
-      const description = await this.evalText(
-        this.selectors.description,
-        productLocator
-      ).catch((e) => {
-        logger.log('warn', 'Error scraping description: %O', e);
-        return undefined;
-      });
+      const description = await this.scrapeDescription(productLocator).catch(
+        (e) => {
+          logger.log('warn', 'Error scraping description: %O', e);
+          return undefined;
+        }
+      );
       const categories = await this.scrapeCategories(
         productLocator,
         name
@@ -292,9 +297,10 @@ export default class PageScraper {
         image: image,
         description: description,
         inStock: inStock,
-        attributes: attributeGroups.length > 0 ? attributeGroups : undefined,
+        attributes: attributeGroups,
         url: productLocator.page().url(),
-        categories: categories
+        categories: categories,
+        gtin: undefined
       };
       logger.log('info', 'Found product: %O', product);
       if (product.attributes) {
