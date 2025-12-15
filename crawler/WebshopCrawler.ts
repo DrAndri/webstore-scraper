@@ -51,15 +51,13 @@ export default class WebshopCrawler {
     }) => {
       if (!request.loadedUrl) return;
       totalRequests++;
-      const urlParts = page.url().split('/');
-      const logger = createLogger(
-        urlParts[urlParts.length - 1],
-        store.name,
-        batchTimestamp
-      );
       await page.waitForLoadState('load');
+      const urlParts = page.url().split('/');
+      const label =
+        urlParts[urlParts.length - 1].trim() ??
+        urlParts[urlParts.length - 2].trim();
+      const logger = createLogger(label, store.name, batchTimestamp);
       const productLocator = page.locator(selectors.productPage);
-      // await productLocator.waitFor({ timeout: 5000 });
       const count = await productLocator.count();
       const pageContent = await page.content();
 
@@ -130,8 +128,8 @@ export default class WebshopCrawler {
       },
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
-      maxRequestsPerCrawl: 500,
-      maxRequestsPerMinute: 30,
+      maxRequestsPerCrawl: 1000,
+      maxRequestsPerMinute: 20,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 1800,
       respectRobotsTxtFile: false,
@@ -144,10 +142,13 @@ export default class WebshopCrawler {
 
     await requestQueue.drop();
 
-    //TODO: log summary with logger
-    console.log(
-      `Crawl of store ${store.name} completed. Total requests: ${totalRequests}, processed: ${totalProcessed}, errored: ${totalErrored}`
-    );
+    const storeLogger = createLogger('SUMMARY', store.name, batchTimestamp);
+
+    storeLogger.log('info', `Crawl of store ${store.name} completed.`);
+    storeLogger.log('info', `Total requests: ${totalRequests}`);
+    storeLogger.log('info', `Total processed: ${totalProcessed}`);
+    storeLogger.log('info', `Total errored: ${totalErrored}`);
+    storeLogger.close();
 
     return Array.from(productMap, ([, value]) => value);
   }

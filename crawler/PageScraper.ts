@@ -11,6 +11,7 @@ import {
 } from '../types/types.js';
 import { Logger } from 'winston';
 import sanitizeHtml from 'sanitize-html';
+import { expect } from 'playwright/test';
 
 export default class PageScraper {
   selectors: ProductSelectors;
@@ -44,9 +45,11 @@ export default class PageScraper {
       this.selectors.listPrice,
       productLocator
     );
-    const listPrice = oldPrice ?? price;
+    expect(price).toBeTruthy();
+    const listPrice = oldPrice && oldPrice > 0 ? oldPrice : price;
     const salePrice = price;
 
+    //TODO: Remove if expect is working
     if (!listPrice) throw new Error('Price not found');
 
     return { listPrice, salePrice };
@@ -83,12 +86,12 @@ export default class PageScraper {
           categories.push(category);
       }
       return categories;
-    } else {
+    } else if (categorySplitter) {
       const categoriesString = await locator.textContent();
       if (!categoriesString) return [];
       if (categorySplitter) return categoriesString.split(categorySplitter);
       return [categoriesString];
-    }
+    } else return undefined;
   }
 
   async scrapeAttributes(
@@ -103,7 +106,6 @@ export default class PageScraper {
       !selectors.attributeValue ||
       !selectors.attributesTable
     ) {
-      logger.log('warn', 'Selectors missing from attribute config');
       return undefined;
     }
     const attributeTableLocator = productLocator
@@ -120,78 +122,76 @@ export default class PageScraper {
               .locator(selectors.attribute)
               .locator(selectors.attributeValue)
       });
-    if ((await attributeTableLocator.count()) == 1) {
-      logger.log('debug', 'found table');
-      const attributeGroupsLocator = selectors.attributeGroup
-        ? attributeTableLocator.locator(selectors.attributeGroup).filter({
-            has: attributeTableLocator
-              .page()
-              .locator(selectors.attribute)
-              .locator(selectors.attributeLabel)
-          })
-        : attributeTableLocator;
-      const groupCount = await attributeGroupsLocator.count();
-      logger.log('debug', 'group count %d', groupCount);
-      if (groupCount > 0) {
-        for (const attributeGroupLocator of await attributeGroupsLocator.all()) {
-          const groupName = selectors.attributeGroupName
-            ? ((await this.evalText(
-                selectors.attributeGroupName,
-                attributeGroupLocator
-              )) ?? 'Óflokkað')
-            : 'Óflokkað';
-          const attributeLocator = attributeGroupLocator
-            .locator(selectors.attribute)
-            .filter({
-              has: attributeGroupLocator
+    if ((await attributeTableLocator.count()) > 0) {
+      for (const oneTable of await attributeTableLocator.all()) {
+        logger.log('debug', 'found table');
+        const attributeGroupsLocator = selectors.attributeGroup
+          ? oneTable.locator(selectors.attributeGroup).filter({
+              has: oneTable
                 .page()
+                .locator(selectors.attribute)
                 .locator(selectors.attributeLabel)
             })
-            .filter({
-              has: attributeGroupLocator
-                .page()
-                .locator(selectors.attributeValue)
-            });
-          const attributes: ProductAttribute[] = [];
-          for (const oneAttribute of await attributeLocator.all()) {
-            try {
-              const value = await this.evalText(
-                selectors.attributeValue,
-                oneAttribute
-              );
-              const name = await this.evalText(
-                selectors.attributeLabel,
-                oneAttribute
-              );
-              if (!value) throw new Error('Attribute value not found');
-              if (!name) throw new Error('Attribute name not found');
-              attributes.push({
-                value: value,
-                name: name
+          : oneTable;
+        const groupCount = await attributeGroupsLocator.count();
+        logger.log('debug', 'group count %d', groupCount);
+        if (groupCount > 0) {
+          for (const attributeGroupLocator of await attributeGroupsLocator.all()) {
+            const groupName = selectors.attributeGroupName
+              ? ((await this.evalText(
+                  selectors.attributeGroupName,
+                  attributeGroupLocator
+                )) ?? 'Óflokkað')
+              : 'Óflokkað';
+            const attributeLocator = attributeGroupLocator
+              .locator(selectors.attribute)
+              .filter({
+                has: attributeGroupLocator
+                  .page()
+                  .locator(selectors.attributeLabel)
+              })
+              .filter({
+                has: attributeGroupLocator
+                  .page()
+                  .locator(selectors.attributeValue)
               });
-            } catch (e) {
-              logger.log('debug', 'Error getting attribute: %O', e);
-              logger.log(
-                'debug',
-                'Attribute: %s',
-                await oneAttribute.textContent()
-              );
+            const attributes: ProductAttribute[] = [];
+            for (const oneAttribute of await attributeLocator.all()) {
+              try {
+                const value = await this.evalText(
+                  selectors.attributeValue,
+                  oneAttribute
+                );
+                const name = await this.evalText(
+                  selectors.attributeLabel,
+                  oneAttribute
+                );
+                if (!value) throw new Error('Attribute value not found');
+                if (!name) throw new Error('Attribute name not found');
+                attributes.push({
+                  value: value,
+                  name: name
+                });
+              } catch (e) {
+                logger.log('debug', 'Error getting attribute: %O', e);
+                logger.log(
+                  'debug',
+                  'Attribute: %s',
+                  await oneAttribute.textContent()
+                );
+              }
             }
+            attributeGroups.push({
+              name: groupName,
+              attributes: attributes
+            });
           }
-          attributeGroups.push({
-            name: groupName,
-            attributes: attributes
-          });
+        } else {
+          logger.log('warn', 'No groups found');
         }
-      } else {
-        logger.log('debug', 'No groups found');
       }
     } else {
-      logger.log(
-        'debug',
-        'Table count %d != 1',
-        await attributeTableLocator.count()
-      );
+      logger.log('warn', 'No table found');
     }
 
     return attributeGroups.length > 0 ? attributeGroups : undefined;
@@ -214,12 +214,12 @@ export default class PageScraper {
   }
 
   async scrapeBrand(productLocator: Locator) {
-    return this.selectors.brand
-      ? await this.evalText(this.selectors.brand, productLocator)
-      : undefined;
+    if (!this.selectors.brand) return undefined;
+    return await this.evalText(this.selectors.brand, productLocator);
   }
 
   async scrapeDescription(productLocator: Locator) {
+    if (!this.selectors.description) return undefined;
     const locator = productLocator.locator(this.selectors.description);
     const html = await locator.innerHTML();
     return sanitizeHtml(html);
@@ -329,10 +329,11 @@ export default class PageScraper {
     let string = await this.evalText(this.selectors.sku, locator);
     if (this.sanitizers?.sku) {
       string = string?.replace(
-        this.sanitizers.sku.value,
+        this.sanitizers.sku.match,
         this.sanitizers.sku.replace
       );
     }
+    string = string?.trim();
     if (!string || string.length < 2)
       throw new Error(`Sku ${string} is not valid`);
     return string;

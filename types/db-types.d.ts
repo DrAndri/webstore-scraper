@@ -51,7 +51,7 @@ export interface ProductSanitizers {
 }
 
 export interface ProductSanitizer {
-  value: string;
+  match: string;
   replace: string;
 }
 
