@@ -4,7 +4,7 @@ import {
   StoreConfig,
   WebshopCrawlerOptions
 } from '../types/index.js';
-import { createLogger } from '../logger.js';
+import { createProductLogger, createStoreLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
 import { Page } from 'playwright';
 const absoluteUrlRegExp = new RegExp('^(?:[a-z+]+:)?//', 'i');
@@ -26,7 +26,14 @@ export default class WebshopCrawler {
 
     let totalRequests = 0,
       totalProcessed = 0,
-      totalErrored = 0;
+      totalErrored = 0,
+      descriptionError = 0,
+      attributeError = 0,
+      imageError = 0,
+      brandError = 0,
+      nameError = 0,
+      inStockError = 0,
+      categoriesError = 0;
 
     const productMap: Map<string, ProductSnapshot> = new Map<
       string,
@@ -49,27 +56,37 @@ export default class WebshopCrawler {
       request: Request;
       page: Page;
     }) => {
-      if (!request.loadedUrl) return;
       totalRequests++;
       await page.waitForLoadState('load');
-      const urlParts = page.url().split('/');
-      const label =
-        urlParts[urlParts.length - 1].trim() ??
-        urlParts[urlParts.length - 2].trim();
-      const logger = createLogger(label, store.name, batchTimestamp);
+
       const productLocator = page.locator(selectors.productPage);
       const count = await productLocator.count();
       const pageContent = await page.content();
 
+      const urlParts = request.loadedUrl?.split('/') ?? [];
+      const label =
+        urlParts[urlParts.length - 1].trim() ??
+        urlParts[urlParts.length - 2].trim();
+      const logger = createProductLogger(label, store.name, batchTimestamp);
+
       if (count > 0 && pageContent.includes(productPageIdentifier)) {
         logger.log('info', 'processing url: %s', request.loadedUrl);
         try {
-          const scrapedProduct = await pageScraper.scrapeProductPage(
+          const scrapeResult = await pageScraper.scrapeProductPage(
             productLocator,
             logger
           );
-          if (scrapedProduct !== undefined) {
+
+          if (scrapeResult !== undefined) {
+            const scrapedProduct = scrapeResult.product;
             productMap.set(scrapedProduct.sku, scrapedProduct);
+            if (scrapeResult.errors.description) descriptionError++;
+            if (scrapeResult.errors.attributes) attributeError++;
+            if (scrapeResult.errors.image) imageError++;
+            if (scrapeResult.errors.brand) brandError++;
+            if (scrapeResult.errors.name) nameError++;
+            if (scrapeResult.errors.inStock) inStockError++;
+            if (scrapeResult.errors.categories) categoriesError++;
             totalProcessed++;
           }
         } catch (e) {
@@ -85,6 +102,12 @@ export default class WebshopCrawler {
         logger.log('info', 'url is not a product page: %s', request.loadedUrl);
       }
 
+      logger.close();
+
+      await addSameSiteLinksToQueue(page);
+    };
+
+    const addSameSiteLinksToQueue = async (page: Page) => {
       const links = await page
         .getByRole('link')
         .all()
@@ -97,7 +120,7 @@ export default class WebshopCrawler {
 
       // Besides resolving the URLs, we now also need to
       // grab their hostname for filtering.
-      const { hostname } = new URL(request.loadedUrl);
+      const { hostname } = new URL(startUrl);
       const absoluteUrls = links.map((link) => {
         if (absoluteUrlRegExp.test(link)) return URL.parse(link);
         else return new URL(link, startUrl);
@@ -109,8 +132,6 @@ export default class WebshopCrawler {
         .filter((url) => url !== null)
         .filter((url) => url.hostname === hostname)
         .map((url) => url.href);
-
-      logger.close();
 
       const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 
@@ -128,13 +149,15 @@ export default class WebshopCrawler {
       },
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
-      maxRequestsPerCrawl: 1000,
+      //maxRequestsPerCrawl: 1000,
       maxRequestsPerMinute: 20,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 1800,
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
-      requestHandler: requestHandler
+      requestHandler: requestHandler,
+      statusMessageLoggingInterval: 14400,
+      autoscaledPoolOptions: { loggingIntervalSecs: 14400 }
     });
 
     // Run the crawler with initial request
@@ -142,12 +165,19 @@ export default class WebshopCrawler {
 
     await requestQueue.drop();
 
-    const storeLogger = createLogger('SUMMARY', store.name, batchTimestamp);
+    const storeLogger = createStoreLogger(store.name);
 
     storeLogger.log('info', `Crawl of store ${store.name} completed.`);
     storeLogger.log('info', `Total requests: ${totalRequests}`);
     storeLogger.log('info', `Total processed: ${totalProcessed}`);
     storeLogger.log('info', `Total errored: ${totalErrored}`);
+    storeLogger.log('info', `Description errors: ${descriptionError}`);
+    storeLogger.log('info', `Attribute errors: ${attributeError}`);
+    storeLogger.log('info', `Image errors: ${imageError}`);
+    storeLogger.log('info', `Brand errors: ${brandError}`);
+    storeLogger.log('info', `Name errors: ${nameError}`);
+    storeLogger.log('info', `InStock errors: ${inStockError}`);
+    storeLogger.log('info', `Categories errors: ${categoriesError}`);
     storeLogger.close();
 
     return Array.from(productMap, ([, value]) => value);

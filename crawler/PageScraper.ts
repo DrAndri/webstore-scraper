@@ -66,9 +66,12 @@ export default class PageScraper {
     productLocator: Locator,
     productName: string | undefined
   ) {
-    const { categorySplitter, categoryItemLocator } = this.selectors;
+    const { categorySplitter, categoryItemLocator, categories } =
+      this.selectors;
 
-    const locator = productLocator.locator(this.selectors.categories);
+    if (!categories) return undefined;
+
+    const locator = productLocator.locator(categories);
 
     if (categoryItemLocator) {
       const categories: string[] = [];
@@ -226,6 +229,15 @@ export default class PageScraper {
   }
 
   async scrapeProductPage(productLocator: Locator, logger: Logger) {
+    const errors = {
+      description: false,
+      attributes: false,
+      image: false,
+      brand: false,
+      name: false,
+      inStock: false,
+      categories: false
+    };
     if ((await productLocator.count()) > 0) {
       if (this.selectors.clickers) {
         for (const selector of this.selectors.clickers) {
@@ -249,33 +261,42 @@ export default class PageScraper {
 
       const inStock = await this.scrapeInStock(productLocator).catch((e) => {
         logger.log('warn', 'Error scraping inStock: %O', e);
+        errors.inStock = true;
         return undefined;
       });
       const image = await this.scrapeImage(productLocator).catch((e) => {
         logger.log('warn', 'Error scraping image: %O', e);
+        errors.image = true;
         return undefined;
       });
       const attributeGroups = await this.scrapeAttributes(
         productLocator,
         this.selectors.attributes,
         logger
-      );
+      ).catch((e) => {
+        logger.log('warn', 'Error scraping attributes: %O', e);
+        errors.attributes = true;
+        return undefined;
+      });
 
       const name = await this.evalText(
         this.selectors.name,
         productLocator
       ).catch((e) => {
         logger.log('warn', 'Error scraping name: %O', e);
+        errors.name = true;
         return undefined;
       });
       const brand = await this.scrapeBrand(productLocator).catch((e) => {
         logger.log('warn', 'Error scraping brand: %O', e);
+        errors.brand = true;
         return undefined;
       });
 
       const description = await this.scrapeDescription(productLocator).catch(
         (e) => {
           logger.log('warn', 'Error scraping description: %O', e);
+          errors.description = true;
           return undefined;
         }
       );
@@ -284,6 +305,7 @@ export default class PageScraper {
         name
       ).catch((e) => {
         logger.log('warn', 'Error scraping categories: %O', e);
+        errors.categories = true;
         return undefined;
       });
 
@@ -309,7 +331,7 @@ export default class PageScraper {
           logger.log('debug', '%O', attributeGroup.attributes);
         }
       }
-      return product;
+      return { product, errors };
     }
   }
 
@@ -326,12 +348,26 @@ export default class PageScraper {
   }
 
   async evalSku(locator: Locator) {
-    let string = await this.evalText(this.selectors.sku, locator);
-    if (this.sanitizers?.sku) {
-      string = string?.replace(
-        this.sanitizers.sku.match,
-        this.sanitizers.sku.replace
-      );
+    let string;
+    if (typeof this.selectors.sku !== 'string') {
+      if (this.selectors.sku.source === 'url') {
+        const url = locator.page().url();
+        const parts = url.split(this.selectors.sku.delimiter);
+        if (this.selectors.sku.index === 'first') {
+          string = parts[0].trim();
+        } else if (this.selectors.sku.index === 'last') {
+          string = parts[parts.length - 1].trim();
+        } else {
+          string = parts[this.selectors.sku.index].trim();
+        }
+      }
+    } else {
+      string = await this.evalText(this.selectors.sku, locator);
+      if (this.sanitizers?.sku) {
+        for (const sanitizer of this.sanitizers.sku) {
+          string = string?.replace(sanitizer.match, sanitizer.replace);
+        }
+      }
     }
     string = string?.trim();
     if (!string || string.length < 2)

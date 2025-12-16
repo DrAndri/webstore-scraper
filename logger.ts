@@ -1,11 +1,9 @@
 import { Logger, format, config, transports } from 'winston';
+import filenamify from 'filenamify';
 
 const { combine, colorize, splat, timestamp, errors, printf } = format;
-export const createLogger = (
-  label: string,
-  storeName: string,
-  batchTimestamp: number
-) => {
+
+export const createStoreLogger = (label: string) => {
   const customFormat = printf(({ timestamp, level, message, stack }) => {
     // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
     return `${timestamp} [${level}]: [${label}] ${stack ?? message}`;
@@ -15,7 +13,7 @@ export const createLogger = (
     levels: config.npm.levels,
     transports: [
       new transports.Console({
-        level: 'error',
+        level: 'info',
         format: combine(
           colorize(),
           splat(),
@@ -23,9 +21,28 @@ export const createLogger = (
           errors({ stack: true }),
           customFormat
         )
-      }),
+      })
+    ]
+  });
+};
+
+export const createProductLogger = (
+  label: string,
+  storeName: string,
+  batchTimestamp: number
+) => {
+  const customFormat = printf(({ timestamp, level, message, stack }) => {
+    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+    return `${timestamp} [${level}]: [${label}] ${stack ?? message}`;
+  });
+
+  const safeLabel = filenamify(label.substring(0, 100), { replacement: '' });
+
+  return new Logger({
+    levels: config.npm.levels,
+    transports: [
       new transports.File({
-        filename: `/logs/${storeName}/${batchTimestamp}/${label.substring(0, 100)}.log`,
+        filename: `/logs/${storeName}/${batchTimestamp}/${safeLabel}.log`,
         level: 'debug',
         format: combine(
           splat(),

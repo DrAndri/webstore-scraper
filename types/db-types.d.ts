@@ -47,7 +47,7 @@ export interface WebScraperOptions {
 }
 
 export interface ProductSanitizers {
-  sku: ProductSanitizer;
+  sku: ProductSanitizer[];
 }
 
 export interface ProductSanitizer {
@@ -55,12 +55,18 @@ export interface ProductSanitizer {
   replace: string;
 }
 
+export interface ProductSelector {
+  source: 'url' | 'DOM' | 'script';
+  delimiter: string;
+  index: number | 'first' | 'last';
+}
+
 export interface ProductSelectors {
   productPage: string;
   oldPrice: string;
   listPrice: string;
   name: string;
-  sku: string;
+  sku: string | ProductSelector;
   image: string;
   brand?: string;
   description: string;
