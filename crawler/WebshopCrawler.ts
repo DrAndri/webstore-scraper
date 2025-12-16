@@ -57,16 +57,16 @@ export default class WebshopCrawler {
       page: Page;
     }) => {
       totalRequests++;
-      await page.waitForLoadState('load');
+      await page.waitForLoadState('networkidle');
 
       const productLocator = page.locator(selectors.productPage);
       const count = await productLocator.count();
       const pageContent = await page.content();
 
       const urlParts = request.loadedUrl?.split('/') ?? [];
-      const label =
-        urlParts[urlParts.length - 1].trim() ??
-        urlParts[urlParts.length - 2].trim();
+      const label = urlParts[urlParts.length - 1].trim()
+        ? urlParts[urlParts.length - 1].trim()
+        : urlParts[urlParts.length - 2].trim();
       const logger = createProductLogger(label, store.name, batchTimestamp);
 
       if (count > 0 && pageContent.includes(productPageIdentifier)) {
@@ -121,6 +121,7 @@ export default class WebshopCrawler {
       // Besides resolving the URLs, we now also need to
       // grab their hostname for filtering.
       const { hostname } = new URL(startUrl);
+      const hostnameIncludesWww = hostname.startsWith('www.');
       const absoluteUrls = links.map((link) => {
         if (absoluteUrlRegExp.test(link)) return URL.parse(link);
         else return new URL(link, startUrl);
@@ -130,7 +131,13 @@ export default class WebshopCrawler {
       // to a different domain, even subdomain.
       const sameHostnameLinks = absoluteUrls
         .filter((url) => url !== null)
-        .filter((url) => url.hostname === hostname)
+        .filter(
+          (url) =>
+            url.hostname === hostname ||
+            (hostnameIncludesWww
+              ? 'www.' + url.hostname === hostname
+              : url.hostname === 'www.' + hostname)
+        )
         .map((url) => url.href);
 
       const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
@@ -149,15 +156,22 @@ export default class WebshopCrawler {
       },
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
-      //maxRequestsPerCrawl: 1000,
+      statisticsOptions: {
+        logIntervalSecs: 14400
+      },
+      sessionPoolOptions: {
+        persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
+      },
+      maxRequestsPerCrawl: 10000,
       maxRequestsPerMinute: 20,
       maxRequestRetries: 3,
-      requestHandlerTimeoutSecs: 1800,
+      requestHandlerTimeoutSecs: 10000,
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
-      statusMessageLoggingInterval: 14400,
-      autoscaledPoolOptions: { loggingIntervalSecs: 14400 }
+      //statusMessageLoggingInterval: 14400,
+      autoscaledPoolOptions: { loggingIntervalSecs: 14400 },
+      launchContext: {}
     });
 
     // Run the crawler with initial request
