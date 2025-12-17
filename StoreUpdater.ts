@@ -120,7 +120,12 @@ export default class StoreUpdater {
       sku: product.sku,
       name: product.title,
       brand: product.brand,
-      ean: product.gtin
+      ean: product.gtin,
+      attributes: product.attributes,
+      image: product.image,
+      description: product.description,
+      url: product.url,
+      inStock: product.inStock
     };
     return productMetadata;
   }

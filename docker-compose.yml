@@ -1,17 +1,19 @@
 services:
-  price-scraper:
-    container_name: price-scraper
+  webstore-scraper:
+    container_name: webstore-scraper
     build:
       dockerfile: Dockerfile
     environment:
       MONGODB_URI: ${MONGODB_URI}
       RUN_STARTUP_UPDATE: ${RUN_STARTUP_UPDATE}
-      RUN_MIGRATION: ${RUN_MIGRATION}
+      STORE_CONCURRENCY_LIMIT: ${STORE_CONCURRENCY_LIMIT}
+    volumes:
+      - ./logs:/logs
 
-  price-api:
-    container_name: price-api
+  webstore-api:
+    container_name: webstore-api
     build:
-      context: ../google-shopping-history
+      context: ../webstore-api
       dockerfile: Dockerfile
     environment:
       MONGODB_URI: ${MONGODB_URI}
@@ -21,6 +23,8 @@ services:
   mongo:
     image: mongo
     restart: always
+    volumes:
+      - ./mongodb:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: andri
       MONGO_INITDB_ROOT_PASSWORD: MongoMasterMikael

@@ -1,3 +1,9 @@
 TODO
-Better logging
 Publish common types
+
+Product attributes
+Search engine
+Register when products are missing from scraping
+train/use ai to group data
+generate events for price drops
+link MongodbProductPrice to Metadata with ObjectId?

@@ -1,4 +1,4 @@
-import puppeteer, { ElementHandle, Page } from 'puppeteer';
+/* import puppeteer, { ElementHandle, Page } from 'puppeteer';
 import {
   ProductSnapshot,
   StoreConfig,
@@ -23,7 +23,7 @@ export default class WebshopScraper {
 
     await page.goto(catalogSearchUrl, {
       waitUntil: 'load',
-      timeout: 300000 /* 5 mins */
+      timeout: 300000 // 5 mins
     });
     const totalElement = totalProductsClass
       ? await page.$(totalProductsClass)
@@ -51,7 +51,7 @@ export default class WebshopScraper {
       console.log('Scraping url: %s', nextUrl);
       await page.goto(nextUrl, {
         waitUntil: 'load',
-        timeout: 300000 /* 5 mins */
+        timeout: 300000 // 5 mins
       });
       nextProducts = await this.scrapePage(page);
       for (const product of nextProducts) {
@@ -74,7 +74,7 @@ export default class WebshopScraper {
       .waitForSelector(
         productItemClasses.itemClass + ' ' + productItemClasses.listPriceClass,
         {
-          timeout: 60000 /* 1 min */
+          timeout: 60000 // 1 min
         }
       )
       .catch(() => console.log('timeout waiting for selector'));
@@ -140,3 +140,4 @@ export default class WebshopScraper {
     });
   }
 }
+ */

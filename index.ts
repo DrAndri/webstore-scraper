@@ -2,6 +2,7 @@ import { Db, MongoClient, WithId } from 'mongodb';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import cron from 'node-cron';
 import fetch from 'node-fetch';
+import pLimit from 'p-limit';
 
 import StoreUpdater from './StoreUpdater.js';
 
@@ -13,8 +14,13 @@ import {
   ProductSnapshot,
   FeedOptions
 } from './types/index.js';
-import WebshopScraper from './WebshopScraper.js';
-import { exit } from 'process';
+// import WebshopScraper from './WebshopScraper.js';
+import WebshopCrawler from './crawler/WebshopCrawler.js';
+
+const storeConcurrencyLimit = parseInt(
+  process.env.STORE_CONCURRENCY_LIMIT ?? '5'
+);
+const limit = pLimit(storeConcurrencyLimit);
 
 dotenv.config();
 
@@ -73,9 +79,21 @@ async function updateStore(
       .then(() => {
         return storeUpdater.submitAllDocuments();
       });
-  } else if (store.type === 'scraper') {
-    const scraper = new WebshopScraper(store);
-    const products = await scraper.scrapeSite();
+    // } else if (store.type === 'scraper') {
+    //   const scraper = new WebshopScraper(store);
+    //   const products = await scraper.scrapeSite();
+    //   const promises = [];
+    //   for (const item of products) {
+    //     promises.push(
+    //       ...storeUpdater.updateProduct(item, timestamp, thresholdTimestamp)
+    //     );
+    //   }
+    //   return Promise.all(promises).then(() => {
+    //     return storeUpdater.submitAllDocuments();
+    //   });
+  } else if (store.type === 'crawler') {
+    const crawler = new WebshopCrawler(store, timestamp);
+    const products = await crawler.crawlSite();
     const promises = [];
     for (const item of products) {
       promises.push(
@@ -85,7 +103,10 @@ async function updateStore(
     return Promise.all(promises).then(() => {
       return storeUpdater.submitAllDocuments();
     });
-  } else return Promise.reject(new Error('Type not supported: ' + store.type));
+  } else
+    return Promise.reject(
+      new Error('Type not supported for store ' + store.name)
+    );
 }
 
 function reportResults(results: StoreUpdateResult): void {
@@ -124,19 +145,27 @@ async function getAllStores(db: Db): Promise<WithId<StoreConfig>[]> {
 }
 
 function updateAllStores(mongodb: Db): Promise<void> {
-  return getAllStores(mongodb).then((stores) => {
+  return getAllStores(mongodb).then(async (stores) => {
     console.log(stores);
+    const promises = [];
     for (const store of stores) {
       console.log('UPDATING', store.name);
 
       const storeUpdater = new StoreUpdater(mongodb, store);
 
-      updateStore(store, storeUpdater)
-        .then(reportResults)
-        .catch((error) => {
-          console.log('Error updating store ' + store.name, error);
-        });
+      promises.push(
+        limit(() =>
+          updateStore(store, storeUpdater)
+            .then(reportResults)
+            .catch((error) => {
+              console.log('Error updating store ' + store.name, error);
+            })
+        )
+      );
     }
+    await Promise.all(promises).then(() => {
+      console.log('ALL STORES UPDATED');
+    });
   });
 }
 function initMongodbCollections(db: Db): Promise<void> {

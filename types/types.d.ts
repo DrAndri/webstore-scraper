@@ -12,10 +12,26 @@ export interface GoogleMerchantFeed {
 export interface ProductSnapshot {
   sku: string;
   price: number;
-  title: string;
+  title?: string;
   brand?: string;
   gtin?: string;
   sale_price?: number;
+  image?: string;
+  description?: string;
+  inStock?: boolean;
+  attributes?: ProductAttributeGroup[];
+  url?: string;
+  categories?: string[];
+}
+
+export interface ProductAttributeGroup {
+  name: string;
+  attributes: ProductAttribute[];
+}
+
+export interface ProductAttribute {
+  name: string;
+  value: string | number | boolean;
 }
 
 export interface GoogleMerchantProduct {
@@ -25,10 +41,6 @@ export interface GoogleMerchantProduct {
   'g:brand'?: string;
   'g:gtin'?: string;
   'g:sale_price'?: number;
-}
-enum StoreType {
-  scraper = 'scraper',
-  feed = 'feed'
 }
 
 export interface StoreUpdateResult {
