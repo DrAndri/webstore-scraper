@@ -68,7 +68,7 @@ export default class WebshopCrawler {
       await page
         .waitForLoadState('networkidle', { timeout: 10000 })
         .catch(() => {
-          /* empty */
+          /* wait for 10 seconds or until network is idle */
         });
 
       const productLocator = page.locator(selectors.productPage);

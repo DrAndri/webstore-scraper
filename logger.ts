@@ -1,7 +1,9 @@
 import { Logger, format, config, transports } from 'winston';
-import filenamify from 'filenamify';
+import LokiTransport from 'winston-loki';
 
 const { combine, colorize, splat, timestamp, errors, printf } = format;
+
+const LOKI_URL = process.env.LOKI_URL;
 
 export const createStoreLogger = (label: string) => {
   const customFormat = printf(({ timestamp, level, message, stack }) => {
@@ -31,26 +33,24 @@ export const createProductLogger = (
   storeName: string,
   batchTimestamp: number
 ) => {
-  const customFormat = printf(({ timestamp, level, message, stack }) => {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `${timestamp} [${level}]: [${label}] ${stack ?? message}`;
-  });
-
-  const safeLabel = filenamify(label.substring(0, 100), { replacement: '' });
-
+  const transportsArray = [];
+  if (LOKI_URL) {
+    transportsArray.push(
+      new LokiTransport({
+        host: LOKI_URL,
+        labels: {
+          store: storeName,
+          batch: batchTimestamp.toString(),
+          page: label.substring(0, 100)
+        },
+        format: format.json(),
+        json: true,
+        level: 'debug'
+      })
+    );
+  }
   return new Logger({
     levels: config.npm.levels,
-    transports: [
-      new transports.File({
-        filename: `/logs/${storeName}/${batchTimestamp}/${safeLabel}.log`,
-        level: 'debug',
-        format: combine(
-          splat(),
-          timestamp(),
-          errors({ stack: true }),
-          customFormat
-        )
-      })
-    ]
+    transports: transportsArray
   });
 };

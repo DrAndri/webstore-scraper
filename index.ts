@@ -2,6 +2,7 @@ import { Db, MongoClient, WithId } from 'mongodb';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import cron from 'node-cron';
 import fetch from 'node-fetch';
+import pLimit from 'p-limit';
 
 import StoreUpdater from './StoreUpdater.js';
 
@@ -15,6 +16,11 @@ import {
 } from './types/index.js';
 // import WebshopScraper from './WebshopScraper.js';
 import WebshopCrawler from './crawler/WebshopCrawler.js';
+
+const storeConcurrencyLimit = parseInt(
+  process.env.STORE_CONCURRENCY_LIMIT ?? '5'
+);
+const limit = pLimit(storeConcurrencyLimit);
 
 dotenv.config();
 
@@ -139,19 +145,27 @@ async function getAllStores(db: Db): Promise<WithId<StoreConfig>[]> {
 }
 
 function updateAllStores(mongodb: Db): Promise<void> {
-  return getAllStores(mongodb).then((stores) => {
+  return getAllStores(mongodb).then(async (stores) => {
     console.log(stores);
+    const promises = [];
     for (const store of stores) {
       console.log('UPDATING', store.name);
 
       const storeUpdater = new StoreUpdater(mongodb, store);
 
-      updateStore(store, storeUpdater)
-        .then(reportResults)
-        .catch((error) => {
-          console.log('Error updating store ' + store.name, error);
-        });
+      promises.push(
+        limit(() =>
+          updateStore(store, storeUpdater)
+            .then(reportResults)
+            .catch((error) => {
+              console.log('Error updating store ' + store.name, error);
+            })
+        )
+      );
     }
+    await Promise.all(promises).then(() => {
+      console.log('ALL STORES UPDATED');
+    });
   });
 }
 function initMongodbCollections(db: Db): Promise<void> {

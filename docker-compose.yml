@@ -6,6 +6,7 @@ services:
     environment:
       MONGODB_URI: ${MONGODB_URI}
       RUN_STARTUP_UPDATE: ${RUN_STARTUP_UPDATE}
+      STORE_CONCURRENCY_LIMIT: ${STORE_CONCURRENCY_LIMIT}
     volumes:
       - ./logs:/logs
 
