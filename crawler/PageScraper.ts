@@ -190,11 +190,11 @@ export default class PageScraper {
             });
           }
         } else {
-          logger.log('warn', 'No groups found');
+          throw new Error('No attribute groups found');
         }
       }
     } else {
-      logger.log('warn', 'No table found');
+      throw new Error('No attribute tables found');
     }
 
     return attributeGroups.length > 0 ? attributeGroups : undefined;

@@ -8,7 +8,14 @@ import { createProductLogger, createStoreLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
 import { Page } from 'playwright';
 const absoluteUrlRegExp = new RegExp('^(?:[a-z+]+:)?//', 'i');
-const categoryBanList = ['forsíða', 'heim', 'vörur', 'allar vörur', 'til baka'];
+const categoryBanList = [
+  'forsíða',
+  'heim',
+  'vörur',
+  'allar vörur',
+  'til baka',
+  'leitarniðurstöður'
+];
 
 export default class WebshopCrawler {
   store: StoreConfig;
@@ -57,7 +64,12 @@ export default class WebshopCrawler {
       page: Page;
     }) => {
       totalRequests++;
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('load');
+      await page
+        .waitForLoadState('networkidle', { timeout: 10000 })
+        .catch(() => {
+          /* empty */
+        });
 
       const productLocator = page.locator(selectors.productPage);
       const count = await productLocator.count();
@@ -162,7 +174,7 @@ export default class WebshopCrawler {
       sessionPoolOptions: {
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
-      maxRequestsPerCrawl: 10000,
+      maxRequestsPerCrawl: 5000,
       maxRequestsPerMinute: 20,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 10000,
@@ -170,8 +182,7 @@ export default class WebshopCrawler {
       retryOnBlocked: true,
       requestHandler: requestHandler,
       //statusMessageLoggingInterval: 14400,
-      autoscaledPoolOptions: { loggingIntervalSecs: 14400 },
-      launchContext: {}
+      autoscaledPoolOptions: { loggingIntervalSecs: 14400 }
     });
 
     // Run the crawler with initial request
