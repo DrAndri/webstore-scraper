@@ -127,7 +127,6 @@ export default class PageScraper {
       });
     if ((await attributeTableLocator.count()) > 0) {
       for (const oneTable of await attributeTableLocator.all()) {
-        logger.log('debug', 'found table');
         const attributeGroupsLocator = selectors.attributeGroup
           ? oneTable.locator(selectors.attributeGroup).filter({
               has: oneTable
@@ -137,7 +136,6 @@ export default class PageScraper {
             })
           : oneTable;
         const groupCount = await attributeGroupsLocator.count();
-        logger.log('debug', 'group count %d', groupCount);
         if (groupCount > 0) {
           for (const attributeGroupLocator of await attributeGroupsLocator.all()) {
             const groupName = selectors.attributeGroupName
@@ -309,7 +307,6 @@ export default class PageScraper {
         return undefined;
       });
 
-      logger.log('info', 'evaluating product');
       const product: ProductSnapshot = {
         sku: sku,
         price: listPrice,
