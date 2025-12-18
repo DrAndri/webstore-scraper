@@ -90,11 +90,11 @@ export default class WebshopCrawler {
       });
       totalRequests++;
       await page.waitForLoadState('load');
-      await page
-        .waitForLoadState('networkidle', { timeout: 10000 })
-        .catch(() => {
-          /* wait for 10 seconds or until network is idle */
-        });
+      //      await page
+      //        .waitForLoadState('networkidle', { timeout: 10000 })
+      //        .catch(() => {
+      //          /* wait for 10 seconds or until network is idle */
+      //        });
 
       const productLocator = page.locator(selectors.productPage);
       const count = await productLocator.count();
@@ -213,19 +213,26 @@ export default class WebshopCrawler {
       statisticsOptions: {
         logIntervalSecs: 1800 // 30 minutes
       },
+      useSessionPool: true,
       sessionPoolOptions: {
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
       maxRequestsPerCrawl: 5000,
-      maxRequestsPerMinute: 20,
+      maxRequestsPerMinute: 40,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 10000,
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
-      autoscaledPoolOptions: { loggingIntervalSecs: 1800 },
+      autoscaledPoolOptions: {
+        loggingIntervalSecs: 1800
+      },
       log: crawlLog,
       headless: true,
+      browserPoolOptions: {
+        maxOpenPagesPerBrowser: 20,
+        retireBrowserAfterPageCount: 100
+      },
       launchContext: {
         launchOptions: {
           headless: true
