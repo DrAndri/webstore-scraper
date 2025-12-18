@@ -43,7 +43,7 @@ export const createProductLogger = (
           batch: batchTimestamp.toString(),
           page: label.substring(0, 100)
         },
-        format: format.json(),
+        format: combine(splat(), errors({ stack: true }), format.json()),
         json: true,
         level: 'debug'
       })

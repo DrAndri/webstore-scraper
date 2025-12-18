@@ -1,4 +1,4 @@
-import { PlaywrightCrawler, RequestQueue, type Request } from 'crawlee';
+import { Log, PlaywrightCrawler, RequestQueue, type Request } from 'crawlee';
 import {
   ProductSnapshot,
   StoreConfig,
@@ -16,6 +16,14 @@ const categoryBanList = [
   'til baka',
   'leitarniðurstöður'
 ];
+const blockedResourceTypes = [
+  'image',
+  'stylesheet',
+  'media',
+  'font',
+  'websocket'
+];
+const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 
 export default class WebshopCrawler {
   store: StoreConfig;
@@ -26,8 +34,14 @@ export default class WebshopCrawler {
   }
 
   async crawlSite(): Promise<ProductSnapshot[]> {
-    const { startUrl, selectors, productPageIdentifier, sanitizers } = this
-      .store.options as WebshopCrawlerOptions;
+    const {
+      startUrl,
+      selectors,
+      productPageIdentifier,
+      sanitizers,
+      urlWhitelist,
+      urlBlacklist
+    } = this.store.options as WebshopCrawlerOptions;
     const store = this.store;
     const batchTimestamp = this.batchTimestamp;
 
@@ -63,6 +77,17 @@ export default class WebshopCrawler {
       request: Request;
       page: Page;
     }) => {
+      await page.route('**/*', (route) => {
+        if (
+          blockedResourceTypes.some(
+            (blocked) => route.request().resourceType() === blocked
+          )
+        ) {
+          return route.fulfill();
+        } else {
+          return route.continue();
+        }
+      });
       totalRequests++;
       await page.waitForLoadState('load');
       await page
@@ -116,10 +141,10 @@ export default class WebshopCrawler {
 
       logger.close();
 
-      await addSameSiteLinksToQueue(page);
+      await addLinksToQueue(page);
     };
 
-    const addSameSiteLinksToQueue = async (page: Page) => {
+    const addLinksToQueue = async (page: Page) => {
       const links = await page
         .getByRole('link')
         .all()
@@ -139,10 +164,27 @@ export default class WebshopCrawler {
         else return new URL(link, startUrl);
       });
 
+      // Filter out urls that do not match whitelist or match blacklist
+      let filteredUrls = absoluteUrls.filter((url) => url !== null);
+      if (urlWhitelist !== undefined && urlWhitelist.length > 0) {
+        filteredUrls = filteredUrls.filter((url) => {
+          return urlWhitelist.some((whitelistEntry) => {
+            return url.href.includes(whitelistEntry);
+          });
+        });
+      }
+
+      if (urlBlacklist !== undefined && urlBlacklist.length > 0) {
+        filteredUrls = filteredUrls.filter((url) => {
+          return !urlBlacklist.some((blacklistEntry) => {
+            return url.href.includes(blacklistEntry);
+          });
+        });
+      }
+
       // We use the hostname to filter links that point
       // to a different domain, even subdomain.
-      const sameHostnameLinks = absoluteUrls
-        .filter((url) => url !== null)
+      const sameHostnameLinks = filteredUrls
         .filter(
           (url) =>
             url.hostname === hostname ||
@@ -152,8 +194,6 @@ export default class WebshopCrawler {
         )
         .map((url) => url.href);
 
-      const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
-
       // Finally, we have to add the URLs to the queue
       await crawler.addRequests(
         sameHostnameLinks.filter(
@@ -162,6 +202,8 @@ export default class WebshopCrawler {
       );
     };
 
+    const crawlLog = new Log({ prefix: store.name });
+
     const crawler = new PlaywrightCrawler({
       failedRequestHandler({ request, log }) {
         log.info(`Request ${request.url} failed too many times.`);
@@ -169,7 +211,7 @@ export default class WebshopCrawler {
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
       statisticsOptions: {
-        logIntervalSecs: 14400
+        logIntervalSecs: 1800 // 30 minutes
       },
       sessionPoolOptions: {
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
@@ -181,8 +223,14 @@ export default class WebshopCrawler {
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
-      //statusMessageLoggingInterval: 14400,
-      autoscaledPoolOptions: { loggingIntervalSecs: 14400 }
+      autoscaledPoolOptions: { loggingIntervalSecs: 1800 },
+      log: crawlLog,
+      headless: true,
+      launchContext: {
+        launchOptions: {
+          headless: true
+        }
+      }
     });
 
     // Run the crawler with initial request

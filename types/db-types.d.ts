@@ -36,6 +36,8 @@ export interface WebshopCrawlerOptions {
   selectors: ProductSelectors;
   sanitizers?: ProductSanitizers;
   productPageIdentifier: string;
+  urlWhitelist?: string[];
+  urlBlacklist?: string[];
 }
 
 export interface WebScraperOptions {
