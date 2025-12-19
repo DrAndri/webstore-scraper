@@ -16,23 +16,23 @@ const categoryBanList = [
   'til baka',
   'leitarniðurstöður'
 ];
-const blockedResourceTypes = [
-  'image',
-  'stylesheet',
-  'media',
-  'font',
-  'websocket'
-];
+// const blockedResourceTypes = [
+//   'image',
+//   'stylesheet',
+//   'media',
+//   'font',
+//   'websocket'
+// ];
 const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 
-interface CacheItem {
-  status: number;
-  headers: Record<string, string>;
-  body: Buffer;
-  expires: number;
-}
+// interface CacheItem {
+//   status: number;
+//   headers: Record<string, string>;
+//   body: Buffer;
+//   expires: number;
+// }
 
-type CacheItems = Record<string, CacheItem>;
+// type CacheItems = Record<string, CacheItem>;
 
 export default class WebshopCrawler {
   store: StoreConfig;
@@ -43,7 +43,7 @@ export default class WebshopCrawler {
   }
 
   async crawlSite(): Promise<ProductSnapshot[]> {
-    const cache: CacheItems = {};
+    // const cache: CacheItems = {};
     const {
       startUrl,
       selectors,
@@ -100,11 +100,11 @@ export default class WebshopCrawler {
       // });
       totalRequests++;
       await page.waitForLoadState('load');
-      await page
-        .waitForLoadState('networkidle', { timeout: 10000 })
-        .catch(() => {
-          /* wait for 10 seconds or until network is idle */
-        });
+      // await page
+      //   .waitForLoadState('networkidle', { timeout: 10000 })
+      //   .catch(() => {
+      //     /* wait for 10 seconds or until network is idle */
+      //   });
 
       const productLocator = page.locator(selectors.productPage);
       const count = await productLocator.count();
@@ -254,63 +254,71 @@ export default class WebshopCrawler {
           await crawlingContext.blockRequests({
             extraUrlPatterns: ['adsbygoogle.js', '.webp']
           });
-        },
-        async (crawlingContext, gotoOptions) => {
-          const { page } = crawlingContext;
-          gotoOptions.waitUntil = 'load';
-          page.on('response', async (response) => {
-            if (!response.ok()) return;
-            const url = response.url();
-            const headers = response.headers();
-            const cacheControl = headers['cache-control'] || '';
-            const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
-            const maxAge =
-              maxAgeMatch && maxAgeMatch.length > 1
-                ? parseInt(maxAgeMatch[1], 10)
-                : 0;
-
-            if (maxAge) {
-              if (cache[url]?.expires > Date.now()) return;
-
-              let buffer;
-              try {
-                buffer = await response.body();
-              } catch {
-                // some responses do not contain buffer and do not need to be cached
-                return;
-              }
-
-              cache[url] = {
-                status: response.status(),
-                headers: response.headers(),
-                body: buffer,
-                expires: Date.now() + maxAge * 1000
-              };
-            }
-          });
-          await page.route('**/*', (route) => {
-            if (
-              blockedResourceTypes.some(
-                (blocked) => route.request().resourceType() === blocked
-              )
-            ) {
-              return route.abort('aborted');
-            } else {
-              //Cache all scripts
-              if (route.request().resourceType() === 'script') {
-                const url = route.request().url();
-                if (cache[url] && cache[url].expires > Date.now()) {
-                  return route.fulfill({
-                    status: cache[url].status,
-                    headers: cache[url].headers,
-                    body: cache[url].body
-                  });
-                }
-              }
-              return route.continue();
-            }
-          });
         }
+        // async (crawlingContext, gotoOptions) => {
+        //   const { page } = crawlingContext;
+        //   gotoOptions.waitUntil = 'load';
+        //   page.on('response', async (response) => {
+        //     if (!response.ok()) return;
+        //     const url = response.url();
+        //     const headers = response.headers();
+        //     const cacheControl = headers['cache-control'] || '';
+        //     const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
+        //     const maxAge =
+        //       maxAgeMatch && maxAgeMatch.length > 1
+        //         ? parseInt(maxAgeMatch[1], 10)
+        //         : 0;
+
+        //     if (maxAge) {
+        //       if (cache[url]?.expires > Date.now()) return;
+
+        //       let buffer;
+        //       try {
+        //         buffer = await response.body();
+        //       } catch {
+        //         // some responses do not contain buffer and do not need to be cached
+        //         return;
+        //       }
+
+        //       cache[url] = {
+        //         status: response.status(),
+        //         headers: response.headers(),
+        //         body: buffer,
+        //         expires: Date.now() + maxAge * 1000
+        //       };
+        //     }
+        //     return response;
+        //   });
+        //   await page.route('**/*', (route) => {
+        //     if (
+        //       blockedResourceTypes.some(
+        //         (blocked) => route.request().resourceType() === blocked
+        //       )
+        //     ) {
+        //       console.log('Aborting', route.request().url());
+        //       return route.abort('aborted');
+        //     } else {
+        //       //Serve from cache
+        //       if (route.request().resourceType() === 'script') {
+        //         const url = route.request().url();
+        //         if (cache[url] && cache[url].expires > Date.now()) {
+        //           return route.fulfill({
+        //             status: cache[url].status,
+        //             headers: cache[url].headers,
+        //             body: cache[url].body
+        //           });
+        //         } else {
+        //           route.fulfill({
+        //             status: cache[url].status,
+        //             headers: cache[url].headers,
+        //             body: cache[url].body
+        //           });
+        //         }
+        //       }
+        //       return route.continue();
+        //     }
+        //   });
+        // }
       ]
     });
 
