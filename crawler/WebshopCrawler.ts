@@ -221,7 +221,8 @@ export default class WebshopCrawler {
       // Default is to reuse requestQueue from all crawl instances
       requestQueue: requestQueue,
       statisticsOptions: {
-        logIntervalSecs: 1800 // 30 minutes
+        //logIntervalSecs: 1800 // 30 minutes
+        logIntervalSecs: 600 // 10 minutes
       },
       useSessionPool: true,
       sessionPoolOptions: {
@@ -235,7 +236,7 @@ export default class WebshopCrawler {
       retryOnBlocked: true,
       requestHandler: requestHandler,
       autoscaledPoolOptions: {
-        loggingIntervalSecs: 1800
+        loggingIntervalSecs: 600
       },
       log: crawlLog,
       headless: true,
