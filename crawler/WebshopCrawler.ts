@@ -252,7 +252,44 @@ export default class WebshopCrawler {
       },
       launchContext: {
         launchOptions: {
-          headless: true
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-gl-drawing-for-tests',
+            '--disable-client-side-phishing-detection',
+            '--disable-extensions',
+            '--disable-component-extensions-with-background-pages',
+            '--disable-default-apps',
+            '--disable-features=InterestFeedContentSuggestions',
+            '--disable-features=Translate',
+            '--hide-scrollbars',
+            '--mute-audio',
+            '--no-default-browser-check',
+            '--no-first-run',
+            '--ash-no-nudges',
+            '--disable-search-engine-choice-screen',
+            '--disable-ipc-flooding-protection',
+            '--disable-renderer-backgrounding',
+            '--allow-running-insecure-content',
+            '--disable-back-forward-cache',
+
+            '--disable-features=MediaRouter',
+            '--enable-automation',
+            '--disable-background-networking',
+            '--disable-component-update',
+            '--disable-domain-reliability',
+            '--disable-features=OptimizationHints',
+            '--no-pings',
+            '--allow-pre-commit-input',
+            '--disable-features=PaintHolding',
+            '--in-process-gpu',
+            '--disable-gpu',
+            '--disable-dev-shm-usage',
+            '--disable-sync',
+            '--metrics-recording-only',
+            '--disable-software-rasterizer'
+          ]
         }
       },
       preNavigationHooks: [
