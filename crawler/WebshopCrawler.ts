@@ -99,7 +99,7 @@ export default class WebshopCrawler {
       //   }
       // });
       totalRequests++;
-      // await page.waitForLoadState('load');
+      await page.waitForLoadState('load');
       //      await page
       //        .waitForLoadState('networkidle', { timeout: 10000 })
       //        .catch(() => {
