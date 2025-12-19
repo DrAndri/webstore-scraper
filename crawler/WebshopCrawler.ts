@@ -16,13 +16,13 @@ const categoryBanList = [
   'til baka',
   'leitarniðurstöður'
 ];
-// const blockedResourceTypes = [
-//   'image',
-//   'stylesheet',
-//   'media',
-//   'font',
-//   'websocket'
-// ];
+const blockedResourceTypes = [
+  'image',
+  'stylesheet',
+  'media',
+  'font',
+  'websocket'
+];
 const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 
 // interface CacheItem {
@@ -87,69 +87,75 @@ export default class WebshopCrawler {
       request: Request;
       page: Page;
     }) => {
-      // await page.route('**/*', (route) => {
-      //   if (
-      //     blockedResourceTypes.some(
-      //       (blocked) => route.request().resourceType() === blocked
-      //     )
-      //   ) {
-      //     return route.fulfill();
-      //   } else {
-      //     return route.continue();
-      //   }
-      // });
       totalRequests++;
       await page.waitForLoadState('load');
+      // await page
+      //   .waitForLoadState('networkidle', { timeout: 30000 })
+      //   .catch(() => {
+      //     /* wait for 30 seconds or until network is idle */
+      //   });
+
+      let productPageIdentifierFound = true;
       await page
-        .waitForLoadState('networkidle', { timeout: 10000 })
+        .waitForSelector(':has-text("' + productPageIdentifier + '")', {
+          timeout: 20000
+        })
         .catch(() => {
-          /* wait for 10 seconds or until network is idle */
-        });
+          productPageIdentifierFound = false;
+        })
+        .then(async () => {
+          const productLocator = page.locator(selectors.productPage);
+          const count = await productLocator.count();
+          const urlParts = request.loadedUrl?.split('/') ?? [];
+          const label = urlParts[urlParts.length - 1].trim()
+            ? urlParts[urlParts.length - 1].trim()
+            : urlParts[urlParts.length - 2].trim();
+          const logger = createProductLogger(label, store.name, batchTimestamp);
+          const pageContent = await page.content();
 
-      const productLocator = page.locator(selectors.productPage);
-      const count = await productLocator.count();
-      const pageContent = await page.content();
+          if (
+            count > 0 &&
+            (productPageIdentifierFound ||
+              pageContent.includes(productPageIdentifier))
+          ) {
+            logger.log('info', 'processing url: %s', request.loadedUrl);
+            try {
+              const scrapeResult = await pageScraper.scrapeProductPage(
+                productLocator,
+                logger
+              );
 
-      const urlParts = request.loadedUrl?.split('/') ?? [];
-      const label = urlParts[urlParts.length - 1].trim()
-        ? urlParts[urlParts.length - 1].trim()
-        : urlParts[urlParts.length - 2].trim();
-      const logger = createProductLogger(label, store.name, batchTimestamp);
-
-      if (count > 0 && pageContent.includes(productPageIdentifier)) {
-        logger.log('info', 'processing url: %s', request.loadedUrl);
-        try {
-          const scrapeResult = await pageScraper.scrapeProductPage(
-            productLocator,
-            logger
-          );
-
-          if (scrapeResult !== undefined) {
-            const scrapedProduct = scrapeResult.product;
-            productMap.set(scrapedProduct.sku, scrapedProduct);
-            if (scrapeResult.errors.description) descriptionError++;
-            if (scrapeResult.errors.attributes) attributeError++;
-            if (scrapeResult.errors.image) imageError++;
-            if (scrapeResult.errors.brand) brandError++;
-            if (scrapeResult.errors.name) nameError++;
-            if (scrapeResult.errors.inStock) inStockError++;
-            if (scrapeResult.errors.categories) categoriesError++;
-            totalProcessed++;
+              if (scrapeResult !== undefined) {
+                const scrapedProduct = scrapeResult.product;
+                productMap.set(scrapedProduct.sku, scrapedProduct);
+                if (scrapeResult.errors.description) descriptionError++;
+                if (scrapeResult.errors.attributes) attributeError++;
+                if (scrapeResult.errors.image) imageError++;
+                if (scrapeResult.errors.brand) brandError++;
+                if (scrapeResult.errors.name) nameError++;
+                if (scrapeResult.errors.inStock) inStockError++;
+                if (scrapeResult.errors.categories) categoriesError++;
+                totalProcessed++;
+              }
+            } catch (e) {
+              logger.log(
+                'error',
+                'Error processing product from url %s',
+                request.loadedUrl
+              );
+              logger.log('error', '%O', e);
+              totalErrored++;
+            }
+          } else {
+            logger.log(
+              'info',
+              'url is not a product page: %s',
+              request.loadedUrl
+            );
           }
-        } catch (e) {
-          logger.log(
-            'error',
-            'Error processing product from url %s',
-            request.loadedUrl
-          );
-          logger.log('error', '%O', e);
-          totalErrored++;
-        }
-      } else {
-        logger.log('info', 'url is not a product page: %s', request.loadedUrl);
-      }
 
-      logger.close();
+          logger.close();
+        });
 
       await addLinksToQueue(page);
     };
@@ -231,7 +237,7 @@ export default class WebshopCrawler {
       maxRequestsPerCrawl: 5000,
       maxRequestsPerMinute: 40,
       maxRequestRetries: 3,
-      requestHandlerTimeoutSecs: 10000,
+      requestHandlerTimeoutSecs: 120,
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
@@ -250,75 +256,25 @@ export default class WebshopCrawler {
         }
       },
       preNavigationHooks: [
-        async (crawlingContext) => {
-          await crawlingContext.blockRequests({
-            extraUrlPatterns: ['adsbygoogle.js', '.webp']
-          });
-        }
-        // async (crawlingContext, gotoOptions) => {
-        //   const { page } = crawlingContext;
-        //   gotoOptions.waitUntil = 'load';
-        //   page.on('response', async (response) => {
-        //     if (!response.ok()) return;
-        //     const url = response.url();
-        //     const headers = response.headers();
-        //     const cacheControl = headers['cache-control'] || '';
-        //     const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
-        //     const maxAge =
-        //       maxAgeMatch && maxAgeMatch.length > 1
-        //         ? parseInt(maxAgeMatch[1], 10)
-        //         : 0;
-
-        //     if (maxAge) {
-        //       if (cache[url]?.expires > Date.now()) return;
-
-        //       let buffer;
-        //       try {
-        //         buffer = await response.body();
-        //       } catch {
-        //         // some responses do not contain buffer and do not need to be cached
-        //         return;
-        //       }
-
-        //       cache[url] = {
-        //         status: response.status(),
-        //         headers: response.headers(),
-        //         body: buffer,
-        //         expires: Date.now() + maxAge * 1000
-        //       };
-        //     }
-        //     return response;
-        //   });
-        //   await page.route('**/*', (route) => {
-        //     if (
-        //       blockedResourceTypes.some(
-        //         (blocked) => route.request().resourceType() === blocked
-        //       )
-        //     ) {
-        //       console.log('Aborting', route.request().url());
-        //       return route.abort('aborted');
-        //     } else {
-        //       //Serve from cache
-        //       if (route.request().resourceType() === 'script') {
-        //         const url = route.request().url();
-        //         if (cache[url] && cache[url].expires > Date.now()) {
-        //           return route.fulfill({
-        //             status: cache[url].status,
-        //             headers: cache[url].headers,
-        //             body: cache[url].body
-        //           });
-        //         } else {
-        //           route.fulfill({
-        //             status: cache[url].status,
-        //             headers: cache[url].headers,
-        //             body: cache[url].body
-        //           });
-        //         }
-        //       }
-        //       return route.continue();
-        //     }
+        // async (crawlingContext) => {
+        //   await crawlingContext.blockRequests({
+        //     extraUrlPatterns: ['adsbygoogle.js', '.webp']
         //   });
         // }
+        async (crawlingContext, gotoOptions) => {
+          const { page } = crawlingContext;
+          gotoOptions.waitUntil = 'load';
+          await page.route('**/*', (route) => {
+            if (
+              blockedResourceTypes.some(
+                (blocked) => route.request().resourceType() === blocked
+              )
+            ) {
+              return route.fulfill({ status: 200 });
+            }
+            return route.continue();
+          });
+        }
       ]
     });
 
