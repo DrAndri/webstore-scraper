@@ -100,11 +100,11 @@ export default class WebshopCrawler {
       // });
       totalRequests++;
       await page.waitForLoadState('load');
-      //      await page
-      //        .waitForLoadState('networkidle', { timeout: 10000 })
-      //        .catch(() => {
-      //          /* wait for 10 seconds or until network is idle */
-      //        });
+      await page
+        .waitForLoadState('networkidle', { timeout: 10000 })
+        .catch(() => {
+          /* wait for 10 seconds or until network is idle */
+        });
 
       const productLocator = page.locator(selectors.productPage);
       const count = await productLocator.count();
