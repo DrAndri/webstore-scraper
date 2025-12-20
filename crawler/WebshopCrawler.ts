@@ -16,23 +16,36 @@ const categoryBanList = [
   'til baka',
   'leitarniðurstöður'
 ];
-const blockedResourceTypes = [
+const blockedPageResourceTypes = [
   'image',
   'stylesheet',
   'media',
   'font',
   'websocket'
 ];
-const badPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
+const blockedNavigationPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
 
-// interface CacheItem {
-//   status: number;
-//   headers: Record<string, string>;
-//   body: Buffer;
-//   expires: number;
-// }
+const blockedPagePathEndings = [
+  ...blockedNavigationPathEndings,
+  '.css',
+  '.svg',
+  '.gif',
+  '.mp4',
+  '.webm',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf'
+];
 
-// type CacheItems = Record<string, CacheItem>;
+interface CacheItem {
+  status: number;
+  headers: Record<string, string>;
+  body: Buffer;
+  expires: number;
+}
+
+type CacheItems = Record<string, CacheItem>;
 
 export default class WebshopCrawler {
   store: StoreConfig;
@@ -43,7 +56,7 @@ export default class WebshopCrawler {
   }
 
   async crawlSite(): Promise<ProductSnapshot[]> {
-    // const cache: CacheItems = {};
+    const cache: CacheItems = {};
     const {
       startUrl,
       selectors,
@@ -213,7 +226,8 @@ export default class WebshopCrawler {
       // Finally, we have to add the URLs to the queue
       await crawler.addRequests(
         sameHostnameLinks.filter(
-          (url) => !badPathEndings.find((ending) => url.endsWith(ending))
+          (url) =>
+            !blockedNavigationPathEndings.find((ending) => url.endsWith(ending))
         )
       );
     };
@@ -235,7 +249,7 @@ export default class WebshopCrawler {
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
       maxRequestsPerCrawl: 5000,
-      maxRequestsPerMinute: 40,
+      maxRequestsPerMinute: 20,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 120,
       respectRobotsTxtFile: false,
@@ -301,13 +315,48 @@ export default class WebshopCrawler {
         async (crawlingContext, gotoOptions) => {
           const { page } = crawlingContext;
           gotoOptions.waitUntil = 'load';
-          await page.route('**/*', (route) => {
+          await page.route('**/*', async (route) => {
             if (
-              blockedResourceTypes.some(
+              blockedPageResourceTypes.some(
                 (blocked) => route.request().resourceType() === blocked
+              ) ||
+              blockedPagePathEndings.some((ending) =>
+                route.request().url().endsWith(ending)
               )
             ) {
               return route.fulfill({ status: 200 });
+            } else if (route.request().resourceType() === 'script') {
+              const cachedResponse = cache[route.request().url()];
+              if (cachedResponse && cachedResponse.expires > Date.now()) {
+                return route.fulfill({
+                  status: cachedResponse.status,
+                  headers: cachedResponse.headers,
+                  body: cachedResponse.body
+                });
+              } else {
+                const response = await route.fetch();
+                const body = await response.body();
+                const url = response.url();
+                const status = response.status();
+                const headers = response.headers();
+                const cacheControl = headers['cache-control'] || '';
+                const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
+                const maxAge =
+                  maxAgeMatch && maxAgeMatch.length > 1
+                    ? parseInt(maxAgeMatch[1])
+                    : 900;
+                cache[url] = {
+                  status: status,
+                  headers: headers,
+                  body: body,
+                  expires: Date.now() + maxAge * 1000
+                };
+                return route.fulfill({
+                  status: status,
+                  headers: headers,
+                  body: body
+                });
+              }
             }
             return route.continue();
           });

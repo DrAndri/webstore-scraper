@@ -1,5 +1,5 @@
 
-FROM node:25-bullseye
+FROM node:22-bullseye
 
 ENV NODE_ENV=production
 
