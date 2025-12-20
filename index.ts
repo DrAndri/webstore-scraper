@@ -195,10 +195,12 @@ if (process.env.RUN_STARTUP_UPDATE === 'true') {
   updateAllStores(mongoDb).catch((error) => console.log(error));
 }
 
-cron.schedule('00 12 * * *', () => {
-  console.log('Updating all stores');
-  getMongodb()
-    .then(updateAllStores)
-    .catch((error) => console.log(error));
-});
-console.log('Cron schedule started');
+if (process.env.CRON_SCHEDULE !== undefined) {
+  cron.schedule(process.env.CRON_SCHEDULE, () => {
+    console.log('Updating all stores');
+    getMongodb()
+      .then(updateAllStores)
+      .catch((error) => console.log(error));
+  });
+  console.log('Cron schedule started');
+}

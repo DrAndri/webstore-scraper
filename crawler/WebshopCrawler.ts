@@ -325,7 +325,10 @@ export default class WebshopCrawler {
               )
             ) {
               return route.fulfill({ status: 200 });
-            } else if (route.request().resourceType() === 'script') {
+            } else if (
+              route.request().resourceType() === 'script' ||
+              route.request().url().endsWith('.js')
+            ) {
               const cachedResponse = cache[route.request().url()];
               if (cachedResponse && cachedResponse.expires > Date.now()) {
                 return route.fulfill({
@@ -334,28 +337,32 @@ export default class WebshopCrawler {
                   body: cachedResponse.body
                 });
               } else {
-                const response = await route.fetch();
-                const body = await response.body();
-                const url = response.url();
-                const status = response.status();
-                const headers = response.headers();
-                const cacheControl = headers['cache-control'] || '';
-                const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
-                const maxAge =
-                  maxAgeMatch && maxAgeMatch.length > 1
-                    ? parseInt(maxAgeMatch[1])
-                    : 900;
-                cache[url] = {
-                  status: status,
-                  headers: headers,
-                  body: body,
-                  expires: Date.now() + maxAge * 1000
-                };
-                return route.fulfill({
-                  status: status,
-                  headers: headers,
-                  body: body
-                });
+                try {
+                  const response = await route.fetch();
+                  const body = await response.body();
+                  const url = response.url();
+                  const status = response.status();
+                  const headers = response.headers();
+                  const cacheControl = headers['cache-control'] || '';
+                  const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
+                  const maxAge =
+                    maxAgeMatch && maxAgeMatch.length > 1
+                      ? parseInt(maxAgeMatch[1])
+                      : 900;
+                  cache[url] = {
+                    status: status,
+                    headers: headers,
+                    body: body,
+                    expires: Date.now() + maxAge * 1000
+                  };
+                  return route.fulfill({
+                    status: status,
+                    headers: headers,
+                    body: body
+                  });
+                } catch {
+                  /* ignore errors */
+                }
               }
             }
             return route.continue();
