@@ -209,7 +209,10 @@ export default class WebshopCrawler {
         .all()
         .then((links) =>
           Promise.all(
-            links.map(async (locator) => await locator.getAttribute('href'))
+            links.map(
+              async (locator) =>
+                await locator.getAttribute('href').catch(() => null)
+            )
           )
         )
         .then((links) => links.filter((link) => link !== null));
