@@ -1,4 +1,11 @@
-import { Log, PlaywrightCrawler, RequestQueue, type Request } from 'crawlee';
+import {
+  Log,
+  PlaywrightCrawler,
+  PlaywrightCrawlingContext,
+  PlaywrightGotoOptions,
+  RequestQueue,
+  type Request
+} from 'crawlee';
 import {
   ProductSnapshot,
   StoreConfig,
@@ -7,6 +14,11 @@ import {
 import { createProductLogger, createStoreLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
 import { Page } from 'playwright';
+
+const defaultImage = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAxJREFUCNdj+P//PwAF/gL+3MxZ5wAAAABJRU5ErkJggg==',
+  'base64'
+);
 const absoluteUrlRegExp = new RegExp('^(?:[a-z+]+:)?//', 'i');
 const categoryBanList = [
   'forsíða',
@@ -23,14 +35,32 @@ const blockedPageResourceTypes = [
   'font',
   'websocket'
 ];
-const blockedNavigationPathEndings = ['.pdf', '.png', '.jpg', '.jpeg', '.webp'];
-
+const blockedNavigationPathEndings = [
+  '.pdf',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.svg',
+  '.webp',
+  '.mp3',
+  '.mp4',
+  '.zip'
+];
+const blockedUrlPatterns = [
+  'google-analytics.com',
+  'google.com',
+  'google.is',
+  'googleads.g.doubleclick.net',
+  'googletagmanager.com',
+  'adsbygoogle.js',
+  'hubspot.com',
+  'hubapi.com',
+  'hsappstatic.net'
+];
 const blockedPagePathEndings = [
   ...blockedNavigationPathEndings,
   '.css',
-  '.svg',
   '.gif',
-  '.mp4',
   '.webm',
   '.woff',
   '.woff2',
@@ -129,7 +159,8 @@ export default class WebshopCrawler {
           if (
             count > 0 &&
             (productPageIdentifierFound ||
-              pageContent.includes(productPageIdentifier))
+              // eslint-disable-next-line @typescript-eslint/prefer-includes
+              pageContent.indexOf(productPageIdentifier) > -1)
           ) {
             logger.log('info', 'processing url: %s', request.loadedUrl);
             try {
@@ -169,7 +200,6 @@ export default class WebshopCrawler {
 
           logger.close();
         });
-
       await addLinksToQueue(page);
     };
 
@@ -232,6 +262,82 @@ export default class WebshopCrawler {
       );
     };
 
+    const myHook = async (
+      crawlingContext: PlaywrightCrawlingContext,
+      gotoOptions: PlaywrightGotoOptions
+    ) => {
+      const { page } = crawlingContext;
+      gotoOptions.waitUntil = 'load';
+      page.on('console', (msg) => {
+        const msgType = msg.type();
+        crawlLog.info(`Console ${msgType} on ${page.url()}: ${msg.text()}`);
+      });
+      await page.route('**/*', async (route) => {
+        if (route.request().resourceType() === 'image') {
+          return await route.fulfill({
+            status: 200,
+            contentType: 'image/png',
+            body: defaultImage
+          });
+        }
+        if (
+          blockedPageResourceTypes.some(
+            (blocked) => route.request().resourceType() === blocked
+          ) ||
+          blockedPagePathEndings.some((ending) =>
+            route.request().url().endsWith(ending)
+          ) ||
+          blockedUrlPatterns.some((pattern) =>
+            route.request().url().includes(pattern)
+          )
+        ) {
+          return await route.fulfill({ status: 200 });
+        } else if (
+          route.request().resourceType() === 'script' ||
+          route.request().url().endsWith('.js')
+        ) {
+          const cachedResponse = cache[route.request().url()];
+          if (cachedResponse && cachedResponse.expires > Date.now()) {
+            return await route.fulfill({
+              status: cachedResponse.status,
+              headers: cachedResponse.headers,
+              body: cachedResponse.body
+            });
+          } else {
+            try {
+              const response = await route.fetch();
+              const body = await response.body();
+              const url = response.url();
+              const status = response.status();
+              const headers = response.headers();
+              const cacheControl = headers['cache-control'] || '';
+              const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
+              const maxAge =
+                maxAgeMatch && maxAgeMatch.length > 1
+                  ? parseInt(maxAgeMatch[1])
+                  : 900;
+              cache[url] = {
+                status: status,
+                headers: headers,
+                body: body,
+                expires: Date.now() + maxAge * 1000
+              };
+              return await route.fulfill({
+                status: status,
+                headers: headers,
+                body: body
+              });
+            } catch {
+              crawlLog.error(
+                `Failed to cache script: ${route.request().url()}`
+              );
+            }
+          }
+        }
+        return await route.continue();
+      });
+    };
+
     const crawlLog = new Log({ prefix: store.name });
 
     const crawler = new PlaywrightCrawler({
@@ -252,6 +358,7 @@ export default class WebshopCrawler {
       maxRequestsPerMinute: 20,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 120,
+      navigationTimeoutSecs: 120,
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
@@ -290,11 +397,11 @@ export default class WebshopCrawler {
 
             '--disable-features=MediaRouter',
             '--enable-automation',
-            '--disable-background-networking',
+            // '--disable-background-networking',
             '--disable-component-update',
             '--disable-domain-reliability',
             '--disable-features=OptimizationHints',
-            '--no-pings',
+            // '--no-pings',
             '--allow-pre-commit-input',
             '--disable-features=PaintHolding',
             '--in-process-gpu',
@@ -308,66 +415,75 @@ export default class WebshopCrawler {
       },
       preNavigationHooks: [
         // async (crawlingContext) => {
-        //   await crawlingContext.blockRequests({
-        //     extraUrlPatterns: ['adsbygoogle.js', '.webp']
+        //   const { page } = crawlingContext;
+        //   page.on('console', (msg) => {
+        //     const msgType = msg.type();
+        //     crawlLog.info(`Console ${msgType} on ${page.url()}: ${msg.text()}`);
         //   });
-        // }
-        async (crawlingContext, gotoOptions) => {
-          const { page } = crawlingContext;
-          gotoOptions.waitUntil = 'load';
-          await page.route('**/*', async (route) => {
-            if (
-              blockedPageResourceTypes.some(
-                (blocked) => route.request().resourceType() === blocked
-              ) ||
-              blockedPagePathEndings.some((ending) =>
-                route.request().url().endsWith(ending)
-              )
-            ) {
-              return route.fulfill({ status: 200 });
-            } else if (
-              route.request().resourceType() === 'script' ||
-              route.request().url().endsWith('.js')
-            ) {
-              const cachedResponse = cache[route.request().url()];
-              if (cachedResponse && cachedResponse.expires > Date.now()) {
-                return route.fulfill({
-                  status: cachedResponse.status,
-                  headers: cachedResponse.headers,
-                  body: cachedResponse.body
-                });
-              } else {
-                try {
-                  const response = await route.fetch();
-                  const body = await response.body();
-                  const url = response.url();
-                  const status = response.status();
-                  const headers = response.headers();
-                  const cacheControl = headers['cache-control'] || '';
-                  const maxAgeMatch = /max-age=(\d+)/.exec(cacheControl);
-                  const maxAge =
-                    maxAgeMatch && maxAgeMatch.length > 1
-                      ? parseInt(maxAgeMatch[1])
-                      : 900;
-                  cache[url] = {
-                    status: status,
-                    headers: headers,
-                    body: body,
-                    expires: Date.now() + maxAge * 1000
-                  };
-                  return route.fulfill({
-                    status: status,
-                    headers: headers,
-                    body: body
-                  });
-                } catch {
-                  /* ignore errors */
-                }
-              }
-            }
-            return route.continue();
-          });
-        }
+        //   await page.route('**/*', async (route) => {
+        //     if (route.request().resourceType() === 'image') {
+        //       console.log(`Blocking image: ${route.request().url()}`);
+        //       return await route.fulfill({
+        //         status: 200,
+        //         contentType: 'image/png',
+        //         body: defaultImage
+        //       });
+        //     }
+        //     if (
+        //       blockedPageResourceTypes.some(
+        //         (blocked) => route.request().resourceType() === blocked
+        //       ) ||
+        //       blockedPagePathEndings.some((ending) =>
+        //         route.request().url().endsWith(ending)
+        //       )
+        //     ) {
+        //       console.log(
+        //         `Blocking resource: ${route.request().url()} [${route.request().resourceType()}]`
+        //       );
+        //       return await route.fulfill({ status: 200 });
+        //     } else return route.continue();
+        //   });
+        // },
+        // async (crawlingContext) => {
+        //   await crawlingContext.blockRequests({
+        //     urlPatterns: [
+        //       '.jpg',
+        //       '.jpeg',
+        //       '.png',
+        //       '.svg',
+        //       '.gif',
+        //       '.webp',
+        //       '.woff',
+        //       '.woff2',
+        //       '.ttf',
+        //       '.otf',
+        //       '.mp3',
+        //       '.mp4',
+        //       '.webm',
+        //       '.pdf',
+        //       '.zip',
+        //       'google-analytics.com',
+        //       'google.com',
+        //       'google.is',
+        //       'googleads.g.doubleclick.net',
+        //       'googletagmanager.com',
+        //       'adsbygoogle.js',
+        //       'hubspot.com',
+        //       'hubapi.com',
+        //       'hsappstatic.net'
+        //     ]
+        //   });
+        // },
+        // (crawlingContext) => {
+        //   const { page } = crawlingContext;
+        //   page.on('request', (pageRequest) => {
+        //     console.log(
+        //       `Request: ${pageRequest.method()} ${pageRequest.url()} [${pageRequest.resourceType()}]`
+        //     );
+        //   });
+        // },
+
+        myHook
       ]
     });
 

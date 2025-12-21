@@ -236,100 +236,92 @@ export default class PageScraper {
       inStock: false,
       categories: false
     };
-    if ((await productLocator.count()) > 0) {
-      if (this.selectors.clickers) {
-        for (const selector of this.selectors.clickers) {
-          try {
-            const clickLocator = productLocator.locator(selector);
-            if ((await clickLocator.count()) != 1)
-              logger.log(
-                'warn',
-                'Clicker %s did not match 1 element',
-                selector
-              );
-            await clickLocator.click({ force: true, timeout: 5000 });
-          } catch (e) {
-            logger.log('warn', 'Clicker %s errored', selector);
-            logger.log('debug', e);
-          }
+    if (this.selectors.clickers) {
+      for (const selector of this.selectors.clickers) {
+        try {
+          const clickLocator = productLocator.locator(selector);
+          if ((await clickLocator.count()) != 1)
+            logger.log('warn', 'Clicker %s did not match 1 element', selector);
+          await clickLocator.click({ force: true, timeout: 5000 });
+        } catch (e) {
+          logger.log('warn', 'Clicker %s errored', selector);
+          logger.log('debug', e);
         }
       }
-      const sku = await this.evalSku(productLocator);
-      const { listPrice, salePrice } = await this.scrapePrices(productLocator);
+    }
+    const sku = await this.evalSku(productLocator);
+    const { listPrice, salePrice } = await this.scrapePrices(productLocator);
 
-      const inStock = await this.scrapeInStock(productLocator).catch((e) => {
-        logger.log('warn', 'Error scraping inStock: %O', e);
-        errors.inStock = true;
-        return undefined;
-      });
-      const image = await this.scrapeImage(productLocator).catch((e) => {
-        logger.log('warn', 'Error scraping image: %O', e);
-        errors.image = true;
-        return undefined;
-      });
-      const attributeGroups = await this.scrapeAttributes(
-        productLocator,
-        this.selectors.attributes,
-        logger
-      ).catch((e) => {
-        logger.log('warn', 'Error scraping attributes: %O', e);
-        errors.attributes = true;
-        return undefined;
-      });
+    const inStock = await this.scrapeInStock(productLocator).catch((e) => {
+      logger.log('warn', 'Error scraping inStock: %O', e);
+      errors.inStock = true;
+      return undefined;
+    });
+    const image = await this.scrapeImage(productLocator).catch((e) => {
+      logger.log('warn', 'Error scraping image: %O', e);
+      errors.image = true;
+      return undefined;
+    });
+    const attributeGroups = await this.scrapeAttributes(
+      productLocator,
+      this.selectors.attributes,
+      logger
+    ).catch((e) => {
+      logger.log('warn', 'Error scraping attributes: %O', e);
+      errors.attributes = true;
+      return undefined;
+    });
 
-      const name = await this.evalText(
-        this.selectors.name,
-        productLocator
-      ).catch((e) => {
+    const name = await this.evalText(this.selectors.name, productLocator).catch(
+      (e) => {
         logger.log('warn', 'Error scraping name: %O', e);
         errors.name = true;
         return undefined;
-      });
-      const brand = await this.scrapeBrand(productLocator).catch((e) => {
-        logger.log('warn', 'Error scraping brand: %O', e);
-        errors.brand = true;
-        return undefined;
-      });
+      }
+    );
+    const brand = await this.scrapeBrand(productLocator).catch((e) => {
+      logger.log('warn', 'Error scraping brand: %O', e);
+      errors.brand = true;
+      return undefined;
+    });
 
-      const description = await this.scrapeDescription(productLocator).catch(
-        (e) => {
-          logger.log('warn', 'Error scraping description: %O', e);
-          errors.description = true;
-          return undefined;
-        }
-      );
-      const categories = await this.scrapeCategories(
-        productLocator,
-        name
-      ).catch((e) => {
+    const description = await this.scrapeDescription(productLocator).catch(
+      (e) => {
+        logger.log('warn', 'Error scraping description: %O', e);
+        errors.description = true;
+        return undefined;
+      }
+    );
+    const categories = await this.scrapeCategories(productLocator, name).catch(
+      (e) => {
         logger.log('warn', 'Error scraping categories: %O', e);
         errors.categories = true;
         return undefined;
-      });
-
-      const product: ProductSnapshot = {
-        sku: sku,
-        price: listPrice,
-        sale_price: salePrice,
-        title: name,
-        brand: brand,
-        image: image,
-        description: description,
-        inStock: inStock,
-        attributes: attributeGroups,
-        url: productLocator.page().url(),
-        categories: categories,
-        gtin: undefined
-      };
-      logger.log('info', 'Found product: %O', product);
-      if (product.attributes) {
-        for (const attributeGroup of product.attributes) {
-          logger.log('debug', attributeGroup.name);
-          logger.log('debug', '%O', attributeGroup.attributes);
-        }
       }
-      return { product, errors };
+    );
+
+    const product: ProductSnapshot = {
+      sku: sku,
+      price: listPrice,
+      sale_price: salePrice,
+      title: name,
+      brand: brand,
+      image: image,
+      description: description,
+      inStock: inStock,
+      attributes: attributeGroups,
+      url: productLocator.page().url(),
+      categories: categories,
+      gtin: undefined
+    };
+    logger.log('info', 'Found product: %O', product);
+    if (product.attributes) {
+      for (const attributeGroup of product.attributes) {
+        logger.log('debug', attributeGroup.name);
+        logger.log('debug', '%O', attributeGroup.attributes);
+      }
     }
+    return { product, errors };
   }
 
   async evalText(selector: string, locator: Locator) {
