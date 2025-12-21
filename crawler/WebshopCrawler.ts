@@ -268,10 +268,10 @@ export default class WebshopCrawler {
     ) => {
       const { page } = crawlingContext;
       gotoOptions.waitUntil = 'load';
-      page.on('console', (msg) => {
-        const msgType = msg.type();
-        crawlLog.info(`Console ${msgType} on ${page.url()}: ${msg.text()}`);
-      });
+      // page.on('console', (msg) => {
+      //   const msgType = msg.type();
+      //   crawlLog.info(`Console ${msgType} on ${page.url()}: ${msg.text()}`);
+      // });
       await page.route('**/*', async (route) => {
         if (route.request().resourceType() === 'image') {
           return await route.fulfill({
