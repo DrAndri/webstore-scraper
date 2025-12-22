@@ -129,7 +129,7 @@ export default class WebshopCrawler {
       return new Promise((resolve) => {
         const startTime = new Date().getTime();
         const timeout = opts.timeout ?? 10000;
-        const interval = opts.interval ?? 100;
+        const interval = opts.interval ?? 1000;
 
         const poll = function () {
           checkFn()
@@ -177,8 +177,8 @@ export default class WebshopCrawler {
           return false;
         },
         {
-          interval: 2000,
-          timeout: 30000
+          interval: 3000,
+          timeout: 60000
         }
       );
 
@@ -322,8 +322,9 @@ export default class WebshopCrawler {
         ) {
           return await route.fulfill({ status: 200 });
         } else if (
-          route.request().resourceType() === 'script' ||
-          route.request().url().endsWith('.js')
+          (route.request().resourceType() === 'script' ||
+            route.request().url().endsWith('.js')) &&
+          route.request().url().includes(startUrl)
         ) {
           const cachedResponse = cache[route.request().url()];
           if (cachedResponse && cachedResponse.expires > Date.now()) {
@@ -392,9 +393,17 @@ export default class WebshopCrawler {
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
+      statusMessageLoggingInterval: 600,
+      statusMessageCallback: async (ctx) => {
+        return ctx.crawler.setStatusMessage(
+          `Cache size: ${Object.keys(cache).length}`,
+          { level: 'INFO' }
+        ); // log level defaults to 'DEBUG'
+      },
       autoscaledPoolOptions: {
         loggingIntervalSecs: 600,
         snapshotterOptions: {
+          clientSnapshotIntervalSecs: 10,
           eventLoopSnapshotIntervalSecs: 10,
           maxBlockedMillis: 200
         },
