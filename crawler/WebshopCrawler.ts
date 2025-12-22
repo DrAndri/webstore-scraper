@@ -13,7 +13,7 @@ import {
 } from '../types/index.js';
 import { createProductLogger, createStoreLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
-import { Page } from 'playwright';
+import { Locator, Page } from 'playwright';
 
 const defaultImage = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAAAXNSR0IB2cksfwAAAARnQU1BAACxjwv8YQUAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAAAlwSFlzAAAuIwAALiMBeKU/dgAAAAxJREFUCNdj+P//PwAF/gL+3MxZ5wAAAABJRU5ErkJggg==',
@@ -58,7 +58,8 @@ const blockedUrlPatterns = [
   'hsappstatic.net',
   'youtube.com',
   'youtu.be',
-  'youtube-nocookie.com'
+  'youtube-nocookie.com',
+  'addthis.com'
 ];
 const blockedPagePathEndings = [
   ...blockedNavigationPathEndings,
@@ -126,6 +127,33 @@ export default class WebshopCrawler {
       batchTimestamp
     );
 
+    const once = function (
+      checkFn: () => Promise<false | Locator>,
+      opts: { timeout?: number; interval?: number; timeoutMsg?: string }
+    ): Promise<false | Locator> {
+      return new Promise((resolve) => {
+        const startTime = new Date().getTime();
+        const timeout = opts.timeout ?? 10000;
+        const interval = opts.interval ?? 100;
+
+        const poll = function () {
+          checkFn()
+            .then((ready) => {
+              if (ready) {
+                resolve(ready);
+              } else if (new Date().getTime() - startTime > timeout) {
+                resolve(false);
+              } else {
+                setTimeout(poll, interval);
+              }
+            })
+            .catch((e) => console.log(e));
+        };
+
+        void poll();
+      });
+    };
+
     const requestHandler = async ({
       request,
       page
@@ -140,69 +168,66 @@ export default class WebshopCrawler {
       //   .catch(() => {
       //     /* wait for 30 seconds or until network is idle */
       //   });
-
-      let productPageIdentifierFound = true;
-      await page
-        .waitForSelector(':has-text("' + productPageIdentifier + '")', {
-          timeout: 20000
-        })
-        .catch(() => {
-          productPageIdentifierFound = false;
-        })
-        .then(async () => {
+      const productLocator = await once(
+        async () => {
           const productLocator = page.locator(selectors.productPage);
           const count = await productLocator.count();
-          const urlParts = request.loadedUrl?.split('/') ?? [];
-          const label = urlParts[urlParts.length - 1].trim()
-            ? urlParts[urlParts.length - 1].trim()
-            : urlParts[urlParts.length - 2].trim();
-          const logger = createProductLogger(label, store.name, batchTimestamp);
-          const pageContent = await page.content();
-
-          if (
-            count > 0 &&
-            (productPageIdentifierFound ||
-              // eslint-disable-next-line @typescript-eslint/prefer-includes
-              pageContent.indexOf(productPageIdentifier) > -1)
-          ) {
-            logger.log('info', 'processing url: %s', request.loadedUrl);
-            try {
-              const scrapeResult = await pageScraper.scrapeProductPage(
-                productLocator,
-                logger
-              );
-
-              if (scrapeResult !== undefined) {
-                const scrapedProduct = scrapeResult.product;
-                productMap.set(scrapedProduct.sku, scrapedProduct);
-                if (scrapeResult.errors.description) descriptionError++;
-                if (scrapeResult.errors.attributes) attributeError++;
-                if (scrapeResult.errors.image) imageError++;
-                if (scrapeResult.errors.brand) brandError++;
-                if (scrapeResult.errors.name) nameError++;
-                if (scrapeResult.errors.inStock) inStockError++;
-                if (scrapeResult.errors.categories) categoriesError++;
-                totalProcessed++;
-              }
-            } catch (e) {
-              logger.log(
-                'error',
-                'Error processing product from url %s',
-                request.loadedUrl
-              );
-              logger.log('error', '%O', e);
-              totalErrored++;
+          if (count > 0) {
+            const pageContent = await page.content();
+            // eslint-disable-next-line @typescript-eslint/prefer-includes
+            if (pageContent.indexOf(productPageIdentifier) > -1) {
+              return productLocator;
             }
-          } else {
-            logger.log(
-              'info',
-              'url is not a product page: %s',
-              request.loadedUrl
-            );
           }
+          return false;
+        },
+        {
+          interval: 2000,
+          timeout: 30000
+        }
+      );
 
-          logger.close();
-        });
+      const urlParts = request.loadedUrl?.split('/') ?? [];
+      const label = urlParts[urlParts.length - 1].trim()
+        ? urlParts[urlParts.length - 1].trim()
+        : urlParts[urlParts.length - 2].trim();
+      const logger = createProductLogger(label, store.name, batchTimestamp);
+
+      if (productLocator) {
+        //TODO: check if productLocator matches multiple elements
+        logger.log('info', 'processing url: %s', request.loadedUrl);
+        try {
+          const scrapeResult = await pageScraper.scrapeProductPage(
+            productLocator,
+            logger
+          );
+
+          if (scrapeResult !== undefined) {
+            const scrapedProduct = scrapeResult.product;
+            productMap.set(scrapedProduct.sku, scrapedProduct);
+            if (scrapeResult.errors.description) descriptionError++;
+            if (scrapeResult.errors.attributes) attributeError++;
+            if (scrapeResult.errors.image) imageError++;
+            if (scrapeResult.errors.brand) brandError++;
+            if (scrapeResult.errors.name) nameError++;
+            if (scrapeResult.errors.inStock) inStockError++;
+            if (scrapeResult.errors.categories) categoriesError++;
+            totalProcessed++;
+          }
+        } catch (e) {
+          logger.log(
+            'error',
+            'Error processing product from url %s',
+            request.loadedUrl
+          );
+          logger.log('error', '%O', e);
+          totalErrored++;
+        }
+      } else {
+        logger.log('info', 'url is not a product page: %s', request.loadedUrl);
+      }
+
+      logger.close();
       await addLinksToQueue(page);
     };
 
