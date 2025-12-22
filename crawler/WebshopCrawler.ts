@@ -402,14 +402,14 @@ export default class WebshopCrawler {
         }
       },
       log: crawlLog,
-      headless: 'old',
+      headless: true,
       browserPoolOptions: {
         maxOpenPagesPerBrowser: 20,
         retireBrowserAfterPageCount: 100
       },
       launchContext: {
         launchOptions: {
-          // headless: true,
+          headless: true,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
