@@ -7,6 +7,7 @@ import {
   type Request
 } from 'crawlee';
 import {
+  CacheItems,
   ProductSnapshot,
   StoreConfig,
   WebshopCrawlerOptions
@@ -33,7 +34,8 @@ const blockedPageResourceTypes = [
   'stylesheet',
   'media',
   'font',
-  'websocket'
+  'websocket',
+  'other'
 ];
 const blockedNavigationPathEndings = [
   '.pdf',
@@ -73,15 +75,6 @@ const blockedPagePathEndings = [
   '.ttf',
   '.otf'
 ];
-
-interface CacheItem {
-  status: number;
-  headers: Record<string, string>;
-  body: Buffer;
-  expires: number;
-}
-
-type CacheItems = Record<string, CacheItem>;
 
 export default class WebshopCrawler {
   store: StoreConfig;
@@ -189,15 +182,19 @@ export default class WebshopCrawler {
         }
       );
 
-      const urlParts = request.loadedUrl?.split('/') ?? [];
-      const label = urlParts[urlParts.length - 1].trim()
-        ? urlParts[urlParts.length - 1].trim()
-        : urlParts[urlParts.length - 2].trim();
-      const logger = createProductLogger(label, store.name, batchTimestamp);
+      // const urlParts = request.loadedUrl?.split('/') ?? [];
+      // const label = urlParts[urlParts.length - 1].trim()
+      //   ? urlParts[urlParts.length - 1].trim()
+      //   : urlParts[urlParts.length - 2].trim();
+      const logger = createProductLogger(
+        request.loadedUrl ?? 'default label',
+        store.name,
+        batchTimestamp
+      );
 
       if (productLocator) {
         //TODO: check if productLocator matches multiple elements
-        logger.log('info', 'processing url: %s', request.loadedUrl);
+        logger.log('debug', 'processing url: %s', request.loadedUrl);
         try {
           const scrapeResult = await pageScraper.scrapeProductPage(
             productLocator,
@@ -387,7 +384,7 @@ export default class WebshopCrawler {
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
       maxRequestsPerCrawl: 5000,
-      maxRequestsPerMinute: 20,
+      maxRequestsPerMinute: 30,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 120,
       navigationTimeoutSecs: 120,

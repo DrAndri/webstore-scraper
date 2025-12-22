@@ -55,3 +55,12 @@ export interface UpsertManyResult {
   modifiedCount: number;
   upsertedCount: number;
 }
+
+export interface CacheItem {
+  status: number;
+  headers: Record<string, string>;
+  body: Buffer;
+  expires: number;
+}
+
+export type CacheItems = Record<string, CacheItem>;
