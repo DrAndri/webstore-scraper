@@ -41,11 +41,11 @@ export const createProductLogger = (
         labels: {
           store: storeName,
           batch: batchTimestamp.toString(),
-          page: label.substring(0, 100)
+          page: label
         },
         format: combine(splat(), errors({ stack: true }), format.json()),
         json: true,
-        level: 'debug'
+        level: 'info'
       })
     );
   }
