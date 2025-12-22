@@ -383,7 +383,7 @@ export default class WebshopCrawler {
       sessionPoolOptions: {
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
-      maxRequestsPerCrawl: 5000,
+      maxRequestsPerCrawl: 10000,
       maxRequestsPerMinute: 30,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 120,
@@ -392,17 +392,24 @@ export default class WebshopCrawler {
       retryOnBlocked: true,
       requestHandler: requestHandler,
       autoscaledPoolOptions: {
-        loggingIntervalSecs: 600
+        loggingIntervalSecs: 600,
+        snapshotterOptions: {
+          eventLoopSnapshotIntervalSecs: 10,
+          maxBlockedMillis: 200
+        },
+        systemStatusOptions: {
+          maxEventLoopOverloadedRatio: 0.8
+        }
       },
       log: crawlLog,
-      headless: true,
+      headless: 'old',
       browserPoolOptions: {
         maxOpenPagesPerBrowser: 20,
         retireBrowserAfterPageCount: 100
       },
       launchContext: {
         launchOptions: {
-          headless: true,
+          // headless: true,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
