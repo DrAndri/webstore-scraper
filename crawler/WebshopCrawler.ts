@@ -44,7 +44,9 @@ const blockedNavigationPathEndings = [
   '.webp',
   '.mp3',
   '.mp4',
-  '.zip'
+  '.zip',
+  '.xlsx',
+  '.xls'
 ];
 const blockedUrlPatterns = [
   'google-analytics.com',
@@ -245,8 +247,6 @@ export default class WebshopCrawler {
         )
         .then((links) => links.filter((link) => link !== null));
 
-      // Besides resolving the URLs, we now also need to
-      // grab their hostname for filtering.
       const { hostname } = new URL(startUrl);
       const hostnameIncludesWww = hostname.startsWith('www.');
       const absoluteUrls = links.map((link) => {
@@ -255,6 +255,7 @@ export default class WebshopCrawler {
       });
 
       // Filter out urls that do not match whitelist or match blacklist
+      //TODO: remove or implement per site filter lists
       let filteredUrls = absoluteUrls.filter((url) => url !== null);
       if (urlWhitelist !== undefined && urlWhitelist.length > 0) {
         filteredUrls = filteredUrls.filter((url) => {
