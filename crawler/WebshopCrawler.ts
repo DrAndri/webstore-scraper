@@ -356,10 +356,11 @@ export default class WebshopCrawler {
                 headers: headers,
                 body: body
               });
-            } catch {
+            } catch (e) {
               crawlLog.error(
                 `Failed to cache script: ${route.request().url()}`
               );
+              console.log(e);
             }
           }
         }
