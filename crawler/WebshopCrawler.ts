@@ -124,19 +124,19 @@ export default class WebshopCrawler {
 
     const once = function (
       checkFn: () => Promise<false | Locator>,
-      opts: { timeout?: number; interval?: number; timeoutMsg?: string }
+      opts: { timeout: number; interval: number }
     ): Promise<false | Locator> {
       return new Promise((resolve) => {
-        const startTime = new Date().getTime();
-        const timeout = opts.timeout ?? 10000;
-        const interval = opts.interval ?? 1000;
+        const startTime = Date.now();
+        const timeout = opts.timeout;
+        const interval = opts.interval;
 
         const poll = function () {
           checkFn()
             .then((ready) => {
               if (ready) {
                 resolve(ready);
-              } else if (new Date().getTime() - startTime > timeout) {
+              } else if (Date.now() - startTime > timeout) {
                 resolve(false);
               } else {
                 setTimeout(poll, interval);
@@ -405,10 +405,10 @@ export default class WebshopCrawler {
         snapshotterOptions: {
           clientSnapshotIntervalSecs: 10,
           eventLoopSnapshotIntervalSecs: 10,
-          maxBlockedMillis: 200
+          maxBlockedMillis: 50
         },
         systemStatusOptions: {
-          maxEventLoopOverloadedRatio: 0.8
+          maxEventLoopOverloadedRatio: 0.7
         }
       },
       log: crawlLog,
