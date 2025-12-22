@@ -55,7 +55,10 @@ const blockedUrlPatterns = [
   'adsbygoogle.js',
   'hubspot.com',
   'hubapi.com',
-  'hsappstatic.net'
+  'hsappstatic.net',
+  'youtube.com',
+  'youtu.be',
+  'youtube-nocookie.com'
 ];
 const blockedPagePathEndings = [
   ...blockedNavigationPathEndings,
