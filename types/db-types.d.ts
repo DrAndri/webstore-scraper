@@ -38,6 +38,7 @@ export interface WebshopCrawlerOptions {
   productPageIdentifier: string;
   urlWhitelist?: string[];
   urlBlacklist?: string[];
+  scrollPagesToBottom?: boolean;
 }
 
 export interface WebScraperOptions {

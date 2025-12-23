@@ -92,7 +92,8 @@ export default class WebshopCrawler {
       productPageIdentifier,
       sanitizers,
       urlWhitelist,
-      urlBlacklist
+      urlBlacklist,
+      scrollPagesToBottom
     } = this.store.options as WebshopCrawlerOptions;
     const store = this.store;
     const batchTimestamp = this.batchTimestamp;
@@ -124,28 +125,26 @@ export default class WebshopCrawler {
 
     const once = function (
       checkFn: () => Promise<false | Locator>,
-      opts: { timeout: number; interval: number }
+      opts: { numberOfChecks: number; interval: number }
     ): Promise<false | Locator> {
       return new Promise((resolve) => {
-        const startTime = Date.now();
-        const timeout = opts.timeout;
+        const numberOfChecks = opts.numberOfChecks;
         const interval = opts.interval;
-
-        const poll = function () {
-          checkFn()
-            .then((ready) => {
-              if (ready) {
-                resolve(ready);
-              } else if (Date.now() - startTime > timeout) {
+        let checksPerformed = 0;
+        const intervalID = setInterval(
+          () =>
+            void checkFn().then((locator) => {
+              if (locator) {
+                clearInterval(intervalID);
+                resolve(locator);
+              } else if (checksPerformed >= numberOfChecks) {
+                clearInterval(intervalID);
                 resolve(false);
-              } else {
-                setTimeout(poll, interval);
               }
-            })
-            .catch((e) => console.log(e));
-        };
-
-        void poll();
+              checksPerformed++;
+            }),
+          interval
+        );
       });
     };
 
@@ -178,7 +177,7 @@ export default class WebshopCrawler {
         },
         {
           interval: 3000,
-          timeout: 60000
+          numberOfChecks: 10
         }
       );
 
@@ -229,8 +228,26 @@ export default class WebshopCrawler {
       logger.close();
       await addLinksToQueue(page);
     };
+    const scrollToBottom = async (page: Page, lastScrollHeight?: number) => {
+      const scrollHeight =
+        lastScrollHeight ??
+        (await page.evaluate(
+          () => window.document.documentElement.scrollHeight
+        ));
+
+      await page.evaluate((scrollHeight) => {
+        window.scrollTo({ top: scrollHeight, behavior: 'instant' });
+      }, scrollHeight);
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      const scrollHeightAfter = await page.evaluate(
+        () => window.document.documentElement.scrollHeight
+      );
+      if (scrollHeightAfter > scrollHeight)
+        return scrollToBottom(page, lastScrollHeight);
+    };
 
     const addLinksToQueue = async (page: Page) => {
+      if (scrollPagesToBottom) await scrollToBottom(page);
       const links = await page
         .getByRole('link')
         .all()
@@ -388,18 +405,18 @@ export default class WebshopCrawler {
       maxRequestsPerCrawl: 10000,
       maxRequestsPerMinute: 30,
       maxRequestRetries: 3,
-      requestHandlerTimeoutSecs: 120,
+      requestHandlerTimeoutSecs: 180,
       navigationTimeoutSecs: 120,
       respectRobotsTxtFile: false,
       retryOnBlocked: true,
       requestHandler: requestHandler,
-      statusMessageLoggingInterval: 600,
+      /*       statusMessageLoggingInterval: 600,
       statusMessageCallback: async (ctx) => {
         return ctx.crawler.setStatusMessage(
           `Cache size: ${Object.keys(cache).length}`,
           { level: 'INFO' }
         ); // log level defaults to 'DEBUG'
-      },
+      }, */
       autoscaledPoolOptions: {
         loggingIntervalSecs: 600,
         snapshotterOptions: {
