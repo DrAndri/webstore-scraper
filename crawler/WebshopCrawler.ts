@@ -406,6 +406,7 @@ export default class WebshopCrawler {
       },
       useSessionPool: true,
       sessionPoolOptions: {
+        persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
       maxRequestsPerCrawl: 10000,
@@ -438,7 +439,7 @@ export default class WebshopCrawler {
       headless: true,
       browserPoolOptions: {
         maxOpenPagesPerBrowser: 30,
-        retireBrowserAfterPageCount: 1000
+        retireBrowserAfterPageCount: 500
       },
       launchContext: {
         launchOptions: {
