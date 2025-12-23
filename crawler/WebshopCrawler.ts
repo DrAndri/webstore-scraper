@@ -228,7 +228,11 @@ export default class WebshopCrawler {
       logger.close();
       await addLinksToQueue(page);
     };
-    const scrollToBottom = async (page: Page, lastScrollHeight?: number) => {
+    const scrollToBottom = async (
+      page: Page,
+      lastScrollHeight?: number,
+      counter = 0
+    ) => {
       const scrollHeight =
         lastScrollHeight ??
         (await page.evaluate(
@@ -242,8 +246,10 @@ export default class WebshopCrawler {
       const scrollHeightAfter = await page.evaluate(
         () => window.document.documentElement.scrollHeight
       );
+      if (counter >= 10) return;
+      counter++;
       if (scrollHeightAfter > scrollHeight)
-        return scrollToBottom(page, lastScrollHeight);
+        return scrollToBottom(page, lastScrollHeight, counter);
     };
 
     const addLinksToQueue = async (page: Page) => {
