@@ -320,13 +320,12 @@ export default class WebshopCrawler {
       // });
       await page.route('**/*', async (route) => {
         if (route.request().resourceType() === 'image') {
-          return await route.fulfill({
+          void route.fulfill({
             status: 200,
             contentType: 'image/png',
             body: defaultImage
           });
-        }
-        if (
+        } else if (
           blockedPageResourceTypes.some(
             (blocked) => route.request().resourceType() === blocked
           ) ||
@@ -337,7 +336,7 @@ export default class WebshopCrawler {
             route.request().url().includes(pattern)
           )
         ) {
-          return await route.fulfill({ status: 200 });
+          void route.fulfill({ status: 200 });
         } else if (
           (route.request().resourceType() === 'script' ||
             route.request().url().endsWith('.js')) &&
@@ -345,7 +344,7 @@ export default class WebshopCrawler {
         ) {
           const cachedResponse = cache[route.request().url()];
           if (cachedResponse && cachedResponse.expires > Date.now()) {
-            return await route.fulfill({
+            void route.fulfill({
               status: cachedResponse.status,
               headers: cachedResponse.headers,
               body: cachedResponse.body
@@ -369,7 +368,7 @@ export default class WebshopCrawler {
                 body: body,
                 expires: Date.now() + maxAge * 1000
               };
-              return await route.fulfill({
+              void route.fulfill({
                 status: status,
                 headers: headers,
                 body: body
@@ -381,8 +380,9 @@ export default class WebshopCrawler {
               console.log(e);
             }
           }
+        } else {
+          void route.continue();
         }
-        return await route.continue();
       });
     };
 
