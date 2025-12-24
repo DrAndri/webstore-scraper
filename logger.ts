@@ -45,7 +45,25 @@ export const createProductLogger = (
         },
         format: combine(splat(), errors({ stack: true }), format.json()),
         json: true,
-        level: 'info'
+        level: 'info',
+        interval: 30
+      })
+    );
+  } else {
+    const customFormat = printf(({ timestamp, level, message, stack }) => {
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      return `${timestamp} [${level}]: [${label}] ${stack ?? message}`;
+    });
+    transportsArray.push(
+      new transports.Console({
+        level: 'info',
+        format: combine(
+          colorize(),
+          splat(),
+          timestamp(),
+          errors({ stack: true }),
+          customFormat
+        )
       })
     );
   }

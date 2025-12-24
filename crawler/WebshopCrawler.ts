@@ -114,7 +114,9 @@ export default class WebshopCrawler {
       ProductSnapshot
     >();
 
-    const requestQueue = await RequestQueue.open(this.store.name);
+    const requestQueue = await RequestQueue.open(
+      this.store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')
+    );
 
     const pageScraper = new PageScraper(
       selectors,
@@ -123,10 +125,10 @@ export default class WebshopCrawler {
       batchTimestamp
     );
 
-    const once = function (
+    const once = (
       checkFn: () => Promise<false | Locator>,
       opts: { numberOfChecks: number; interval: number }
-    ): Promise<false | Locator> {
+    ): Promise<false | Locator> => {
       return new Promise((resolve) => {
         const numberOfChecks = opts.numberOfChecks;
         const interval = opts.interval;
@@ -148,6 +150,19 @@ export default class WebshopCrawler {
       });
     };
 
+    const findProductLocator = async (page: Page) => {
+      const productLocator = page.locator(selectors.productPage);
+      const count = await productLocator.count();
+      if (count > 0) {
+        const pageContent = await page.content();
+        // eslint-disable-next-line @typescript-eslint/prefer-includes
+        if (pageContent.indexOf(productPageIdentifier) > -1) {
+          return productLocator;
+        }
+      }
+      return false;
+    };
+
     const requestHandler = async ({
       request,
       page
@@ -155,6 +170,7 @@ export default class WebshopCrawler {
       request: Request;
       page: Page;
     }) => {
+      const requestTime = Date.now();
       totalRequests++;
       await page.waitForLoadState('load');
       // await page
@@ -162,24 +178,20 @@ export default class WebshopCrawler {
       //   .catch(() => {
       //     /* wait for 30 seconds or until network is idle */
       //   });
-      const productLocator = await once(
-        async () => {
-          const productLocator = page.locator(selectors.productPage);
-          const count = await productLocator.count();
-          if (count > 0) {
-            const pageContent = await page.content();
-            // eslint-disable-next-line @typescript-eslint/prefer-includes
-            if (pageContent.indexOf(productPageIdentifier) > -1) {
-              return productLocator;
-            }
-          }
-          return false;
-        },
-        {
-          interval: 3000,
-          numberOfChecks: 10
-        }
-      );
+      const productLocatorPromise = once(() => findProductLocator(page), {
+        interval: 3000,
+        numberOfChecks: 10
+      });
+
+      const productLocator = await Promise.race([
+        page.waitForLoadState('networkidle').then(() =>
+          once(() => findProductLocator(page), {
+            interval: 1,
+            numberOfChecks: 1
+          })
+        ),
+        productLocatorPromise
+      ]);
 
       // const urlParts = request.loadedUrl?.split('/') ?? [];
       // const label = urlParts[urlParts.length - 1].trim()
@@ -224,6 +236,11 @@ export default class WebshopCrawler {
       } else {
         logger.log('info', 'url is not a product page: %s', request.loadedUrl);
       }
+      logger.log(
+        'info',
+        'Request took %d seconds',
+        (Date.now() - requestTime) / 1000
+      );
 
       logger.close();
       await addLinksToQueue(page);
