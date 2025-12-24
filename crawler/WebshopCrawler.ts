@@ -287,7 +287,7 @@ export default class WebshopCrawler {
       if (urlWhitelist !== undefined && urlWhitelist.length > 0) {
         filteredUrls = filteredUrls.filter((url) => {
           return urlWhitelist.some((whitelistEntry) => {
-            return url.href.includes(whitelistEntry);
+            return url.pathname.startsWith(whitelistEntry);
           });
         });
       }
@@ -295,7 +295,7 @@ export default class WebshopCrawler {
       if (urlBlacklist !== undefined && urlBlacklist.length > 0) {
         filteredUrls = filteredUrls.filter((url) => {
           return !urlBlacklist.some((blacklistEntry) => {
-            return url.href.includes(blacklistEntry);
+            return url.pathname.startsWith(blacklistEntry);
           });
         });
       }
