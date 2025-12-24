@@ -445,8 +445,8 @@ export default class WebshopCrawler {
       log: crawlLog,
       headless: true,
       browserPoolOptions: {
-        maxOpenPagesPerBrowser: 30,
-        retireBrowserAfterPageCount: 500,
+        maxOpenPagesPerBrowser: 20,
+        retireBrowserAfterPageCount: 200,
         retireInactiveBrowserAfterSecs: 180
       },
       launchContext: {
