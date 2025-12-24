@@ -178,12 +178,10 @@ export default class WebshopCrawler {
       //   .catch(() => {
       //     /* wait for 30 seconds or until network is idle */
       //   });
-      const productLocatorPromise = once(() => findProductLocator(page), {
+      const productLocator = await once(() => findProductLocator(page), {
         interval: 3000,
         numberOfChecks: 10
       });
-
-      const productLocator = await productLocatorPromise;
 
       // const urlParts = request.loadedUrl?.split('/') ?? [];
       // const label = urlParts[urlParts.length - 1].trim()
@@ -448,7 +446,8 @@ export default class WebshopCrawler {
       headless: true,
       browserPoolOptions: {
         maxOpenPagesPerBrowser: 30,
-        retireBrowserAfterPageCount: 500
+        retireBrowserAfterPageCount: 500,
+        retireInactiveBrowserAfterSecs: 180
       },
       launchContext: {
         launchOptions: {
