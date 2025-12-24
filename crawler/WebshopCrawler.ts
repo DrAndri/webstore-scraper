@@ -183,15 +183,7 @@ export default class WebshopCrawler {
         numberOfChecks: 10
       });
 
-      const productLocator = await Promise.race([
-        page.waitForLoadState('networkidle').then(() =>
-          once(() => findProductLocator(page), {
-            interval: 1,
-            numberOfChecks: 1
-          })
-        ),
-        productLocatorPromise
-      ]);
+      const productLocator = await productLocatorPromise;
 
       // const urlParts = request.loadedUrl?.split('/') ?? [];
       // const label = urlParts[urlParts.length - 1].trim()
