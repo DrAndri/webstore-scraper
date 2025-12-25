@@ -4,6 +4,8 @@ import LokiTransport from 'winston-loki';
 const { combine, colorize, splat, timestamp, errors, printf } = format;
 
 const LOKI_URL = process.env.LOKI_URL;
+const ENABLE_PRODUCT_LOGGING =
+  process.env.ENABLE_PRODUCT_LOGGING === 'true' ? true : false;
 
 export const createStoreLogger = (label: string) => {
   const customFormat = printf(({ timestamp, level, message, stack }) => {
@@ -46,7 +48,8 @@ export const createProductLogger = (
         format: combine(splat(), errors({ stack: true }), format.json()),
         json: true,
         level: 'info',
-        interval: 30
+        interval: 30,
+        silent: !ENABLE_PRODUCT_LOGGING
       })
     );
   } else {
@@ -63,7 +66,8 @@ export const createProductLogger = (
           timestamp(),
           errors({ stack: true }),
           customFormat
-        )
+        ),
+        silent: !ENABLE_PRODUCT_LOGGING
       })
     );
   }
