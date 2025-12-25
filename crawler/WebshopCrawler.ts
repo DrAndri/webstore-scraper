@@ -453,7 +453,8 @@ export default class WebshopCrawler {
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas',
-            '--disable-gpu'
+            '--disable-gpu',
+            '--no-pings'
           ]
           /*           args: [
             '--no-sandbox',
