@@ -50,7 +50,17 @@ const blockedNavigationPathEndings = [
   '.xlsx',
   '.xls'
 ];
-const blockedUrlPatterns = [
+const blockedPagePathEndings = [
+  ...blockedNavigationPathEndings,
+  '.css',
+  '.gif',
+  '.webm',
+  '.woff',
+  '.woff2',
+  '.ttf',
+  '.otf'
+];
+const blockedPageUrlPatterns = [
   'google-analytics.com',
   'google.com',
   'google.is',
@@ -64,16 +74,6 @@ const blockedUrlPatterns = [
   'youtu.be',
   'youtube-nocookie.com',
   'addthis.com'
-];
-const blockedPagePathEndings = [
-  ...blockedNavigationPathEndings,
-  '.css',
-  '.gif',
-  '.webm',
-  '.woff',
-  '.woff2',
-  '.ttf',
-  '.otf'
 ];
 
 export default class WebshopCrawler {
@@ -183,10 +183,6 @@ export default class WebshopCrawler {
         numberOfChecks: 10
       });
 
-      // const urlParts = request.loadedUrl?.split('/') ?? [];
-      // const label = urlParts[urlParts.length - 1].trim()
-      //   ? urlParts[urlParts.length - 1].trim()
-      //   : urlParts[urlParts.length - 2].trim();
       const logger = createProductLogger(
         request.loadedUrl ?? 'default label',
         store.name,
@@ -345,7 +341,7 @@ export default class WebshopCrawler {
           blockedPagePathEndings.some((ending) =>
             route.request().url().endsWith(ending)
           ) ||
-          blockedUrlPatterns.some((pattern) =>
+          blockedPageUrlPatterns.some((pattern) =>
             route.request().url().includes(pattern)
           )
         ) {
@@ -491,78 +487,7 @@ export default class WebshopCrawler {
           ] */
         }
       },
-      preNavigationHooks: [
-        // async (crawlingContext) => {
-        //   const { page } = crawlingContext;
-        //   page.on('console', (msg) => {
-        //     const msgType = msg.type();
-        //     crawlLog.info(`Console ${msgType} on ${page.url()}: ${msg.text()}`);
-        //   });
-        //   await page.route('**/*', async (route) => {
-        //     if (route.request().resourceType() === 'image') {
-        //       console.log(`Blocking image: ${route.request().url()}`);
-        //       return await route.fulfill({
-        //         status: 200,
-        //         contentType: 'image/png',
-        //         body: defaultImage
-        //       });
-        //     }
-        //     if (
-        //       blockedPageResourceTypes.some(
-        //         (blocked) => route.request().resourceType() === blocked
-        //       ) ||
-        //       blockedPagePathEndings.some((ending) =>
-        //         route.request().url().endsWith(ending)
-        //       )
-        //     ) {
-        //       console.log(
-        //         `Blocking resource: ${route.request().url()} [${route.request().resourceType()}]`
-        //       );
-        //       return await route.fulfill({ status: 200 });
-        //     } else return route.continue();
-        //   });
-        // },
-        // async (crawlingContext) => {
-        //   await crawlingContext.blockRequests({
-        //     urlPatterns: [
-        //       '.jpg',
-        //       '.jpeg',
-        //       '.png',
-        //       '.svg',
-        //       '.gif',
-        //       '.webp',
-        //       '.woff',
-        //       '.woff2',
-        //       '.ttf',
-        //       '.otf',
-        //       '.mp3',
-        //       '.mp4',
-        //       '.webm',
-        //       '.pdf',
-        //       '.zip',
-        //       'google-analytics.com',
-        //       'google.com',
-        //       'google.is',
-        //       'googleads.g.doubleclick.net',
-        //       'googletagmanager.com',
-        //       'adsbygoogle.js',
-        //       'hubspot.com',
-        //       'hubapi.com',
-        //       'hsappstatic.net'
-        //     ]
-        //   });
-        // },
-        // (crawlingContext) => {
-        //   const { page } = crawlingContext;
-        //   page.on('request', (pageRequest) => {
-        //     console.log(
-        //       `Request: ${pageRequest.method()} ${pageRequest.url()} [${pageRequest.resourceType()}]`
-        //     );
-        //   });
-        // },
-
-        myHook
-      ]
+      preNavigationHooks: [myHook]
     });
 
     // Run the crawler with initial request
