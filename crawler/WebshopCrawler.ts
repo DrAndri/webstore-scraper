@@ -451,8 +451,8 @@ export default class WebshopCrawler {
       },
       launchContext: {
         launchOptions: {
-          headless: true,
-          args: [
+          headless: true
+          /*           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-gl-drawing-for-tests',
@@ -488,7 +488,7 @@ export default class WebshopCrawler {
             '--disable-sync',
             '--metrics-recording-only',
             '--disable-software-rasterizer'
-          ]
+          ] */
         }
       },
       preNavigationHooks: [
