@@ -39,6 +39,7 @@ export interface WebshopCrawlerOptions {
   urlWhitelist?: string[];
   urlBlacklist?: string[];
   scrollPagesToBottom?: boolean;
+  menuClicker?: string;
 }
 
 export interface WebScraperOptions {

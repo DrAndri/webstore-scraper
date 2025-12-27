@@ -93,7 +93,8 @@ export default class WebshopCrawler {
       sanitizers,
       urlWhitelist,
       urlBlacklist,
-      scrollPagesToBottom
+      scrollPagesToBottom,
+      menuClicker
     } = this.store.options as WebshopCrawlerOptions;
     const store = this.store;
     const batchTimestamp = this.batchTimestamp;
@@ -170,7 +171,6 @@ export default class WebshopCrawler {
       request: Request;
       page: Page;
     }) => {
-      const requestTime = Date.now();
       totalRequests++;
       await page.waitForLoadState('load');
       // await page
@@ -222,11 +222,16 @@ export default class WebshopCrawler {
       } else {
         logger.log('info', 'url is not a product page: %s', request.loadedUrl);
       }
-      logger.log(
-        'info',
-        'Request took %d seconds',
-        (Date.now() - requestTime) / 1000
-      );
+
+      if (menuClicker && request.url === startUrl) {
+        try {
+          const menuLocator = page.locator(menuClicker);
+          await menuLocator.click();
+        } catch (e) {
+          logger.log('error', 'Error clicking menu');
+          logger.log('error', '%O', e);
+        }
+      }
 
       logger.close();
       await addLinksToQueue(page);
@@ -313,7 +318,8 @@ export default class WebshopCrawler {
         sameHostnameLinks.filter(
           (url) =>
             !blockedNavigationPathEndings.find((ending) => url.endsWith(ending))
-        )
+        ),
+        { batchSize: 10 }
       );
     };
 
@@ -412,7 +418,7 @@ export default class WebshopCrawler {
         persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
         persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
       },
-      maxRequestsPerCrawl: 10000,
+      maxRequestsPerCrawl: 20000,
       maxRequestsPerMinute: 30,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 180,
@@ -456,43 +462,6 @@ export default class WebshopCrawler {
             '--disable-gpu',
             '--no-pings'
           ]
-          /*           args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-gl-drawing-for-tests',
-            '--disable-client-side-phishing-detection',
-            '--disable-extensions',
-            '--disable-component-extensions-with-background-pages',
-            '--disable-default-apps',
-            '--disable-features=InterestFeedContentSuggestions',
-            '--disable-features=Translate',
-            '--hide-scrollbars',
-            '--mute-audio',
-            '--no-default-browser-check',
-            '--no-first-run',
-            '--ash-no-nudges',
-            '--disable-search-engine-choice-screen',
-            '--disable-ipc-flooding-protection',
-            '--disable-renderer-backgrounding',
-            '--allow-running-insecure-content',
-            '--disable-back-forward-cache',
-
-            '--disable-features=MediaRouter',
-            '--enable-automation',
-            // '--disable-background-networking',
-            '--disable-component-update',
-            '--disable-domain-reliability',
-            '--disable-features=OptimizationHints',
-            // '--no-pings',
-            '--allow-pre-commit-input',
-            '--disable-features=PaintHolding',
-            '--in-process-gpu',
-            '--disable-gpu',
-            '--disable-dev-shm-usage',
-            '--disable-sync',
-            '--metrics-recording-only',
-            '--disable-software-rasterizer'
-          ] */
         }
       },
       preNavigationHooks: [myHook]
