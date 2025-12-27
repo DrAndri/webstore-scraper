@@ -460,7 +460,13 @@ export default class WebshopCrawler {
             '--disable-dev-shm-usage',
             '--disable-accelerated-2d-canvas',
             '--disable-gpu',
-            '--no-pings'
+            '--no-pings',
+            '--no-zygote',
+            '--disable-application-cache',
+            '--disable-offline-load-stale-cache',
+            '--disable-gpu-shader-disk-cache',
+            '--disable-web-security',
+            '--disable-translate'
           ]
         }
       },
