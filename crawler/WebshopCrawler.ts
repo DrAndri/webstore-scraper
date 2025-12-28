@@ -130,12 +130,12 @@ export default class WebshopCrawler {
       checkFn: () => Promise<false | Locator>,
       opts: { numberOfChecks: number; interval: number }
     ): Promise<false | Locator> => {
-      return new Promise((resolve) => {
+      return new Promise((resolve, reject) => {
         const numberOfChecks = opts.numberOfChecks;
         const interval = opts.interval;
         let checksPerformed = 0;
-        const intervalID = setInterval(
-          () =>
+        const intervalID = setInterval(() => {
+          try {
             void checkFn().then((locator) => {
               if (locator) {
                 clearInterval(intervalID);
@@ -145,9 +145,12 @@ export default class WebshopCrawler {
                 resolve(false);
               }
               checksPerformed++;
-            }),
-          interval
-        );
+            });
+          } catch (e) {
+            reject(new Error('Error in once function'));
+            console.log(e);
+          }
+        }, interval);
       });
     };
 
@@ -178,6 +181,7 @@ export default class WebshopCrawler {
       //   .catch(() => {
       //     /* wait for 30 seconds or until network is idle */
       //   });
+
       const productLocator = await once(() => findProductLocator(page), {
         interval: 3000,
         numberOfChecks: 10
