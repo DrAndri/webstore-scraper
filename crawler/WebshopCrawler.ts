@@ -470,7 +470,11 @@ export default class WebshopCrawler {
             '--disable-offline-load-stale-cache',
             '--disable-gpu-shader-disk-cache',
             '--disable-web-security',
-            '--disable-translate'
+            '--disable-translate',
+            '--disable-session-crashed-bubble',
+            '--no-first-run',
+            '--single-process',
+            '--noerrdialogs'
           ]
         }
       },
