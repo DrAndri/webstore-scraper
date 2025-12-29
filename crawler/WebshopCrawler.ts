@@ -447,15 +447,15 @@ export default class WebshopCrawler {
         ); // log level defaults to 'DEBUG'
       }, */
       autoscaledPoolOptions: {
-        loggingIntervalSecs: 600,
-        snapshotterOptions: {
-          clientSnapshotIntervalSecs: 60,
-          eventLoopSnapshotIntervalSecs: 60,
-          maxBlockedMillis: 50
-        },
-        systemStatusOptions: {
-          maxEventLoopOverloadedRatio: 0.7
-        }
+        loggingIntervalSecs: 600
+        // snapshotterOptions: {
+        //   clientSnapshotIntervalSecs: 60,
+        //   eventLoopSnapshotIntervalSecs: 60,
+        //   maxBlockedMillis: 50
+        // },
+        // systemStatusOptions: {
+        //   maxEventLoopOverloadedRatio: 0.7
+        // }
       },
       log: crawlLog,
       headless: true,
