@@ -1,4 +1,5 @@
 import {
+  Configuration,
   Log,
   PlaywrightCrawler,
   PlaywrightCrawlingContext,
@@ -136,7 +137,6 @@ export default class WebshopCrawler {
         let checksPerformed = 0;
         const intervalID = setInterval(() => {
           void checkFn()
-            .catch(() => reject(new Error('Error in once function')))
             .then((locator) => {
               if (locator) {
                 clearInterval(intervalID);
@@ -167,7 +167,7 @@ export default class WebshopCrawler {
       } catch (e) {
         console.log('Error in findProductLocator');
         console.log(e);
-        throw e;
+        return false;
       }
     };
 
@@ -412,83 +412,91 @@ export default class WebshopCrawler {
 
     const crawlLog = new Log({ prefix: store.name });
 
-    const crawler = new PlaywrightCrawler({
-      failedRequestHandler({ request, log }) {
-        log.info(`Request ${request.url} failed too many times.`);
-      },
-      // Default is to reuse requestQueue from all crawl instances
-      requestQueue: requestQueue,
-      statisticsOptions: {
-        //logIntervalSecs: 1800 // 30 minutes
-        logIntervalSecs: 600 // 10 minutes
-      },
-      // useSessionPool: false,
-      // persistCookiesPerSession: false,
-      sessionPoolOptions: {
-        persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
-        persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
-        // persistenceOptions: {
-        //   enable: false
-        // }
-      },
-      maxRequestsPerCrawl: 20000,
-      maxRequestsPerMinute: 30,
-      maxRequestRetries: 3,
-      requestHandlerTimeoutSecs: 180,
-      navigationTimeoutSecs: 120,
-      respectRobotsTxtFile: false,
-      retryOnBlocked: true,
-      requestHandler: requestHandler,
-      /*       statusMessageLoggingInterval: 600,
+    const config = Configuration.getGlobalConfig();
+
+    config.set('persistStorage', false);
+
+    const crawler = new PlaywrightCrawler(
+      {
+        failedRequestHandler({ request, log }) {
+          log.info(`Request ${request.url} failed too many times.`);
+        },
+        // Default is to reuse requestQueue from all crawl instances
+        requestQueue: requestQueue,
+        statisticsOptions: {
+          //logIntervalSecs: 1800 // 30 minutes
+          logIntervalSecs: 600 // 10 minutes
+        },
+        // useSessionPool: false,
+        // persistCookiesPerSession: false,
+
+        sessionPoolOptions: {
+          persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
+          persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
+          // persistenceOptions: {
+          //   enable: false
+          // }
+        },
+        maxRequestsPerCrawl: 20000,
+        maxRequestsPerMinute: 30,
+        maxRequestRetries: 3,
+        requestHandlerTimeoutSecs: 180,
+        navigationTimeoutSecs: 120,
+        respectRobotsTxtFile: false,
+        retryOnBlocked: true,
+        requestHandler: requestHandler,
+        /*       statusMessageLoggingInterval: 600,
       statusMessageCallback: async (ctx) => {
         return ctx.crawler.setStatusMessage(
           `Cache size: ${Object.keys(cache).length}`,
           { level: 'INFO' }
         ); // log level defaults to 'DEBUG'
       }, */
-      autoscaledPoolOptions: {
-        loggingIntervalSecs: 600
-        // snapshotterOptions: {
-        //   clientSnapshotIntervalSecs: 60,
-        //   eventLoopSnapshotIntervalSecs: 60,
-        //   maxBlockedMillis: 50
-        // },
-        // systemStatusOptions: {
-        //   maxEventLoopOverloadedRatio: 0.7
-        // }
+        autoscaledPoolOptions: {
+          loggingIntervalSecs: 600
+          // snapshotterOptions: {
+          //   clientSnapshotIntervalSecs: 60,
+          //   eventLoopSnapshotIntervalSecs: 60,
+          //   maxBlockedMillis: 50
+          // },
+          // systemStatusOptions: {
+          //   maxEventLoopOverloadedRatio: 0.7
+          // }
+        },
+        log: crawlLog,
+        headless: true,
+        browserPoolOptions: {
+          maxOpenPagesPerBrowser: 20,
+          retireBrowserAfterPageCount: 100,
+          retireInactiveBrowserAfterSecs: 10
+        },
+        launchContext: {
+          launchOptions: {
+            headless: true,
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--disable-gpu',
+              '--no-pings',
+              '--no-zygote',
+              '--disable-application-cache',
+              '--disable-offline-load-stale-cache',
+              '--disable-gpu-shader-disk-cache',
+              '--disable-web-security',
+              '--disable-translate',
+              '--disable-session-crashed-bubble',
+              '--no-first-run',
+              '--single-process',
+              '--noerrdialogs'
+            ]
+          }
+        },
+        preNavigationHooks: [myHook]
       },
-      log: crawlLog,
-      headless: true,
-      browserPoolOptions: {
-        maxOpenPagesPerBrowser: 20,
-        retireBrowserAfterPageCount: 100,
-        retireInactiveBrowserAfterSecs: 10
-      },
-      launchContext: {
-        launchOptions: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-            '--no-pings',
-            '--no-zygote',
-            '--disable-application-cache',
-            '--disable-offline-load-stale-cache',
-            '--disable-gpu-shader-disk-cache',
-            '--disable-web-security',
-            '--disable-translate',
-            '--disable-session-crashed-bubble',
-            '--no-first-run',
-            '--single-process',
-            '--noerrdialogs'
-          ]
-        }
-      },
-      preNavigationHooks: [myHook]
-    });
+      config
+    );
 
     // Run the crawler with initial request
     await crawler.run([startUrl]);
