@@ -239,6 +239,7 @@ export default class WebshopCrawler {
 
       logger.close();
       await addLinksToQueue(page);
+      await page.close();
     };
     const scrollToBottom = async (
       page: Page,
@@ -417,10 +418,14 @@ export default class WebshopCrawler {
         //logIntervalSecs: 1800 // 30 minutes
         logIntervalSecs: 600 // 10 minutes
       },
-      useSessionPool: true,
+      useSessionPool: false,
+      persistCookiesPerSession: false,
       sessionPoolOptions: {
         persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
-        persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
+        persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`,
+        persistenceOptions: {
+          enable: false
+        }
       },
       maxRequestsPerCrawl: 20000,
       maxRequestsPerMinute: 30,
