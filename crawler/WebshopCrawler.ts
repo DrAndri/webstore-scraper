@@ -1,7 +1,8 @@
 import {
+  AdaptivePlaywrightCrawler,
+  AdaptivePlaywrightCrawlerContext,
+  BrowserHook,
   Log,
-  PlaywrightCrawler,
-  PlaywrightCrawlingContext,
   PlaywrightGotoOptions,
   RequestQueue,
   type Request
@@ -327,12 +328,18 @@ export default class WebshopCrawler {
       );
     };
 
-    const myHook = async (
-      crawlingContext: PlaywrightCrawlingContext,
-      gotoOptions: PlaywrightGotoOptions
-    ) => {
+    const myHook: BrowserHook<
+      Pick<
+        AdaptivePlaywrightCrawlerContext,
+        'id' | 'request' | 'session' | 'proxyInfo' | 'log'
+      > & {
+        page?: Page;
+      },
+      PlaywrightGotoOptions
+    > = async (crawlingContext, gotoOptions: PlaywrightGotoOptions) => {
       const { page } = crawlingContext;
       gotoOptions.waitUntil = 'load';
+      if (!page) return;
       // page.on('console', (msg) => {
       //   const msgType = msg.type();
       //   crawlLog.info(`Console ${msgType} on ${page.url()}: ${msg.text()}`);
@@ -407,7 +414,7 @@ export default class WebshopCrawler {
 
     const crawlLog = new Log({ prefix: store.name });
 
-    const crawler = new PlaywrightCrawler({
+    const crawler = new AdaptivePlaywrightCrawler({
       failedRequestHandler({ request, log }) {
         log.info(`Request ${request.url} failed too many times.`);
       },
