@@ -422,14 +422,14 @@ export default class WebshopCrawler {
         //logIntervalSecs: 1800 // 30 minutes
         logIntervalSecs: 600 // 10 minutes
       },
-      useSessionPool: false,
-      persistCookiesPerSession: false,
+      // useSessionPool: false,
+      // persistCookiesPerSession: false,
       sessionPoolOptions: {
         persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
-        persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`,
-        persistenceOptions: {
-          enable: false
-        }
+        persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
+        // persistenceOptions: {
+        //   enable: false
+        // }
       },
       maxRequestsPerCrawl: 20000,
       maxRequestsPerMinute: 30,
@@ -462,7 +462,7 @@ export default class WebshopCrawler {
       browserPoolOptions: {
         maxOpenPagesPerBrowser: 20,
         retireBrowserAfterPageCount: 100,
-        retireInactiveBrowserAfterSecs: 1200
+        retireInactiveBrowserAfterSecs: 10
       },
       launchContext: {
         launchOptions: {
