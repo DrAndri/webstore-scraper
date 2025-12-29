@@ -488,7 +488,8 @@ export default class WebshopCrawler {
               '--disable-session-crashed-bubble',
               '--no-first-run',
               '--single-process',
-              '--noerrdialogs'
+              '--noerrdialogs',
+              '--user-data-dir=/dev/shm/chrome' + new Date().getTime()
             ]
           }
         },
