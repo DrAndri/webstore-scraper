@@ -439,7 +439,7 @@ export default class WebshopCrawler {
         maxRequestsPerCrawl: 20000,
         maxRequestsPerMinute: 30,
         maxRequestRetries: 3,
-        requestHandlerTimeoutSecs: 180,
+        requestHandlerTimeoutSecs: 240,
         navigationTimeoutSecs: 120,
         respectRobotsTxtFile: false,
         retryOnBlocked: true,
