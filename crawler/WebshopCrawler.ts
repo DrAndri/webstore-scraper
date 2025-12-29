@@ -440,8 +440,8 @@ export default class WebshopCrawler {
       autoscaledPoolOptions: {
         loggingIntervalSecs: 600,
         snapshotterOptions: {
-          clientSnapshotIntervalSecs: 10,
-          eventLoopSnapshotIntervalSecs: 10,
+          clientSnapshotIntervalSecs: 60,
+          eventLoopSnapshotIntervalSecs: 60,
           maxBlockedMillis: 50
         },
         systemStatusOptions: {
@@ -453,7 +453,7 @@ export default class WebshopCrawler {
       browserPoolOptions: {
         maxOpenPagesPerBrowser: 20,
         retireBrowserAfterPageCount: 200,
-        retireInactiveBrowserAfterSecs: 180
+        retireInactiveBrowserAfterSecs: 1200
       },
       launchContext: {
         launchOptions: {
