@@ -470,6 +470,7 @@ export default class WebshopCrawler {
           retireInactiveBrowserAfterSecs: 10
         },
         launchContext: {
+          userDataDir: '/dev/shm/chrome' + new Date().getTime(),
           launchOptions: {
             headless: true,
             args: [
@@ -488,8 +489,7 @@ export default class WebshopCrawler {
               '--disable-session-crashed-bubble',
               '--no-first-run',
               '--single-process',
-              '--noerrdialogs',
-              '--user-data-dir=/dev/shm/chrome' + new Date().getTime()
+              '--noerrdialogs'
             ]
           }
         },
