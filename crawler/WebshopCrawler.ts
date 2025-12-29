@@ -466,8 +466,9 @@ export default class WebshopCrawler {
         headless: true,
         browserPoolOptions: {
           maxOpenPagesPerBrowser: 20,
-          retireBrowserAfterPageCount: 100,
-          retireInactiveBrowserAfterSecs: 10
+          retireBrowserAfterPageCount: 1000,
+          retireInactiveBrowserAfterSecs: 10,
+          closeInactiveBrowserAfterSecs: 1000
         },
         launchContext: {
           userDataDir: '/dev/shm/chrome' + new Date().getTime(),
