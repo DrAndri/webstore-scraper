@@ -1,5 +1,5 @@
 
-FROM node:22-bullseye
+FROM node:24-bullseye
 
 ENV NODE_ENV=production
 
@@ -15,8 +15,6 @@ RUN npx playwright install --with-deps
 
 COPY . .
 RUN yarn build
-
-VOLUME [ "/logs" ]
 
 EXPOSE 8080
 CMD [ "node", "dist/index.js" ]
