@@ -135,8 +135,8 @@ export default class WebshopCrawler {
         const interval = opts.interval;
         let checksPerformed = 0;
         const intervalID = setInterval(() => {
-          try {
-            void checkFn().then((locator) => {
+          void checkFn()
+            .then((locator) => {
               if (locator) {
                 clearInterval(intervalID);
                 resolve(locator);
@@ -145,26 +145,29 @@ export default class WebshopCrawler {
                 resolve(false);
               }
               checksPerformed++;
-            });
-          } catch (e) {
-            reject(new Error('Error in once function'));
-            console.log(e);
-          }
+            })
+            .catch(() => reject(new Error('Error in once function')));
         }, interval);
       });
     };
 
     const findProductLocator = async (page: Page) => {
-      const productLocator = page.locator(selectors.productPage);
-      const count = await productLocator.count();
-      if (count > 0) {
-        const pageContent = await page.content();
-        // eslint-disable-next-line @typescript-eslint/prefer-includes
-        if (pageContent.indexOf(productPageIdentifier) > -1) {
-          return productLocator;
+      try {
+        const productLocator = page.locator(selectors.productPage);
+        const count = await productLocator.count();
+        if (count > 0) {
+          const pageContent = await page.content();
+          // eslint-disable-next-line @typescript-eslint/prefer-includes
+          if (pageContent.indexOf(productPageIdentifier) > -1) {
+            return productLocator;
+          }
         }
+        return false;
+      } catch (e) {
+        console.log('Error in findProductLocator');
+        console.log(e);
+        throw e;
       }
-      return false;
     };
 
     const requestHandler = async ({
