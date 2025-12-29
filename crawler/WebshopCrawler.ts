@@ -136,6 +136,7 @@ export default class WebshopCrawler {
         let checksPerformed = 0;
         const intervalID = setInterval(() => {
           void checkFn()
+            .catch(() => reject(new Error('Error in once function')))
             .then((locator) => {
               if (locator) {
                 clearInterval(intervalID);
