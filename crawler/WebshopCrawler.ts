@@ -87,6 +87,7 @@ export default class WebshopCrawler {
 
   async crawlSite(): Promise<ProductSnapshot[]> {
     const cache: CacheItems = {};
+    const safeStoreName = this.store.name.replace(/[^a-zA-Z0-9]/g, '-');
     const {
       startUrl,
       selectors,
@@ -116,9 +117,7 @@ export default class WebshopCrawler {
       ProductSnapshot
     >();
 
-    const requestQueue = await RequestQueue.open(
-      this.store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')
-    );
+    const requestQueue = await RequestQueue.open(safeStoreName);
 
     const pageScraper = new PageScraper(
       selectors,
@@ -414,7 +413,7 @@ export default class WebshopCrawler {
 
     const config = Configuration.getGlobalConfig();
 
-    config.set('persistStorage', false);
+    config.set('persistStorage', 'false');
 
     const crawler = new PlaywrightCrawler(
       {
@@ -431,8 +430,8 @@ export default class WebshopCrawler {
         // persistCookiesPerSession: false,
 
         sessionPoolOptions: {
-          persistStateKeyValueStoreId: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-keyvalue`,
-          persistStateKey: `${store.name.replace(/[^a-zA-Z0-9!-_.'()]/g, '-')}-session-pool`
+          persistStateKeyValueStoreId: `${safeStoreName}-keyvalue`,
+          persistStateKey: `${safeStoreName}-session-pool`
           // persistenceOptions: {
           //   enable: false
           // }
