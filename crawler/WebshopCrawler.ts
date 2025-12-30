@@ -1,6 +1,7 @@
 import {
   Configuration,
   Log,
+  MemoryStorage,
   PlaywrightCrawler,
   PlaywrightCrawlingContext,
   PlaywrightGotoOptions,
@@ -117,7 +118,13 @@ export default class WebshopCrawler {
       ProductSnapshot
     >();
 
-    const requestQueue = await RequestQueue.open(safeStoreName);
+    const memoryStorage = new MemoryStorage({
+      persistStorage: false,
+      writeMetadata: false
+    });
+    const requestQueue = await RequestQueue.open(safeStoreName, {
+      storageClient: memoryStorage
+    });
 
     const pageScraper = new PageScraper(
       selectors,
@@ -468,10 +475,14 @@ export default class WebshopCrawler {
           maxOpenPagesPerBrowser: 20,
           retireBrowserAfterPageCount: 1000,
           retireInactiveBrowserAfterSecs: 10,
-          closeInactiveBrowserAfterSecs: 1000
+          closeInactiveBrowserAfterSecs: 1000,
+          useFingerprints: false,
+          fingerprintOptions: {
+            useFingerprintCache: false
+          }
         },
         launchContext: {
-          userDataDir: '/dev/shm/chrome' + new Date().getTime(),
+          userDataDir: '/dev/shm/chrome-user-' + new Date().getTime(),
           launchOptions: {
             headless: true,
             args: [
@@ -490,7 +501,17 @@ export default class WebshopCrawler {
               '--disable-session-crashed-bubble',
               '--no-first-run',
               // '--single-process',
-              '--noerrdialogs'
+              '--noerrdialogs',
+              '--disk-cache-dir=/dev/shm/chrome-cache-' + new Date().getTime(),
+              // Additional RAM-friendly options
+              '--disable-software-rasterizer',
+              '--disable-extensions',
+              '--disable-background-networking',
+              '--disable-sync',
+
+              // Minimize disk I/O
+              '--disable-logging',
+              '--log-level=3'
             ]
           }
         },
