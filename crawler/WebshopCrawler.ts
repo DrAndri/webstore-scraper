@@ -489,7 +489,7 @@ export default class WebshopCrawler {
               '--disable-translate',
               '--disable-session-crashed-bubble',
               '--no-first-run',
-              '--single-process',
+              // '--single-process',
               '--noerrdialogs'
             ]
           }
