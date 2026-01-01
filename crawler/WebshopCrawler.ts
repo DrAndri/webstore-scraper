@@ -193,7 +193,7 @@ export default class WebshopCrawler {
       //   });
 
       const productLocator = await once(() => findProductLocator(page), {
-        interval: 3000,
+        interval: 2000,
         numberOfChecks: 10
       });
 
@@ -421,6 +421,7 @@ export default class WebshopCrawler {
     const config = Configuration.getGlobalConfig();
 
     config.set('persistStorage', 'false');
+    // config.set('storageDir', '/dev/shm');
 
     const crawler = new PlaywrightCrawler(
       {
@@ -459,12 +460,12 @@ export default class WebshopCrawler {
         ); // log level defaults to 'DEBUG'
       }, */
         autoscaledPoolOptions: {
-          loggingIntervalSecs: 600
-          // snapshotterOptions: {
-          //   clientSnapshotIntervalSecs: 60,
-          //   eventLoopSnapshotIntervalSecs: 60,
-          //   maxBlockedMillis: 50
-          // },
+          loggingIntervalSecs: 600,
+          snapshotterOptions: {
+            clientSnapshotIntervalSecs: 30,
+            eventLoopSnapshotIntervalSecs: 30,
+            maxBlockedMillis: 100
+          }
           // systemStatusOptions: {
           //   maxEventLoopOverloadedRatio: 0.7
           // }
@@ -472,7 +473,7 @@ export default class WebshopCrawler {
         log: crawlLog,
         headless: true,
         browserPoolOptions: {
-          maxOpenPagesPerBrowser: 20,
+          maxOpenPagesPerBrowser: 30,
           retireBrowserAfterPageCount: 1000,
           retireInactiveBrowserAfterSecs: 10,
           closeInactiveBrowserAfterSecs: 1000,
