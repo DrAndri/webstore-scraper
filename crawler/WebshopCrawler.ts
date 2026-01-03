@@ -444,7 +444,7 @@ export default class WebshopCrawler {
           //   enable: false
           // }
         },
-        maxRequestsPerCrawl: 20000,
+        maxRequestsPerCrawl: 30000,
         maxRequestsPerMinute: 30,
         maxRequestRetries: 3,
         requestHandlerTimeoutSecs: 240,
@@ -464,7 +464,7 @@ export default class WebshopCrawler {
           snapshotterOptions: {
             clientSnapshotIntervalSecs: 30,
             eventLoopSnapshotIntervalSecs: 30,
-            maxBlockedMillis: 100
+            maxBlockedMillis: 50
           }
           // systemStatusOptions: {
           //   maxEventLoopOverloadedRatio: 0.7
@@ -473,7 +473,7 @@ export default class WebshopCrawler {
         log: crawlLog,
         headless: true,
         browserPoolOptions: {
-          maxOpenPagesPerBrowser: 30,
+          maxOpenPagesPerBrowser: 20,
           retireBrowserAfterPageCount: 1000,
           retireInactiveBrowserAfterSecs: 10,
           closeInactiveBrowserAfterSecs: 1000,
