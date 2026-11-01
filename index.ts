@@ -67,8 +67,8 @@ const runner = new JobRunner(new StoreConfigLoader(), storeConcurrencyLimit);
 await runner.start();
 
 if (process.env.RUN_STARTUP_UPDATE === 'true') {
-  console.log('Running startup update');
-  await runner.enqueueAll('list', 'startup');
+  console.log('Running startup crawler on all stores');
+  await runner.enqueueAll('crawler', 'startup');
 }
 
 // CRON_SCHEDULE and CRON_ACTIVE_SCHEDULE are only used for the first start,
