@@ -200,7 +200,9 @@ export default abstract class BaseCrawler {
   }
 
   async crawlSite(): Promise<void> {
-    await this.crawler.run([this.store.options.startUrl]);
+    const sitemapUrls =
+      this.mode === 'crawler' ? (this.store.options.sitemapUrls ?? []) : [];
+    await this.crawler.run([this.store.options.startUrl, ...sitemapUrls]);
 
     const storeLogger = createStoreLogger(this.store.name);
 

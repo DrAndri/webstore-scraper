@@ -72,6 +72,11 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
         const href = $(elem).attr('href');
         if (href) links.push(href);
       });
+      // Sitemap entries
+      $('loc').each(function (i, elem) {
+        const loc = $(elem).text().trim();
+        if (loc) links.push(loc);
+      });
 
       await this.filterAndAddLinksToQueue(links);
     };

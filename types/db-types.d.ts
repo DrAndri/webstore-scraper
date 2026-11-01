@@ -107,6 +107,8 @@ export interface WebshopCrawlerOptions {
   productPageIdentifier: string;
   urlWhitelist?: string[];
   urlBlacklist?: string[];
+  // Sitemaps whose <loc> urls are queued when crawling, httpcrawler only
+  sitemapUrls?: string[];
   scrollPagesToBottom?: boolean;
   menuClicker?: string;
 }
@@ -120,19 +122,55 @@ export interface ProductSanitizer {
   replace: string;
 }
 
-export interface ProductSelector {
-  source: 'url' | 'DOM' | 'script';
-  delimiter: string;
-  index: number | 'first' | 'last';
+export type ProductSelector =
+  | {
+      source: 'url';
+      delimiter: string;
+      index: number | 'first' | 'last';
+    }
+  | {
+      // Read an attribute of an element, e.g. data-productid
+      source: 'attribute';
+      selector: string;
+      attribute: string;
+    };
+
+export type StructuredDataField =
+  | 'sku'
+  | 'gtin'
+  | 'name'
+  | 'brand'
+  | 'image'
+  | 'description'
+  | 'price'
+  | 'inStock'
+  | 'categories';
+
+export interface StructuredDataOptions {
+  // jsonld: the schema.org Product in <script type="application/ld+json">
+  // nextdata: the JSON in <script id="__NEXT_DATA__">
+  source: 'jsonld' | 'nextdata';
+  // Dot paths to read each field from, the first defined one wins. For jsonld
+  // they are relative to the Product and override the schema.org defaults, for
+  // nextdata they are relative to the __NEXT_DATA__ root. 'breadcrumbs' reads
+  // categories from a JSON-LD BreadcrumbList. false skips the field so the CSS
+  // selector is used instead.
+  fields?: Partial<Record<StructuredDataField, string | string[] | false>>;
+  // Splits a categories string, e.g. "Snyrtivara|Förðun|Varir"
+  categorySplitter?: string;
 }
 
 export interface ProductSelectors {
   productPage: string;
+  // Read fields from structured data first, CSS selectors fill in the rest
+  structuredData?: StructuredDataOptions;
   oldPrice?: string;
-  listPrice: string;
-  name: string;
-  sku: string | ProductSelector;
+  listPrice?: string;
+  name?: string;
+  sku?: string | ProductSelector;
   image?: string;
+  // Attribute holding the image url, e.g. data-src for lazy loaded images. Defaults to src
+  imageAttribute?: string;
   brand?: string;
   description?: string;
   inStock?: string;

@@ -9,29 +9,30 @@ import { Logger } from 'winston';
 import sanitizeHtml from 'sanitize-html';
 import { CheerioAPI } from 'crawlee';
 import BaseScraper from './BaseScraper.js';
+import { extractStructuredProduct } from './StructuredData.js';
 
 export default class PageHtmlScraper extends BaseScraper {
-  scrapePrices($: CheerioAPI): {
+  scrapePrices(
+    $: CheerioAPI,
+    structuredPrice?: number
+  ): {
     listPrice: number;
     salePrice: number | undefined;
   } {
     const oldPrice = this.selectors.oldPrice
       ? this.evalPrice(this.selectors.oldPrice, $)
       : undefined;
-    const price = this.evalPrice(this.selectors.listPrice, $);
+    const price =
+      structuredPrice ??
+      (this.selectors.listPrice
+        ? this.evalPrice(this.selectors.listPrice, $)
+        : undefined);
     const listPrice = oldPrice && oldPrice > 0 ? oldPrice : price;
     const salePrice = price;
 
     if (!listPrice) throw new Error('Price not found');
 
     return { listPrice, salePrice };
-  }
-
-  isValidCategory(category: string) {
-    if (category.length < 2) return false;
-    const lowerCased = category.toLocaleLowerCase();
-    if (this.categoryBanList.find((item) => item == lowerCased)) return false;
-    return true;
   }
 
   scrapeCategories($: CheerioAPI, productName: string | undefined) {
@@ -68,121 +69,117 @@ export default class PageHtmlScraper extends BaseScraper {
   scrapeAttributes($: CheerioAPI, logger: Logger) {
     const selectors = this.selectors.attributes;
     const attributeGroups: ProductAttributeGroup[] = [];
-    try {
-      if (
-        !selectors?.attribute ||
-        !selectors.attributeLabel ||
-        !selectors.attributeValue ||
-        !selectors.attributesTable
-      ) {
-        return undefined;
+    if (
+      !selectors?.attribute ||
+      !selectors.attributeLabel ||
+      !selectors.attributeValue ||
+      !selectors.attributesTable
+    ) {
+      return undefined;
+    }
+    const attributeTableLocator = $(
+      this.getSelector(selectors.attributesTable)
+    ).filter(function () {
+      //TODO: reduntant code
+      if (selectors.attributeGroup) {
+        const attributeGroups = $(this)
+          .find(selectors.attributeGroup)
+          .filter(function () {
+            const attributes = $(this).find(selectors.attribute);
+            return (
+              attributes.filter(function () {
+                return (
+                  $(this).find(selectors.attributeLabel).length > 0 &&
+                  $(this).find(selectors.attributeValue).length > 0
+                );
+              }).length > 0
+            );
+          });
+        return attributeGroups.length > 0;
+      } else {
+        const attributes = $(this).find(selectors.attribute);
+        return (
+          attributes.filter(function () {
+            return (
+              $(this).find(selectors.attributeLabel).length > 0 &&
+              $(this).find(selectors.attributeValue).length > 0
+            );
+          }).length > 0
+        );
       }
-      const attributeTableLocator = $(
-        this.getSelector(selectors.attributesTable)
-      ).filter(function () {
-        //TODO: reduntant code
-        if (selectors.attributeGroup) {
-          const attributeGroups = $(this)
-            .find(selectors.attributeGroup)
-            .filter(function () {
-              const attributes = $(this).find(selectors.attribute);
-              return (
-                attributes.filter(function () {
-                  return (
-                    $(this).find(selectors.attributeLabel).length > 0 &&
-                    $(this).find(selectors.attributeValue).length > 0
-                  );
-                }).length > 0
-              );
-            });
-          return attributeGroups.length > 0;
-        } else {
-          const attributes = $(this).find(selectors.attribute);
-          return (
-            attributes.filter(function () {
-              return (
-                $(this).find(selectors.attributeLabel).length > 0 &&
-                $(this).find(selectors.attributeValue).length > 0
-              );
-            }).length > 0
-          );
-        }
-      });
+    });
 
-      if (attributeTableLocator.length > 0) {
-        for (const oneTable of attributeTableLocator.toArray()) {
-          const attributeGroupsLocator = selectors.attributeGroup
-            ? $(oneTable)
-                .find(selectors.attributeGroup)
-                .filter(function () {
-                  const attributes = $(this).find(selectors.attribute);
-                  return (
-                    attributes.filter(function () {
-                      return (
-                        $(this).find(selectors.attributeLabel).length > 0 &&
-                        $(this).find(selectors.attributeValue).length > 0
-                      );
-                    }).length > 0
-                  );
-                })
-            : $(oneTable);
-          const groupCount = attributeGroupsLocator.length;
-          if (groupCount > 0) {
-            for (const attributeGroupLocator of attributeGroupsLocator.toArray()) {
-              const groupName = selectors.attributeGroupName
-                ? ($(attributeGroupLocator)
-                    .find(selectors.attributeGroupName)
-                    .first()
-                    .text()
-                    .trim() ?? undefined)
-                : undefined;
-              const attributeLocator = $(attributeGroupLocator)
-                .find(selectors.attribute)
-                .filter(function () {
-                  return (
-                    $(this).find(selectors.attributeLabel).length > 0 &&
-                    $(this).find(selectors.attributeValue).length > 0
-                  );
-                });
+    if (attributeTableLocator.length > 0) {
+      for (const oneTable of attributeTableLocator.toArray()) {
+        const attributeGroupsLocator = selectors.attributeGroup
+          ? $(oneTable)
+              .find(selectors.attributeGroup)
+              .filter(function () {
+                const attributes = $(this).find(selectors.attribute);
+                return (
+                  attributes.filter(function () {
+                    return (
+                      $(this).find(selectors.attributeLabel).length > 0 &&
+                      $(this).find(selectors.attributeValue).length > 0
+                    );
+                  }).length > 0
+                );
+              })
+          : $(oneTable);
+        const groupCount = attributeGroupsLocator.length;
+        if (groupCount > 0) {
+          for (const attributeGroupLocator of attributeGroupsLocator.toArray()) {
+            const groupName = selectors.attributeGroupName
+              ? ($(attributeGroupLocator)
+                  .find(selectors.attributeGroupName)
+                  .first()
+                  .text()
+                  .trim() ?? undefined)
+              : undefined;
+            const attributeLocator = $(attributeGroupLocator)
+              .find(selectors.attribute)
+              .filter(function () {
+                return (
+                  $(this).find(selectors.attributeLabel).length > 0 &&
+                  $(this).find(selectors.attributeValue).length > 0
+                );
+              });
 
-              const attributes: ProductAttribute[] = [];
-              for (const oneAttribute of attributeLocator.toArray()) {
-                try {
-                  const value = $(oneAttribute)
-                    .find(selectors.attributeValue)
-                    .first()
-                    .text();
-                  const name = $(oneAttribute)
-                    .find(selectors.attributeLabel)
-                    .first()
-                    .text();
-                  if (!value) throw new Error('Attribute value not found');
-                  if (!name) throw new Error('Attribute name not found');
-                  attributes.push({
-                    value: value,
-                    name: name
-                  });
-                } catch (e) {
-                  logger.log('debug', 'Error getting attribute: %O', e);
-                  logger.log('debug', 'Attribute: %s', $(oneAttribute).text());
-                }
-              }
-              if (attributes.length > 0) {
-                attributeGroups.push({
-                  name: groupName,
-                  attributes: attributes
+            const attributes: ProductAttribute[] = [];
+            for (const oneAttribute of attributeLocator.toArray()) {
+              try {
+                const value = $(oneAttribute)
+                  .find(selectors.attributeValue)
+                  .first()
+                  .text();
+                const name = $(oneAttribute)
+                  .find(selectors.attributeLabel)
+                  .first()
+                  .text();
+                if (!value) throw new Error('Attribute value not found');
+                if (!name) throw new Error('Attribute name not found');
+                attributes.push({
+                  value: value,
+                  name: name
                 });
+              } catch (e) {
+                logger.log('debug', 'Error getting attribute: %O', e);
+                logger.log('debug', 'Attribute: %s', $(oneAttribute).text());
               }
             }
-          } else {
-            throw new Error('No attribute groups found');
+            if (attributes.length > 0) {
+              attributeGroups.push({
+                name: groupName,
+                attributes: attributes
+              });
+            }
           }
+        } else {
+          throw new Error('No attribute groups found');
         }
-      } else {
-        throw new Error('No attribute tables found');
       }
-    } catch (e) {
-      logger.log('warn', 'Error scraping attributes: %O', e);
+    } else {
+      throw new Error('No attribute tables found');
     }
 
     return attributeGroups.length > 0 ? attributeGroups : undefined;
@@ -212,8 +209,9 @@ export default class PageHtmlScraper extends BaseScraper {
   scrapeImage($: CheerioAPI) {
     if (!this.selectors.image) return undefined;
     const locator = $(this.getSelector(this.selectors.image));
-    const src = locator.attr('src');
-    return src ?? undefined;
+    const src = locator.attr(this.selectors.imageAttribute ?? 'src');
+    if (!src) throw new Error('Image not found');
+    return src;
   }
 
   scrapeBrand($: CheerioAPI) {
@@ -234,8 +232,13 @@ export default class PageHtmlScraper extends BaseScraper {
     url: string,
     logger: Logger
   ): ProductScrapeResult {
-    const sku = this.evalSku($, url);
-    const { listPrice, salePrice } = this.scrapePrices($);
+    const structured = this.selectors.structuredData
+      ? extractStructuredProduct($, this.selectors.structuredData, url)
+      : undefined;
+    if (this.selectors.structuredData && !structured)
+      logger.log('warn', 'No structured data found');
+    const sku = this.evalSku($, url, structured?.sku);
+    const { listPrice, salePrice } = this.scrapePrices($, structured?.price);
     const errors: ProductScrapeErrors = {
       description: false,
       attributes: false,
@@ -247,12 +250,12 @@ export default class PageHtmlScraper extends BaseScraper {
     };
     let inStock, image, name, brand, description, attributeGroups, categories;
     try {
-      inStock = this.scrapeInStock($);
+      inStock = structured?.inStock ?? this.scrapeInStock($);
     } catch (e) {
       errors.inStock = e;
     }
     try {
-      image = this.scrapeImage($);
+      image = structured?.image ?? this.scrapeImage($);
     } catch (e) {
       errors.image = e;
     }
@@ -262,22 +265,34 @@ export default class PageHtmlScraper extends BaseScraper {
       errors.attributes = e;
     }
     try {
-      name = this.evalText(this.selectors.name, $);
+      name =
+        structured?.name ??
+        (this.selectors.name
+          ? this.evalText(this.selectors.name, $)
+          : undefined);
     } catch (e) {
       errors.name = e;
     }
     try {
-      brand = this.scrapeBrand($);
+      brand = structured?.brand ?? this.scrapeBrand($);
     } catch (e) {
       errors.brand = e;
     }
     try {
-      description = this.scrapeDescription($);
+      description = structured?.description
+        ? sanitizeHtml(structured.description)
+        : this.scrapeDescription($);
     } catch (e) {
       errors.description = e;
     }
     try {
-      categories = this.scrapeCategories($, name);
+      const structuredCategories = structured?.categories
+        ? this.cleanCategories(structured.categories, name)
+        : [];
+      categories =
+        structuredCategories.length > 0
+          ? structuredCategories
+          : this.scrapeCategories($, name);
     } catch (e) {
       errors.categories = e;
     }
@@ -293,7 +308,7 @@ export default class PageHtmlScraper extends BaseScraper {
       attributes: attributeGroups,
       url: this.getRelativeUrl(url),
       categories: categories,
-      gtin: undefined
+      gtin: structured?.gtin
     };
     logger.log('info', 'Found product: %O', product);
     if (product.attributes) {
@@ -320,30 +335,18 @@ export default class PageHtmlScraper extends BaseScraper {
     return parseInt(string.replace(/\D/g, ''));
   }
 
-  evalSku($: CheerioAPI, url: string) {
+  evalSku($: CheerioAPI, url: string, structuredSku?: string) {
+    const { sku } = this.selectors;
     let string;
-    if (typeof this.selectors.sku !== 'string') {
-      if (this.selectors.sku.source === 'url') {
-        const parts = url.split(this.selectors.sku.delimiter);
-        if (this.selectors.sku.index === 'first') {
-          string = parts[0].trim();
-        } else if (this.selectors.sku.index === 'last') {
-          string = parts[parts.length - 1].trim();
-        } else {
-          string = parts[this.selectors.sku.index].trim();
-        }
-      }
-    } else {
-      string = this.evalText(this.selectors.sku, $);
-      if (this.sanitizers?.sku) {
-        for (const sanitizer of this.sanitizers.sku) {
-          string = string?.replace(sanitizer.match, sanitizer.replace);
-        }
-      }
+    if (structuredSku !== undefined) {
+      string = structuredSku;
+    } else if (typeof sku === 'string') {
+      string = this.evalText(sku, $);
+    } else if (sku?.source === 'url') {
+      string = this.skuFromUrl(url, sku);
+    } else if (sku?.source === 'attribute') {
+      string = $(this.getSelector(sku.selector)).first().attr(sku.attribute);
     }
-    string = string?.trim();
-    if (!string || string.length < 2)
-      throw new Error(`Sku ${string} is not valid`);
-    return string;
+    return this.sanitizeSku(string);
   }
 }

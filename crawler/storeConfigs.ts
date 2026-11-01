@@ -55,26 +55,25 @@ export const configs: WebshopCrawlerOptions[] = [
   },
   {
     storeId: 2,
-    startUrl: 'https://tolvutek.is',
-    type: 'crawler',
-    productPageIdentifier: 'Hvar er varan til?',
-    scrollPagesToBottom: true,
-    urlWhitelist: ['/SelectCat', '/SelectProd'],
+    // Moved to Odoo (/shop/...) in October 2026, the JSON-LD sku is the old Vörunúmer
+    startUrl: 'https://www.tolvutek.is',
+    type: 'httpcrawler',
+    productPageIdentifier: '"@type": "Product"',
+    // Category pages only list subcategories, products are found through the sitemap
+    sitemapUrls: ['https://www.tolvutek.is/sitemap.xml'],
+    urlWhitelist: ['/shop'],
+    urlBlacklist: ['/shop/category', '/shop/cart', '/shop/wishlist'],
     selectors: {
-      productPage: '#page',
-      oldPrice: '.tolvutek-prices .list-price',
-      listPrice: '.payinfo .price',
-      name: 'h1.prod-name',
-      sku: '.payinfo .prod-number',
-      image: '.image-gallery-slides > div:nth-child(1) > img',
-      description: '#product-description',
-      categories: '#breadcrumbs',
-      inStock: '.payinfo .availability',
-      inStockText: 'Til í netverslun',
-      categoryItemLocator: 'span.breadcrumb-item',
-      brand: '',
+      productPage: 'main',
+      structuredData: { source: 'jsonld' },
+      description: '#product_full_description',
+      categories: '.breadcrumb',
+      categoryItemLocator: 'li',
       attributes: {
-        attributesTable: '#technical-description tbody',
+        attributesTable: '#product_specifications',
+        // No <tbody> in the source and the crawler's parser does not add one
+        attributeGroup: 'table',
+        attributeGroupName: 'tr > th',
         attribute: 'tr',
         attributeLabel: 'td:nth-child(1)',
         attributeValue: 'td:nth-child(2)'
@@ -93,7 +92,7 @@ export const configs: WebshopCrawlerOptions[] = [
     storeId: 3,
     startUrl: 'https://tl.is',
     type: 'httpcrawler',
-    productPageIdentifier: 'BaseProductPageLayout',
+    productPageIdentifier: '"@type":"Product"',
     urlBlacklist: [
       '/giftcard',
       '/contact',
@@ -118,25 +117,27 @@ export const configs: WebshopCrawlerOptions[] = [
     selectors: {
       productPage:
         '#__next > div > div > div.rz-main-content-backup > div > main > div > div',
-      oldPrice:
-        '.product-details > .section-price > .product-sale > span > strike',
-      listPrice: '.product-details > .section-price > h4',
+      // Price and stock are rendered client-side, so they come from JSON-LD. Its
+      // availability is unreliable (OutOfStock for products in stock) and the sale
+      // price is not in the HTML. JSON-LD sku is the parent of configurable products,
+      // keep the variant sku from the page. JSON-LD brand is an id.
+      structuredData: {
+        source: 'jsonld',
+        fields: { sku: false, brand: false, inStock: false, description: false }
+      },
       name: '.product-details .title-content > h1',
       sku: '.product-details .title-content > p',
       image: '.section-gallery .image-large-display img',
       description: '.detail-desc div.rz-magento-html',
       categories: '.page-breadcrumb > ul',
-      inStock: '.available-stores-info',
-      inStockText: 'Til á lager',
-      clickers: ['.detail-spec > .section-title'],
       categoryItemLocator: 'li',
       attributes: {
         attributesTable:
-          '.detail-spec > .section-content:not(.closed) > div > div',
+          '.page-section-left-wrapper .detail-spec > .section-content',
         attribute: '.product-spec-group > div',
         attributeLabel: '.product-spec-label > p',
         attributeValue: '.product-spec-content > p',
-        attributeGroup: 'div',
+        attributeGroup: 'div:has(> .product-spec-group-label)',
         attributeGroupName: '.product-spec-group-label > p'
       }
     }
@@ -145,28 +146,19 @@ export const configs: WebshopCrawlerOptions[] = [
     storeId: 4,
     startUrl: 'https://elko.is',
     type: 'httpcrawler',
-    productPageIdentifier: 'isProductPage',
+    // isProductPage is also in the page data of category pages
+    productPageIdentifier: '"@type":"Product"',
     urlWhitelist: ['/vorur', '/voruflokkar'],
     selectors: {
       productPage: 'main > div',
-      oldPrice:
-        'div:nth-child(4) > div > div > div:nth-child(1) > div:nth-child(3) > div > div > div.notDutyFree > div:nth-child(2) > span',
-      listPrice:
-        'div:nth-child(4) > div > div > div:nth-child(1) > div:nth-child(3) > div > div > div.notDutyFree > div:nth-child(1) > span',
-      name: 'div:nth-child(4) > div > div > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > h2',
-      sku: 'div:nth-child(4) > div > div > div:nth-child(1) > div:nth-child(3) > div:nth-child(1) > div:nth-child(1) > span',
-      image:
-        'div:nth-child(4) > div > div > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div > div:nth-child(1) > div > picture > img',
-      description:
-        'div:nth-child(4) > div > div > div:nth-child(2) > div:nth-child(2) > div',
-      categories: 'nav > div > div > div:nth-child(2)',
-      inStock:
-        'div:nth-child(4) > div > div > div:nth-child(1) > div:nth-child(3) > div:nth-child(6) > div:nth-child(1) > div > div:nth-child(1) > span',
-      inStockText: 'Til á lager',
-      categoryItemLocator: 'a',
+      structuredData: {
+        source: 'jsonld',
+        fields: { categories: 'breadcrumbs' }
+      },
+      // First div is the price, the second holds the old price when on sale
+      oldPrice: '.notDutyFree > div:nth-child(2) > span',
       attributes: {
-        attributesTable:
-          'div:nth-child(4) > div > div > div:nth-child(2) > div:nth-child(3) > dl',
+        attributesTable: 'dl',
         attribute: 'div',
         attributeLabel: 'dt',
         attributeValue: 'dd'
@@ -185,8 +177,8 @@ export const configs: WebshopCrawlerOptions[] = [
       listPrice: '.pantavoru .displayPrice',
       name: '.single-product > h2',
       sku: '.pantavoru > div:nth-child(4)',
-      image:
-        '.productImg > .product-image-main .owl-item:nth-child(1) img.mainimg',
+      image: '.productImg img.mainimg',
+      imageAttribute: 'data-src',
       description: '.product-desc > .tab-content',
       categories: '.breadcrumb',
       inStock: '.status',
@@ -195,11 +187,11 @@ export const configs: WebshopCrawlerOptions[] = [
       brand: '.pantavoru > .extraInfo:nth-child(3) > a',
       attributes: {
         attributesTable: '.col-sm-6',
-        attribute: 'tbody > tr',
+        attribute: 'tr',
         attributeLabel: 'td:nth-child(1)',
         attributeValue: 'td:nth-child(2)',
         attributeGroup: 'table.spectable',
-        attributeGroupName: 'tbody > tr:nth-child(1) > th'
+        attributeGroupName: 'th'
       }
     },
     sanitizers: {
@@ -244,7 +236,7 @@ export const configs: WebshopCrawlerOptions[] = [
     storeId: 8,
     startUrl: 'https://ht.is',
     type: 'httpcrawler',
-    productPageIdentifier: 'product-details',
+    productPageIdentifier: '"@type":"Product"',
     urlBlacklist: [
       '/giftcard',
       '/contact',
@@ -270,30 +262,28 @@ export const configs: WebshopCrawlerOptions[] = [
     ],
     selectors: {
       productPage: '#__next > div > div > div.rz-main-content-backup',
-      oldPrice: '.product-details > .section-price > .product-sale strike',
-      listPrice: '.product-details > .section-price > h4',
+      // Same platform as tl.is, see the notes there
+      structuredData: {
+        source: 'jsonld',
+        fields: { sku: false, brand: false, inStock: false, description: false }
+      },
       name: '.product-details .title-content > h1',
       sku: '.product-details .title-content > p',
       image: '.section-gallery .image-large-display .rz-image-view img',
       description:
         '.page-section-left-wrapper .page-details-section .product-detail-section.detail-desc > div.section-content .rz-magento-html',
       categories: '.page-breadcrumb ul',
-      inStock: '.available-stores-container',
-      inStockText: 'Til á lager',
       categoryItemLocator: 'p',
       brand: '',
       attributes: {
         attributesTable:
-          '.page-product-section .product-detail-section.detail-spec > div.section-content > div > div',
+          '.page-section-left-wrapper .detail-spec > .section-content',
         attribute: '.product-spec-group > div',
         attributeLabel: '.product-spec-label > p',
         attributeValue: '.product-spec-content > p',
-        attributeGroup: 'div',
+        attributeGroup: 'div:has(> .product-spec-group-label)',
         attributeGroupName: '.product-spec-group-label'
-      },
-      clickers: [
-        '.page-product-section .product-detail-section.detail-spec .section-title'
-      ]
+      }
     }
   },
   {
@@ -313,10 +303,9 @@ export const configs: WebshopCrawlerOptions[] = [
         '.item_swift_productdetailsimage .carousel .carousel-item.active img',
       description:
         '.item_swift_productlongdescription > div > div:nth-child(2)',
-      categories: '.breadcrumb',
+      // The breadcrumb only holds "Vörur" and the product name, categories are only in the JS menu
       inStock: '.item_swift_productaddtocart_custom .js-add-to-cart-button',
-      inStockText: 'Bæta í körfu',
-      categoryItemLocator: 'a'
+      inStockText: 'Bæta í körfu'
     }
   },
   {
@@ -339,7 +328,7 @@ export const configs: WebshopCrawlerOptions[] = [
       listPrice: '#product-prices > p:last-child',
       name: '#product-title',
       sku: '#product-sku',
-      image: '.swiper-slide-active img',
+      image: '#product-image .product-images-slider__image img',
       description: '#product-description',
       categories: '.breadcrumbs',
       categoryItemLocator: 'a'
@@ -349,35 +338,19 @@ export const configs: WebshopCrawlerOptions[] = [
   {
     storeId: 11,
     startUrl: 'https://kronan.is',
-    type: 'crawler',
-    productPageIdentifier: 'Innihald:</p>',
+    type: 'httpcrawler',
+    productPageIdentifier: '"@type":"Product"',
     urlWhitelist: ['/vara', '/voruurval'],
     selectors: {
-      productPage:
-        'body > main > div:nth-child(1) > div:nth-child(1) > main > div:nth-child(2) > div > div > div:nth-child(1)',
-      oldPrice: '',
-      listPrice:
-        'div:nth-child(2) > div:nth-child(2) > div > div:nth-child(2) > div > div > p:nth-child(1)',
-      name: 'div:nth-child(2) > div:nth-child(2) > div > div:nth-child(1)',
-      sku: {
-        source: 'url',
-        index: 'first',
-        delimiter: '-'
-      },
-      image: '.w-full > .border-none > img.w-full',
-      description:
-        'div:nth-child(2) > div:nth-child(2) > div > div:nth-child(6)',
-      categories: 'div:nth-child(1)',
-      inStock: 'div:nth-child(2) > div:nth-child(2) > div > div:nth-child(4)',
-      inStockText: 'Í vöruúrvali',
-      categoryItemLocator: 'a'
+      productPage: 'main',
+      structuredData: { source: 'jsonld', fields: { categories: 'category' } }
     }
   },
   {
     storeId: 12,
     startUrl: 'https://hagkaup.is',
     type: 'httpcrawler',
-    productPageIdentifier: 'Vörulýsing',
+    productPageIdentifier: '"@type":"Product"',
     urlBlacklist: [
       '/opnunartimi',
       '/um-okkur',
@@ -396,6 +369,12 @@ export const configs: WebshopCrawlerOptions[] = [
     ],
     selectors: {
       productPage: '#main-content',
+      // category is "Snyrtivara|Förðun|Varir|Varalitir"
+      structuredData: {
+        source: 'jsonld',
+        fields: { categories: 'category' },
+        categorySplitter: '|'
+      },
       oldPrice: '',
       listPrice: 'p:contains("Verð")',
       name: 'div > div > p.font-serif',
@@ -412,6 +391,11 @@ export const configs: WebshopCrawlerOptions[] = [
       sku: [
         {
           match: 'Vörunúmer:',
+          replace: ''
+        },
+        {
+          // JSON-LD sku is HAG_1256317
+          match: 'HAG_',
           replace: ''
         }
       ]
@@ -453,10 +437,9 @@ export const configs: WebshopCrawlerOptions[] = [
       sku: '.details > div:nth-child(1)',
       image: '.image-carousel ol > li:nth-child(1) > img',
       description: '.details__description',
-      categories: '.breadcrumbs > ul',
+      // The breadcrumb only holds "Vöruflokkar" and the product name
       inStock: '.detail__actions',
       inStockText: 'Bæta í körfu',
-      categoryItemLocator: 'li',
       attributes: {
         attributesTable: '#info-tabs .tabs__panel > div',
         attribute: 'div > div',
@@ -470,8 +453,8 @@ export const configs: WebshopCrawlerOptions[] = [
   {
     storeId: 15,
     startUrl: 'https://www.bauhaus.is',
-    type: 'crawler',
-    productPageIdentifier: 'Vöruupplýsingar',
+    type: 'httpcrawler',
+    productPageIdentifier: '"@type":"Product"',
     urlBlacklist: [
       '/afgreidslutimar',
       '/fyrirtaekjasvid-bauhaus',
@@ -499,49 +482,46 @@ export const configs: WebshopCrawlerOptions[] = [
       '/cookie-policy'
     ],
     selectors: {
-      productPage: '#main-content > div',
-      oldPrice: '',
-      listPrice:
-        '#main-content > div > div.pb-15.lg:grid.lg:gap-11.lg:[grid-template-areas:"gallery_details"_"description_details"].lg:[grid-template-columns:1fr_400px].xl:[grid-template-columns:1fr_565px] > div.flex.flex-col.gap-11.sm:gap-7.[grid-area:details].lg:sticky.mb-11.lg:top-15.lg:h-min.lg:mb-0 > div.productPrice-module-scss-module__YcM8Vq__pdpPrices > div > div.productPrice-module-scss-module__YcM8Vq__priceGroup > div',
-      name: 'h1.page-title > span',
-      sku: 'tr:contains("Strikamerki") > td',
-      image: '#interactive-0',
-      description: 'div.description',
-      categories: '.breadcrumbs',
-      inStock: '.delivery-type-switcher',
-      inStockText: 'stk. á lager',
-      categoryItemLocator: 'li > a',
+      // #main-content is empty in the server rendered html
+      productPage: 'body',
+      // Products used to be keyed by the barcode (Strikamerki), which is the gtin
+      structuredData: { source: 'jsonld', fields: { sku: 'gtin' } },
+      categories: 'ul[data-testid="breadcrumbs"]',
+      categoryItemLocator: 'li',
       attributes: {
-        attributesTable: '.product-details__item table > tbody',
+        attributesTable: 'table.table-auto',
         attribute: 'tr',
-        attributeLabel: 'th',
-        attributeValue: 'td'
+        attributeLabel: 'td:nth-child(1)',
+        attributeValue: 'td:nth-child(2)'
       }
     }
   },
   {
     storeId: 16,
     startUrl: 'https://byko.is',
-    type: 'crawler',
+    type: 'httpcrawler',
     productPageIdentifier: 'id="product-ean-numbers"',
     urlWhitelist: ['/vara', '/voruflokkar'],
-    menuClicker: '.menuButton',
     selectors: {
       productPage: '#wrapper',
+      structuredData: {
+        source: 'nextdata',
+        fields: {
+          price: 'props.pageProps.product.variants.0.price.gross',
+          name: 'props.pageProps.product.name',
+          brand: 'props.pageProps.product.attributes.brand',
+          image: [
+            'props.pageProps.product.variants.0.firstImage.image.productGallery',
+            'props.pageProps.product.firstImage.image.productGallery'
+          ],
+          description: 'props.pageProps.product.description.is',
+          inStock: 'props.pageProps.product.webstoreInStock',
+          categories: 'props.pageProps.breadCrumbs'
+        }
+      },
       oldPrice:
         'div:nth-child(2) div:nth-child(2) div:contains("VERÐ ÁÐUR") > div:nth-child(1) > div:nth-child(2) > span',
-      listPrice:
-        'div:nth-child(2) div:nth-child(2) div:contains("VERÐ") > div:nth-child(1) > div:nth-child(1) > span',
-      name: 'h2',
-      sku: 'p:contains("VNR.")',
-      image: 'div > div:nth-child(1) > img',
-      description:
-        'div.visible > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(3)',
-      categories: 'div:nth-child(1) > div:nth-child(1)',
-      inStock:
-        'div.visible > div:nth-child(1) > div:nth-child(2) > div:nth-child(2) > div:nth-child(8)',
-      inStockText: 'Til á lager',
-      categoryItemLocator: 'div > a > p'
+      sku: 'p:contains("VNR.")'
     },
     sanitizers: {
       sku: [
@@ -572,7 +552,12 @@ export const configs: WebshopCrawlerOptions[] = [
         '#product-details-form > div.productsimple > div:nth-child(1) > div.product-essential.varacontainer',
       listPrice: '.product-price > p',
       name: 'h1.varaheading',
-      sku: 'div.vara-sku',
+      // The visible sku span is filled in by JS, its id holds the product id (sku-1278)
+      sku: {
+        source: 'attribute',
+        selector: 'span.vara-sku[id^="sku-"]',
+        attribute: 'id'
+      },
       image: '.picture-gallery > .picture > img',
       description: '.short-description',
       categories: '.breadcrumb',
@@ -580,6 +565,14 @@ export const configs: WebshopCrawlerOptions[] = [
       inStockText: 'Til á lager',
       categoryItemLocator: 'ul > li > a > span',
       brand: 'div.vara-sku > span:nth-child(1)'
+    },
+    sanitizers: {
+      sku: [
+        {
+          match: 'sku-',
+          replace: ''
+        }
+      ]
     }
   },
   {
@@ -607,10 +600,22 @@ export const configs: WebshopCrawlerOptions[] = [
     ],
     selectors: {
       productPage: 'div.rz-main-content-backup > div > main > div > div',
+      // Same platform as tl.is. The gallery is rendered client-side, only the image is
+      // taken from JSON-LD, its sku is the parent of the variant on the page.
+      structuredData: {
+        source: 'jsonld',
+        fields: {
+          sku: false,
+          name: false,
+          brand: false,
+          price: false,
+          inStock: false
+        }
+      },
       listPrice: '.section-price > h4',
       name: '.title-content > h1',
       sku: '.title-content > p',
-      image: '.image-item:nth-child(1) > div > img',
+      description: '.detail-desc div.rz-magento-html',
       categories: '.page-breadcrumb > ul',
       inStock: '.stocks-delivery-wrapper',
       inStockText: 'Til á lager',
@@ -622,33 +627,30 @@ export const configs: WebshopCrawlerOptions[] = [
     storeId: 19,
     startUrl: 'https://hverslun.is',
     type: 'httpcrawler',
-    productPageIdentifier: 'storeProductForm',
+    productPageIdentifier: '"@type": "Product"',
     urlBlacklist: [
-      '/is/nyskraning-i-h-klubbinn',
-      '/is/moya',
-      '/is/vefverslun/leit',
-      '/is/um-okkur',
-      '/is/hafa-samband',
-      '/is/afhendingar-og-sendingarmati',
-      '/is/skilarettur',
-      '/is/algengar-spurningar',
-      '/is/fridindi-fyrir-h-felaga',
-      '/is/personuverndaryfirlysing-h-verslunar',
-      '/is/skilmalar'
+      '/build-hverslun',
+      '/um-okkur',
+      '/innskraning',
+      '/minar-sidur',
+      '/gjafabref',
+      '/h-klubburinn',
+      '/skilmalar',
+      '/personuverndarstefna',
+      '/leit',
+      '/gefdu-gjafabref-sem-gledur-og-hvetur'
     ],
     selectors: {
-      productPage: '#main > div > div > div > div',
-      oldPrice:
-        '.storeProductForm > .storePrice > .value > .hasDiscount > .overwritten',
-      listPrice: '.storeProductForm > .storePrice .price',
-      name: 'h1.title',
-      sku: '.variantReference .value',
-      image: '.coverImage .swiper-slide-active img',
-      description: '.extraDesc .wrap',
-      categories: '.seeMoreInCategory > a',
-      inStock: '.controls > .cartSubmit',
-      inStockText: 'Setja í körfu',
-      categorySplitter: ':'
+      productPage: '#main',
+      // The price on the page is filled in by JS, JSON-LD has the price, sku and name.
+      // Stock and sale price are not in the html.
+      structuredData: { source: 'jsonld' },
+      sku: '.product-page-details__sku--desktop',
+      brand: '.product-page-details__brand',
+      image: '.product-page-image-slider__image',
+      description: '.product-description__text',
+      categories: '.breadcrumbs-desktop',
+      categoryItemLocator: 'a'
     },
     sanitizers: {
       sku: [
@@ -662,14 +664,19 @@ export const configs: WebshopCrawlerOptions[] = [
   {
     storeId: 20,
     startUrl: 'https://ikea.is',
-    type: 'crawler',
-    productPageIdentifier: 'class="productBox',
+    type: 'httpcrawler',
+    productPageIdentifier: '"@type": "Product"',
     urlWhitelist: ['/is/products'],
     selectors: {
-      productPage: '.contentWrapper-container',
+      // The package info (#collapsePackageWeight) is outside .contentWrapper-container
+      productPage: 'body',
+      // mpn is the article number (195.281.67), brand holds the product type
+      structuredData: {
+        source: 'jsonld',
+        fields: { sku: 'mpn', brand: false }
+      },
       oldPrice: '.itemOldPrice > .oldValue > .price__integer',
       listPrice: '.price > span > .price__integer',
-      name: '.itemInfo > div:nth-child(1) > span',
       sku: '.productNumber',
       image: '#react-product-gallery > div:nth-child(1) img',
       description: '.custom-benefit-resume-container',
@@ -682,8 +689,7 @@ export const configs: WebshopCrawlerOptions[] = [
         attribute: 'tr',
         attributeLabel: 'td:nth-child(1)',
         attributeValue: 'td:nth-child(2)'
-      },
-      clickers: ['a#modal-product-size']
+      }
     }
   },
   {

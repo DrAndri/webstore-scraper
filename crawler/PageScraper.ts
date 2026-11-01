@@ -24,6 +24,8 @@ export default class PageScraper extends BaseScraper {
           ? await this.evalPrice(this.selectors.oldPrice, productLocator)
           : undefined;
     }
+    if (!this.selectors.listPrice)
+      throw new Error('No listPrice selector configured');
     const price = await this.evalPrice(
       this.selectors.listPrice,
       productLocator
@@ -36,13 +38,6 @@ export default class PageScraper extends BaseScraper {
     if (!listPrice) throw new Error('Price not found');
 
     return { listPrice, salePrice };
-  }
-
-  isValidCategory(category: string) {
-    if (category.length < 2) return false;
-    const lowerCased = category.toLocaleLowerCase();
-    if (this.categoryBanList.find((item) => item == lowerCased)) return false;
-    return true;
   }
 
   async scrapeCategories(
@@ -193,7 +188,9 @@ export default class PageScraper extends BaseScraper {
   async scrapeImage(productLocator: Locator) {
     if (!this.selectors.image) return undefined;
     const locator = productLocator.locator(this.selectors.image).first();
-    const src = await locator.getAttribute('src');
+    const src = await locator.getAttribute(
+      this.selectors.imageAttribute ?? 'src'
+    );
     return src ?? undefined;
   }
 
@@ -252,12 +249,12 @@ export default class PageScraper extends BaseScraper {
       return undefined;
     });
 
-    const name = await this.evalText(this.selectors.name, productLocator).catch(
-      (e) => {
-        errors.name = e;
-        return undefined;
-      }
-    );
+    const name = this.selectors.name
+      ? await this.evalText(this.selectors.name, productLocator).catch((e) => {
+          errors.name = e;
+          return undefined;
+        })
+      : undefined;
     const brand = await this.scrapeBrand(productLocator).catch((e) => {
       errors.brand = e;
       return undefined;
@@ -313,30 +310,18 @@ export default class PageScraper extends BaseScraper {
   }
 
   async evalSku(locator: Locator) {
+    const { sku } = this.selectors;
     let string;
-    if (typeof this.selectors.sku !== 'string') {
-      if (this.selectors.sku.source === 'url') {
-        const url = locator.page().url();
-        const parts = url.split(this.selectors.sku.delimiter);
-        if (this.selectors.sku.index === 'first') {
-          string = parts[0].trim();
-        } else if (this.selectors.sku.index === 'last') {
-          string = parts[parts.length - 1].trim();
-        } else {
-          string = parts[this.selectors.sku.index].trim();
-        }
-      }
-    } else {
-      string = await this.evalText(this.selectors.sku, locator);
-      if (this.sanitizers?.sku) {
-        for (const sanitizer of this.sanitizers.sku) {
-          string = string?.replace(sanitizer.match, sanitizer.replace);
-        }
-      }
+    if (typeof sku === 'string') {
+      string = await this.evalText(sku, locator);
+    } else if (sku?.source === 'url') {
+      string = this.skuFromUrl(locator.page().url(), sku);
+    } else if (sku?.source === 'attribute') {
+      string = await locator
+        .locator(sku.selector)
+        .first()
+        .getAttribute(sku.attribute);
     }
-    string = string?.trim();
-    if (!string || string.length < 2)
-      throw new Error(`Sku ${string} is not valid`);
-    return string;
+    return this.sanitizeSku(string);
   }
 }
