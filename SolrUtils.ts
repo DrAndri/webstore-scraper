@@ -25,7 +25,11 @@ export type SolrProduct = Omit<Product, 'firstSeenDate' | 'lastChangeDate'> & {
   [key: `attr_${string}`]: string | undefined;
 };
 
-const SOLR_URL = process.env.SOLR_URL ?? 'http://localhost:8983/solr';
+// Without a trailing slash, Solr answers 400 to a double slash in the path
+const SOLR_URL = (process.env.SOLR_URL ?? 'http://localhost:8983/solr').replace(
+  /\/+$/,
+  ''
+);
 
 const submitUpdate = async (
   core: string,

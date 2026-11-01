@@ -5,7 +5,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const SOLR_URL = process.env.SOLR_URL ?? 'http://localhost:8983/solr';
+// Without a trailing slash, Solr answers 400 to a double slash in the path
+const SOLR_URL = (process.env.SOLR_URL ?? 'http://localhost:8983/solr').replace(
+  /\/+$/,
+  ''
+);
 const CONFIGSET_DIR = process.env.SOLR_CONFIGSET_DIR ?? 'solr-configsets';
 
 interface XmlElement {
@@ -211,17 +215,19 @@ export const syncSolrSchemas = async (): Promise<string[]> => {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
   const changed: string[] = [];
+  const failed: string[] = [];
   for (const core of cores) {
     try {
       if ((await syncCore(core)).length > 0) changed.push(core);
     } catch (e) {
+      failed.push(core);
       console.log(`Syncing the schema of Solr core ${core} failed`, e);
     }
   }
-  console.log(
-    changed.length
-      ? `Solr schemas updated: ${changed.join(', ')}`
-      : 'Solr schemas are up to date'
-  );
+  if (changed.length)
+    console.log(`Solr schemas updated: ${changed.join(', ')}`);
+  if (failed.length)
+    console.log(`Solr schemas not synced: ${failed.join(', ')}`);
+  else if (!changed.length) console.log('Solr schemas are up to date');
   return changed;
 };

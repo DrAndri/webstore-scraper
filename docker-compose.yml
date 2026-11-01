@@ -104,10 +104,12 @@ services:
       - ./solr-configsets:/configsets:ro
     # Creates a core from each configset that does not have one yet. The
     # scraper keeps the schemas of existing cores in sync with the configsets.
+    # Solr 10 starts in SolrCloud mode unless told otherwise, these are
+    # standalone cores so it runs in user managed mode.
     command:
       - bash
       - '-c'
-      - 'for dir in /configsets/*/; do precreate-core "$$(basename "$$dir")" "$$dir"; done; exec solr-foreground'
+      - 'for dir in /configsets/*/; do precreate-core "$$(basename "$$dir")" "$$dir"; done; exec solr-foreground --user-managed'
     environment:
       - SOLR_HEAP=4g
     healthcheck:
