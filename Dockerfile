@@ -25,8 +25,11 @@ ENV NODE_ENV=production
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 # Chromium and its system libraries for the crawler type, the version comes from
 # the installed playwright package. PlaywrightCrawler launches Chromium unless
-# told otherwise.
-RUN npx playwright install --with-deps chromium
+# told otherwise. Crawlee measures the memory of the browsers with ps, which the
+# slim image leaves out.
+RUN npx playwright install --with-deps chromium \
+  && apt-get install -y --no-install-recommends procps \
+  && rm -rf /var/lib/apt/lists/*
 
 # package.json makes dist an ES module package
 COPY package.json ./
