@@ -1,6 +1,8 @@
 **/.classpath
 **/.dockerignore
-#**/.env
+**/.env
+# Built in the image, a local build could hold files of deleted sources
+/dist
 **/.git
 **/.gitignore
 **/.project
