@@ -35,6 +35,18 @@ services:
     build:
       context: ../webstore-api
       dockerfile: Dockerfile
+      # The pages that list the stores are prerendered with the stores in the
+      # database, so mariadb must be running and filled before the build.
+      # Builds can not join the compose network, mariadb is reached through its
+      # published port on the host.
+      extra_hosts:
+        - host.docker.internal:host-gateway
+      args:
+        MARIADB_HOST: host.docker.internal
+        MARIADB_USER: ${MARIADB_API_USER}
+        MARIADB_DATABASE: ${MARIADB_DATABASE}
+      secrets:
+        - mariadb_password
     environment:
       MARIADB_HOST: ${MARIADB_HOST}
       MARIADB_DATABASE: ${MARIADB_DATABASE}
@@ -123,3 +135,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+
+# Build secret of webstore-api, the password of the webstore-api database user
+secrets:
+  mariadb_password:
+    environment: MARIADB_API_PASSWORD
