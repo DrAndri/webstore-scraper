@@ -42,7 +42,8 @@ const submitUpdate = async (
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(data, <T>(value: T) =>
+    // The replacer gets the key first, returning it would send "" as the body
+    body: JSON.stringify(data, (_key, value: unknown) =>
       typeof value === 'bigint' ? value.toString() : value
     )
   });
