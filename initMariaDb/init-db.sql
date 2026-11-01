@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     status ENUM('queued', 'running', 'succeeded', 'failed', 'cancelled') NOT NULL DEFAULT 'queued',
     cancelRequested BOOLEAN NOT NULL DEFAULT FALSE,
     -- GitHub login of the admin that queued the job
-    requestedBy VARCHAR(64),
+    requestedBy VARCHAR(255),
 
     -- All times are UTC
     queuedAt DATETIME NOT NULL,
@@ -64,7 +64,7 @@ CREATE TABLE IF NOT EXISTS webstorinator.scraperSchedules (
     cron VARCHAR(64) NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT FALSE,
     updatedAt DATETIME,
-    updatedBy VARCHAR(64),
+    updatedBy VARCHAR(255),
     lastRunAt DATETIME,
     lastError VARCHAR(255)
 );
@@ -163,15 +163,18 @@ CREATE TABLE IF NOT EXISTS webstorinator.apiUsers (
     -- The single anonymous row holds the limits of the tokens that website
     -- visitors get automatically
     anonymous BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Can sign in to the admin interface with the email address
+    admin BOOLEAN NOT NULL DEFAULT FALSE,
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
     -- Limits of each token of the user
     requestsPerMinute INT UNSIGNED NOT NULL DEFAULT 60,
     requestsPerDay INT UNSIGNED NOT NULL DEFAULT 10000,
     -- All times are UTC
     createdAt DATETIME NOT NULL,
-    createdBy VARCHAR(64),
+    createdBy VARCHAR(255),
     updatedAt DATETIME,
-    updatedBy VARCHAR(64)
+    updatedBy VARCHAR(255),
+    UNIQUE INDEX uq_apiUsers_email (email)
 );
 
 CREATE TABLE IF NOT EXISTS webstorinator.apiTokens (
@@ -183,7 +186,7 @@ CREATE TABLE IF NOT EXISTS webstorinator.apiTokens (
     -- SHA-256 of the token, the token itself is only shown when it is created
     hash CHAR(64) NOT NULL UNIQUE,
     createdAt DATETIME NOT NULL,
-    createdBy VARCHAR(64),
+    createdBy VARCHAR(255),
     lastUsedAt DATETIME,
     revokedAt DATETIME,
     CONSTRAINT fk_apiTokens_user FOREIGN KEY (userId) REFERENCES webstorinator.apiUsers(id) ON DELETE CASCADE
