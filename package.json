@@ -7,7 +7,8 @@
   "types": "types/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "lint": "eslint ."
   },
   "author": "Andri Þórhallsson <andrithorhalls@gmail.com>",
   "license": "ISC",
@@ -29,13 +30,13 @@
     "winston-loki": "^6.1.7"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.7",
     "@eslint/js": "^10.0.1",
     "@types/node-cron": "^3.0.11",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
-    "typescript": "^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.72.1"
   },
   "repository": "https://github.com/DrAndri/webstore-scraper.git"
