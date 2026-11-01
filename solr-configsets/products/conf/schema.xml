@@ -47,6 +47,16 @@
     </analyzer>
   </fieldType>
 
+  <!-- Whole value, case and accent insensitive. Used by the advanced search in
+       webstore-api for starts with, ends with, includes and exact matches. -->
+  <fieldType name="text_ci" class="solr.TextField" positionIncrementGap="100">
+    <analyzer>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
   <!-- Required Solr internal fields -->
   <field name="_version_" type="plong" indexed="false" stored="false"/>
   <field name="_root_" type="string" indexed="true" stored="false" docValues="false"/>
@@ -73,6 +83,16 @@
 
   <!-- Dynamic attribute fields -->
   <dynamicField name="attr_*" type="string" indexed="true" stored="true" multiValued="true"/>
+
+  <!-- Advanced search in webstore-api -->
+  <!-- Ids of the attributes a product has, faceted to find the attributes in a result -->
+  <field name="attrIds" type="pint" indexed="true" stored="false" docValues="true" multiValued="true"/>
+  <field name="name_ci" type="text_ci" indexed="true" stored="false"/>
+  <field name="sku_ci" type="text_ci" indexed="true" stored="false"/>
+  <dynamicField name="attrci_*" type="text_ci" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="name" dest="name_ci"/>
+  <copyField source="sku" dest="sku_ci"/>
+  <copyField source="attr_*" dest="attrci_*"/>
 
   <uniqueKey>id</uniqueKey>
 </schema>

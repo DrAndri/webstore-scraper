@@ -5,6 +5,7 @@ import { indexEverything } from './SQLStoreUpdater.js';
 import migrate from './MongoToSQLMigrate.js';
 import JobRunner from './JobRunner.js';
 import Scheduler from './Scheduler.js';
+import { syncSolrSchemas } from './SolrSchema.js';
 import StoreConfigLoader from './StoreConfigLoader.js';
 
 dotenv.config();
@@ -40,7 +41,24 @@ if (process.env.RUN_MONGO_TO_SQL_MIGRATION === 'true') {
   await migrate(mongoDb).catch((error) => console.log(error));
 }
 
-if (process.env.INDEX_EVERYTHING === 'true') {
+// Brings the Solr schemas in line with solr-configsets, documents indexed
+// before a schema change only get the new fields when they are reindexed
+let reindex = process.env.INDEX_EVERYTHING === 'true';
+if (process.env.SOLR_SYNC_SCHEMA !== 'false') {
+  const changed = await syncSolrSchemas().catch((e) => {
+    console.log('Syncing the Solr schemas failed', e);
+    return [];
+  });
+  if (changed.length > 0) {
+    if (process.env.SOLR_REINDEX_ON_SCHEMA_CHANGE === 'true') reindex = true;
+    else
+      console.log(
+        'The Solr schema changed, start once with INDEX_EVERYTHING=true to reindex'
+      );
+  }
+}
+
+if (reindex) {
   console.log('Running index everything');
   await indexEverything();
 }

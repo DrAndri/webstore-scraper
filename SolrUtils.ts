@@ -3,6 +3,7 @@ import {
   AttributeGroup,
   AttributeToProduct,
   Category,
+  DbId,
   Manufacturer,
   Product
 } from './types/db-types.js';
@@ -19,6 +20,8 @@ export type SolrProduct = Omit<Product, 'firstSeenDate' | 'lastChangeDate'> & {
   // Solr doesn't support Date objects, so we convert to string
   firstSeenDate: string;
   lastChangeDate: string;
+  // Ids of the attributes below, faceted by the advanced search
+  attrIds?: DbId[];
   [key: `attr_${string}`]: string | undefined;
 };
 
@@ -27,11 +30,7 @@ const SOLR_URI = process.env.SOLR_URI ?? 'http://localhost:8983/solr';
 const submitUpdate = async (
   core: string,
   data:
-    | SolrProduct[]
-    | Manufacturer[]
-    | Category[]
-    | AttributeGroup[]
-    | Attribute[]
+    SolrProduct[] | Manufacturer[] | Category[] | AttributeGroup[] | Attribute[]
 ): Promise<SolrResponse> => {
   const url = `${SOLR_URI}/${core}/update?commit=true`;
   const response = await fetch(url, {
@@ -63,6 +62,7 @@ export const getSolrProduct = (
     solrProduct.price = price;
   }
   if (attributes !== undefined) {
+    solrProduct.attrIds = attributes.map((attribute) => attribute.attributeId);
     for (const attribute of attributes) {
       solrProduct[`attr_${attribute.attributeId}`] = attribute.value;
     }

@@ -135,3 +135,6 @@ dist
 /mongodb-*
 /mysql
 /solr
+
+# Zipped copies of the configsets
+/solr-configsets/*.zip
