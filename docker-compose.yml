@@ -4,7 +4,7 @@ services:
     build:
       dockerfile: Dockerfile
     environment:
-      SOLR_URI: ${SOLR_URI}
+      SOLR_URL: ${SOLR_URL}
       MONGODB_URI: ${MONGODB_URI}
       MARIADB_HOST: ${MARIADB_HOST}
       MARIADB_DATABASE: ${MARIADB_DATABASE}

@@ -5,7 +5,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-const SOLR_URI = process.env.SOLR_URI ?? 'http://localhost:8983/solr';
+const SOLR_URL = process.env.SOLR_URL ?? 'http://localhost:8983/solr';
 const CONFIGSET_DIR = process.env.SOLR_CONFIGSET_DIR ?? 'solr-configsets';
 
 interface XmlElement {
@@ -185,7 +185,7 @@ const syncCore = async (core: string) => {
   );
   const desired = schemaFromXml(xml);
   const status = await solr<{ status: Record<string, { name?: string }> }>(
-    `${SOLR_URI}/admin/cores?action=STATUS&core=${encodeURIComponent(core)}`
+    `${SOLR_URL}/admin/cores?action=STATUS&core=${encodeURIComponent(core)}`
   );
   if (!status.status[core]?.name) {
     console.log(
@@ -194,12 +194,12 @@ const syncCore = async (core: string) => {
     return [];
   }
   const { schema: current } = await solr<{ schema: Schema }>(
-    `${SOLR_URI}/${core}/schema`
+    `${SOLR_URL}/${core}/schema`
   );
   const commands = schemaCommands(desired, current);
   // One request per command, so a failure says which change Solr refused
   for (const { command, value, label } of commands) {
-    await solr(`${SOLR_URI}/${core}/schema`, { [command]: value });
+    await solr(`${SOLR_URL}/${core}/schema`, { [command]: value });
     console.log(`Solr ${core}: ${label}`);
   }
   return commands.map((c) => c.label);

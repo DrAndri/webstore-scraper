@@ -68,19 +68,19 @@ since it creates indexes there.
 
 ## Environment variables
 
-| Variable                                               | Used for                                                         |
-| ------------------------------------------------------ | ---------------------------------------------------------------- |
-| `MARIADB_HOST`, `MARIADB_DATABASE`                     | Database                                                         |
-| `MARIADB_SCRAPER_USER`, `MARIADB_SCRAPER_PASSWORD`     | Database user                                                    |
-| `SOLR_URI`                                             | Solr base url, e.g. `http://solr:8983/solr`                      |
-| `STORE_CONCURRENCY_LIMIT`                              | Stores scanned at a time, default 5                              |
-| `CRON_SCHEDULE`, `CRON_ACTIVE_SCHEDULE`                | Schedules created on the first start                             |
-| `RUN_STARTUP_UPDATE`                                   | Queue an active products scan of every store on start            |
-| `GITHUB_CONFIG_REPO`, `GITHUB_CONFIG_BRANCH`           | Load store configs from GitHub, branch defaults to `master`      |
-| `GITHUB_TOKEN`                                         | Optional read only token, raises the GitHub rate limit           |
-| `STORE_CONFIG_DIR`                                     | Directory of the configs, default `stores`                       |
-| `SOLR_SYNC_SCHEMA`, `SOLR_REINDEX_ON_SCHEMA_CHANGE`    | See Solr above                                                   |
-| `INDEX_EVERYTHING`                                     | Reindex everything in Solr on start                              |
+| Variable                                            | Used for                                                    |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| `MARIADB_HOST`, `MARIADB_DATABASE`                  | Database                                                    |
+| `MARIADB_SCRAPER_USER`, `MARIADB_SCRAPER_PASSWORD`  | Database user                                               |
+| `SOLR_URL`                                          | Solr base url, e.g. `http://solr:8983/solr`                 |
+| `STORE_CONCURRENCY_LIMIT`                           | Stores scanned at a time, default 5                         |
+| `CRON_SCHEDULE`, `CRON_ACTIVE_SCHEDULE`             | Schedules created on the first start                        |
+| `RUN_STARTUP_UPDATE`                                | Queue an active products scan of every store on start       |
+| `GITHUB_CONFIG_REPO`, `GITHUB_CONFIG_BRANCH`        | Load store configs from GitHub, branch defaults to `master` |
+| `GITHUB_TOKEN`                                      | Optional read only token, raises the GitHub rate limit      |
+| `STORE_CONFIG_DIR`                                  | Directory of the configs, default `stores`                  |
+| `SOLR_SYNC_SCHEMA`, `SOLR_REINDEX_ON_SCHEMA_CHANGE` | See Solr above                                              |
+| `INDEX_EVERYTHING`                                  | Reindex everything in Solr on start                         |
 
 ## TODO
 

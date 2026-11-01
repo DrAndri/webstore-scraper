@@ -25,14 +25,14 @@ export type SolrProduct = Omit<Product, 'firstSeenDate' | 'lastChangeDate'> & {
   [key: `attr_${string}`]: string | undefined;
 };
 
-const SOLR_URI = process.env.SOLR_URI ?? 'http://localhost:8983/solr';
+const SOLR_URL = process.env.SOLR_URL ?? 'http://localhost:8983/solr';
 
 const submitUpdate = async (
   core: string,
   data:
     SolrProduct[] | Manufacturer[] | Category[] | AttributeGroup[] | Attribute[]
 ): Promise<SolrResponse> => {
-  const url = `${SOLR_URI}/${core}/update?commit=true`;
+  const url = `${SOLR_URL}/${core}/update?commit=true`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
