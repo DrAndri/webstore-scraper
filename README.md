@@ -52,10 +52,19 @@ The cores and their schemas are defined in `solr-configsets/<core>`:
   `SOLR_REINDEX_ON_SCHEMA_CHANGE=true` to reindex automatically when the sync
   changed something.
 
-## Database migrations
+## Database
 
-Run the files in `migrations/` in order of their date. `initMariaDb/init-db.sql`
-creates a new database with all of them applied.
+`initMariaDb/init-db.sql` creates the database, its tables and users when the
+MariaDB container starts with an empty data directory. The user passwords in it
+are placeholders, change them with `ALTER USER` after the first start.
+
+The data from the MongoDB version is copied by starting the scraper once with
+`RUN_MONGO_TO_SQL_MIGRATION=true` and `MONGODB_URI` set. It copies stores,
+products, manufacturers and prices, the next full crawl fills in the rest. Run
+it only once, on an empty database, and use a copy of the production MongoDB
+since it creates indexes there.
+
+`migrations/` holds data fixes to run by hand.
 
 ## Environment variables
 

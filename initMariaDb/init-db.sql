@@ -206,7 +206,17 @@ CREATE TABLE IF NOT EXISTS webstorinator.apiUsage (
 INSERT IGNORE INTO webstorinator.apiUsers
     (id, name, note, anonymous, enabled, requestsPerMinute, requestsPerDay, createdAt, createdBy)
 VALUES
-    (1, 'Website visitors', 'Each visitor of the website gets a token with these limits', TRUE, TRUE, 60, 3000, UTC_TIMESTAMP(), 'migration');
+    (1, 'Website visitors', 'Each visitor of the website gets a token with these limits', TRUE, TRUE, 60, 3000, UTC_TIMESTAMP(), 'init-db');
+
+-- The first admin signs in to the admin interface with Google using this email
+-- address, after that admins are managed under API users. Fill in and uncomment.
+-- INSERT INTO webstorinator.apiUsers
+--     (name, email, admin, enabled, requestsPerMinute, requestsPerDay, createdAt, createdBy)
+-- VALUES
+--     ('Your name', 'you@example.com', TRUE, TRUE, 120, 100000, UTC_TIMESTAMP(), 'init-db');
+
+-- The passwords below are placeholders. Change them after the first start with
+-- ALTER USER, so the real ones are not committed.
 
 -- Create scraper user
 CREATE USER 'webstore-scraper'@'%' IDENTIFIED BY 'pass1';
