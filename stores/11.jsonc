@@ -1,0 +1,14 @@
+{
+  "storeId": 11,
+  "startUrl": "https://kronan.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlWhitelist": ["/vara", "/voruurval"],
+  "selectors": {
+    "productPage": "main",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "category" }
+    }
+  }
+}

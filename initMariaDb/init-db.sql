@@ -10,25 +10,76 @@ CREATE TABLE IF NOT EXISTS webstorinator.stores (
     apiEnabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 
-CREATE TABLE IF NOT EXISTS webstorinator.storeScans (
-    storeId TINYINT UNSIGNED NOT NULL,
-    date DATE NOT NULL,
+CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    -- NULL for test jobs of stores that have not been created yet
+    storeId TINYINT UNSIGNED,
+    -- crawler: full crawl, list: re-scrape the urls of active products,
+    -- test: scrape testUrl with testConfig without writing to the database
+    mode ENUM('crawler', 'list', 'test') NOT NULL,
+    source ENUM('cron', 'manual', 'startup') NOT NULL,
+    status ENUM('queued', 'running', 'succeeded', 'failed', 'cancelled') NOT NULL DEFAULT 'queued',
+    cancelRequested BOOLEAN NOT NULL DEFAULT FALSE,
+    -- GitHub login of the admin that queued the job
+    requestedBy VARCHAR(64),
 
-    totalRequests INT UNSIGNED,
-    totalProcessed INT UNSIGNED,
-    totalErrored INT UNSIGNED,
-    descriptionError INT UNSIGNED,
-    attributeError INT UNSIGNED,
-    imageError INT UNSIGNED,
-    brandError INT UNSIGNED,
-    nameError INT UNSIGNED,
-    inStockError INT UNSIGNED,
-    categoriesError INT UNSIGNED,
+    -- All times are UTC
+    queuedAt DATETIME NOT NULL,
+    startedAt DATETIME,
+    finishedAt DATETIME,
+    heartbeatAt DATETIME,
 
-    crawler BOOLEAN NOT NULL,
+    -- Commit of the store configs the job ran with
+    configCommit VARCHAR(64),
 
-    PRIMARY KEY (storeId, date),
-    CONSTRAINT fk_storeScans_store FOREIGN KEY (storeId) REFERENCES webstorinator.stores(id) ON DELETE CASCADE
+    totalRequests INT UNSIGNED NOT NULL DEFAULT 0,
+    totalProcessed INT UNSIGNED NOT NULL DEFAULT 0,
+    totalErrored INT UNSIGNED NOT NULL DEFAULT 0,
+    descriptionError INT UNSIGNED NOT NULL DEFAULT 0,
+    attributeError INT UNSIGNED NOT NULL DEFAULT 0,
+    imageError INT UNSIGNED NOT NULL DEFAULT 0,
+    brandError INT UNSIGNED NOT NULL DEFAULT 0,
+    nameError INT UNSIGNED NOT NULL DEFAULT 0,
+    inStockError INT UNSIGNED NOT NULL DEFAULT 0,
+    categoriesError INT UNSIGNED NOT NULL DEFAULT 0,
+    -- StoreUpdateResult counters
+    updateResult JSON,
+    errorMessage TEXT,
+
+    testUrl VARCHAR(2048),
+    testConfig JSON,
+    testResult JSON,
+
+    INDEX ix_status (status),
+    INDEX ix_store_queued (storeId, queuedAt),
+    INDEX ix_queued (queuedAt),
+    CONSTRAINT fk_scrapeJobs_store FOREIGN KEY (storeId) REFERENCES webstorinator.stores(id) ON DELETE CASCADE
+);
+
+-- One row per mode, seeded from CRON_SCHEDULE and CRON_ACTIVE_SCHEDULE on the
+-- first start of the scraper, after that the admin interface owns them.
+-- Expressions are evaluated in UTC.
+CREATE TABLE IF NOT EXISTS webstorinator.scraperSchedules (
+    mode ENUM('crawler', 'list') PRIMARY KEY,
+    cron VARCHAR(64) NOT NULL,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    updatedAt DATETIME,
+    updatedBy VARCHAR(64),
+    lastRunAt DATETIME,
+    lastError VARCHAR(255)
+);
+
+-- Heartbeat of the scraper, a single row
+CREATE TABLE IF NOT EXISTS webstorinator.scraperStatus (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    startedAt DATETIME NOT NULL,
+    lastSeenAt DATETIME NOT NULL,
+    hostname VARCHAR(255),
+    concurrency TINYINT UNSIGNED,
+    configSource VARCHAR(255),
+    configCommit VARCHAR(64),
+    -- JSON array of { file, message } for store configs that failed to load
+    configErrors JSON
 );
 
 CREATE TABLE IF NOT EXISTS webstorinator.manufacturers (
@@ -111,5 +162,12 @@ GRANT ALL PRIVILEGES ON webstorinator.* TO 'webstore-scraper'@'%';
 -- Create api user
 CREATE USER 'webstore-api'@'%' IDENTIFIED BY 'pass2';
 GRANT SELECT ON webstorinator.* TO 'webstore-api'@'%';
+
+-- Create admin user, it only writes to the tables the admin interface manages
+CREATE USER 'webstore-admin'@'%' IDENTIFIED BY 'pass3';
+GRANT SELECT ON webstorinator.* TO 'webstore-admin'@'%';
+GRANT INSERT, UPDATE ON webstorinator.stores TO 'webstore-admin'@'%';
+GRANT INSERT, UPDATE ON webstorinator.scrapeJobs TO 'webstore-admin'@'%';
+GRANT UPDATE ON webstorinator.scraperSchedules TO 'webstore-admin'@'%';
 
 FLUSH PRIVILEGES;

@@ -1,0 +1,28 @@
+{
+  "storeId": 14,
+  "startUrl": "https://vefverslun.advania.is",
+  "type": "crawler",
+  "productPageIdentifier": "Almennar upplýsingar",
+  "urlWhitelist": ["/voruflokkar"],
+  "menuClicker": "span:has-text(\"Vöruflokkar\")",
+  "selectors": {
+    "productPage": ".product-details__wrapper",
+    "oldPrice": "",
+    "listPrice": "p.text-price",
+    "name": "h1.details__product-name",
+    "sku": ".details > div:nth-child(1)",
+    "image": ".image-carousel ol > li:nth-child(1) > img",
+    "description": ".details__description",
+    // The breadcrumb only holds "Vöruflokkar" and the product name
+    "inStock": ".detail__actions",
+    "inStockText": "Bæta í körfu",
+    "attributes": {
+      "attributesTable": "#info-tabs .tabs__panel > div",
+      "attribute": "div > div",
+      "attributeLabel": "p",
+      "attributeValue": "div",
+      "attributeGroup": "div",
+      "attributeGroupName": "h4"
+    }
+  }
+}

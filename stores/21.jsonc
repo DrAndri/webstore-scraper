@@ -1,0 +1,38 @@
+{
+  "storeId": 21,
+  "startUrl": "https://www.vinbudin.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "Varan fæst í eftirfarandi Vínbúðum",
+  "urlWhitelist": ["/heim/vorur", "/desktopdefault.aspx/tabid-54"],
+  "selectors": {
+    "productPage": "#wrapper > .content",
+    "listPrice": ".price > .money",
+    "name": "h3.title > span:nth-child(1)",
+    "sku": "h3.title > .product-number-text",
+    "image": "#first_image",
+    "description": ".category-description-text .entire-text",
+    "categories": "#breadcrumbs > ul",
+    "inStock": "#cart-link",
+    "inStockText": "Setja í körfu",
+    "categoryItemLocator": "li > a",
+    "brand": "#ctl00_ctl01_Label_Producer",
+    "attributes": {
+      "attributesTable": ".product-packaging-info",
+      "attribute": "div",
+      "attributeLabel": "span.title",
+      "attributeValue": "span.value"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "(",
+        "replace": ""
+      },
+      {
+        "match": ")",
+        "replace": ""
+      }
+    ]
+  }
+}

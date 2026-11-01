@@ -1,0 +1,46 @@
+{
+  "storeId": 1,
+  "startUrl": "https://ofar.is",
+  "type": "crawler",
+  "productPageIdentifier": "Vörulýsing",
+  "urlBlacklist": [
+    "/blogg",
+    "/frettir",
+    "/um-okkur",
+    "/sidan-min",
+    "/afgreidslutimar-og-stadsetning",
+    "/afhendingarmatar",
+    "/verkstaedi",
+    "/voruskil",
+    "/hafa-samband",
+    "/tryggingar",
+    "/bokhald-og-innheimta",
+    "/abendingar",
+    "/vidburdir",
+    "/postlisti",
+    "/lausnir",
+    "/fjolmidlatorg",
+    "/starfstaekifaeri",
+    "/leitarnidurstodur"
+  ],
+  "selectors": {
+    "productPage": "#main > div",
+    "oldPrice": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div > div > div:nth-child(2) > p:has-text(\"kr.\")",
+    "listPrice": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div > div > div:nth-child(2) > div > p:has-text(\"kr.\")",
+    "name": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > h1",
+    "sku": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > p",
+    "image": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div:nth-child(1) > div > div:nth-child(2) > div.large-swiper > div.swiper > div > div.swiper-slide.swiper-slide-visible > div > div > div > img",
+    "description": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div:has-text(\"Vörulýsing\") > div",
+    "categories": "div:nth-child(1)",
+    "inStock": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(2) > div:nth-child(1) > div > div:has-text(\"Hvar er varan til?\") > div > div:nth-child(1) > p",
+    "inStockText": "Netverslun",
+    "categoryItemLocator": "nav a",
+    "brand": "",
+    "attributes": {
+      "attributesTable": "div:nth-child(2) > div:nth-child(1) > div > div:nth-child(1) > div:nth-child(3) > div > div:nth-child(2) > div > div",
+      "attribute": "div > div > div",
+      "attributeLabel": "p:nth-child(1)",
+      "attributeValue": "p:nth-child(2)"
+    }
+  }
+}

@@ -8,6 +8,7 @@ import {
   RequestQueue
 } from 'crawlee';
 import {
+  PageListener,
   ProductScrapeResult,
   ProductSnapshot,
   ScrapeResult,
@@ -29,6 +30,7 @@ export default abstract class BaseCrawler {
   hostname: string;
   hostnameIncludesWww: boolean;
   mode: 'list' | 'crawler';
+  pageListener?: PageListener;
 
   constructor(
     store: StoreConfig,
@@ -94,6 +96,7 @@ export default abstract class BaseCrawler {
       this.result.categoriesError++;
     }
 
+    this.pageListener?.onProductScraped(scrapeResult);
     await this.updateProductInDb(scrapeResult.product);
     this.result.totalProcessed++;
   }
@@ -102,6 +105,17 @@ export default abstract class BaseCrawler {
     logger.log('error', 'Error processing product from url %s', url);
     logger.log('error', '%O', e);
     this.result.totalErrored++;
+    this.pageListener?.onProductError(e);
+  }
+
+  handleNotProductPage(logger: Logger, url?: string) {
+    logger.log('info', 'url is not a product page: %s', url);
+    this.pageListener?.onNotProductPage();
+  }
+
+  // Finishes the requests in progress and skips the rest
+  stop() {
+    this.crawler.stop();
   }
 
   isUrlLocal(url: URL): boolean {
@@ -200,9 +214,15 @@ export default abstract class BaseCrawler {
   }
 
   async crawlSite(): Promise<void> {
-    const sitemapUrls =
-      this.mode === 'crawler' ? (this.store.options.sitemapUrls ?? []) : [];
-    await this.crawler.run([this.store.options.startUrl, ...sitemapUrls]);
+    // In list mode only the urls in the request list are scraped
+    const startUrls =
+      this.mode === 'crawler'
+        ? [
+            this.store.options.startUrl,
+            ...(this.store.options.sitemapUrls ?? [])
+          ]
+        : [];
+    await this.crawler.run(startUrls);
 
     const storeLogger = createStoreLogger(this.store.name);
 

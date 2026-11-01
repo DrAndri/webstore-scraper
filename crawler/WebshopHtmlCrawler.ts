@@ -59,7 +59,7 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
           this.handleProductScrapeError(logger, e, request.loadedUrl);
         }
       } else {
-        logger.log('info', 'url is not a product page: %s', request.loadedUrl);
+        this.handleNotProductPage(logger, request.loadedUrl);
       }
 
       logger.close();
@@ -84,8 +84,9 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
     const crawler = new CheerioCrawler({
       ...configuration,
       requestHandler: requestHandler,
-      failedRequestHandler({ request, log }) {
+      failedRequestHandler: ({ request, log }) => {
         log.info(`Request ${request.url} failed too many times.`);
+        this.pageListener?.onRequestFailed(request.errorMessages);
       }
     });
     return crawler;

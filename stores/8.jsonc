@@ -1,0 +1,57 @@
+{
+  "storeId": 8,
+  "startUrl": "https://ht.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlBlacklist": [
+    "/giftcard",
+    "/contact",
+    "/catalogsearch",
+    "/greioslumatar",
+    "/afhendingarmatar",
+    "/verkstaedi",
+    "/abyrg",
+    "/vidbotartrygging",
+    "/skilarettur",
+    "/algengar-spurningar",
+    "/innkollun",
+    "/um-heimilistaeki",
+    "/atvinna",
+    "/giftcard",
+    "/autostore",
+    "/styrktarsjodur",
+    "/vidskiptaskilmalar",
+    "/vafrakokur",
+    "/opnunartimi",
+    "/jafnlaunastefna",
+    "/jafnrettisaaetlun"
+  ],
+  "selectors": {
+    "productPage": "#__next > div > div > div.rz-main-content-backup",
+    // Same platform as tl.is, see the notes there
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "brand": false,
+        "inStock": false,
+        "description": false
+      }
+    },
+    "name": ".product-details .title-content > h1",
+    "sku": ".product-details .title-content > p",
+    "image": ".section-gallery .image-large-display .rz-image-view img",
+    "description": ".page-section-left-wrapper .page-details-section .product-detail-section.detail-desc > div.section-content .rz-magento-html",
+    "categories": ".page-breadcrumb ul",
+    "categoryItemLocator": "p",
+    "brand": "",
+    "attributes": {
+      "attributesTable": ".page-section-left-wrapper .detail-spec > .section-content",
+      "attribute": ".product-spec-group > div",
+      "attributeLabel": ".product-spec-label > p",
+      "attributeValue": ".product-spec-content > p",
+      "attributeGroup": "div:has(> .product-spec-group-label)",
+      "attributeGroupName": ".product-spec-group-label"
+    }
+  }
+}

@@ -90,3 +90,32 @@ export interface CacheItem {
 }
 
 export type CacheItems = Record<string, CacheItem>;
+
+export type ScrapeJobMode = 'crawler' | 'list' | 'test';
+export type ScrapeJobSource = 'cron' | 'manual' | 'startup';
+export type ScheduledMode = Exclude<ScrapeJobMode, 'test'>;
+
+export interface ScrapeJob {
+  id: number;
+  storeId: number | null;
+  mode: ScrapeJobMode;
+  source: ScrapeJobSource;
+  testUrl: string | null;
+  testConfig: string | object | null;
+}
+
+// Result of a test job, scraping a single url without writing to the database
+export interface TestResult {
+  isProductPage?: boolean;
+  product?: ProductSnapshot;
+  fieldErrors?: Partial<Record<keyof ProductScrapeErrors, string>>;
+  error?: string;
+}
+
+// Lets a test job see what the crawler did with a page
+export interface PageListener {
+  onProductScraped(result: ProductScrapeResult): void;
+  onProductError(error: unknown): void;
+  onNotProductPage(): void;
+  onRequestFailed(errorMessages: string[]): void;
+}

@@ -1,0 +1,38 @@
+{
+  "storeId": 5,
+  "startUrl": "https://computer.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "class=\"single-product\"",
+  "urlWhitelist": ["/is/product"],
+  "selectors": {
+    "productPage": "#cartdivcontent",
+    "oldPrice": ".pantavoru .olderPrice",
+    "listPrice": ".pantavoru .displayPrice",
+    "name": ".single-product > h2",
+    "sku": ".pantavoru > div:nth-child(4)",
+    "image": ".productImg img.mainimg",
+    "imageAttribute": "data-src",
+    "description": ".product-desc > .tab-content",
+    "categories": ".breadcrumb",
+    "inStock": ".status",
+    "inStockText": "Til á lager",
+    "categoryItemLocator": "li",
+    "brand": ".pantavoru > .extraInfo:nth-child(3) > a",
+    "attributes": {
+      "attributesTable": ".col-sm-6",
+      "attribute": "tr",
+      "attributeLabel": "td:nth-child(1)",
+      "attributeValue": "td:nth-child(2)",
+      "attributeGroup": "table.spectable",
+      "attributeGroupName": "th"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Framl.númer:",
+        "replace": ""
+      }
+    ]
+  }
+}

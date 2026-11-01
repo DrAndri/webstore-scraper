@@ -1,0 +1,55 @@
+{
+  "storeId": 12,
+  "startUrl": "https://hagkaup.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlBlacklist": [
+    "/opnunartimi",
+    "/um-okkur",
+    "/grein",
+    "/jafnlaunastefna",
+    "/skilmalar",
+    "/starfsmannamal",
+    "/skrifstofa",
+    "/afhendingarmoguleikar",
+    "/skilareglur",
+    "/algengar-spurningar",
+    "/veislurettir-spurningar",
+    "/vidskiptakort",
+    "/gjafakort",
+    "/leit"
+  ],
+  "selectors": {
+    "productPage": "#main-content",
+    // category is "Snyrtivara|Förðun|Varir|Varalitir"
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "category" },
+      "categorySplitter": "|"
+    },
+    "oldPrice": "",
+    "listPrice": "p:contains(\"Verð\")",
+    "name": "div > div > p.font-serif",
+    "sku": "p:contains(\"Vörunúmer:\")",
+    "image": ".w-full img",
+    "description": "#accordion__panel-0",
+    "categories": "div:nth-child(1)",
+    "inStock": "button.uppercase",
+    "inStockText": "Setja í körfu",
+    "categoryItemLocator": "a",
+    "brand": "div > div > a > p"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      },
+      {
+        // JSON-LD sku is HAG_1256317
+        "match": "HAG_",
+        "replace": ""
+      }
+    ]
+  }
+}

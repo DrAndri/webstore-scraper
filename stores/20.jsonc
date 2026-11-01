@@ -1,0 +1,31 @@
+{
+  "storeId": 20,
+  "startUrl": "https://ikea.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\": \"Product\"",
+  "urlWhitelist": ["/is/products"],
+  "selectors": {
+    // The package info (#collapsePackageWeight) is outside .contentWrapper-container
+    "productPage": "body",
+    // mpn is the article number (195.281.67), brand holds the product type
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "sku": "mpn", "brand": false }
+    },
+    "oldPrice": ".itemOldPrice > .oldValue > .price__integer",
+    "listPrice": ".price > span > .price__integer",
+    "sku": ".productNumber",
+    "image": "#react-product-gallery > div:nth-child(1) img",
+    "description": ".custom-benefit-resume-container",
+    "categories": "ol.breadcrumb",
+    "inStock": ".stock-wrapper",
+    "inStockText": "Til á lager",
+    "categoryItemLocator": "a",
+    "attributes": {
+      "attributesTable": "#collapsePackageWeight",
+      "attribute": "tr",
+      "attributeLabel": "td:nth-child(1)",
+      "attributeValue": "td:nth-child(2)"
+    }
+  }
+}

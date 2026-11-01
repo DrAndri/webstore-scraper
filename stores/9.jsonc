@@ -1,0 +1,19 @@
+{
+  "storeId": 9,
+  "startUrl": "https://vefverslun.ok.is/",
+  "type": "httpcrawler",
+  "productPageIdentifier": "swift_products-details-images-modal",
+  "urlBlacklist": ["/vidskiptaskilmalar", "/cart", "/skra-inn", "/vorur"],
+  "selectors": {
+    "productPage": "#content",
+    "oldPrice": ".item_description__short__custom strong",
+    "listPrice": ".item_swift_productprice_productdetailpage_custom .text-price",
+    "name": "h1.item_swift_productheader",
+    "sku": "div.item_swift_productnumber",
+    "image": ".item_swift_productdetailsimage .carousel .carousel-item.active img",
+    "description": ".item_swift_productlongdescription > div > div:nth-child(2)",
+    // The breadcrumb only holds "Vörur" and the product name, categories are only in the JS menu
+    "inStock": ".item_swift_productaddtocart_custom .js-add-to-cart-button",
+    "inStockText": "Bæta í körfu"
+  }
+}

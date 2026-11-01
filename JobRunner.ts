@@ -1,0 +1,433 @@
+import { hostname } from 'node:os';
+import { createPool, Pool, UpsertResult } from 'mariadb';
+import { MemoryStorage, RequestList, RequestQueue } from 'crawlee';
+import {
+  ProductScrapeErrors,
+  ProductSnapshot,
+  ScheduledMode,
+  ScrapeJob,
+  ScrapeJobSource,
+  ScrapeResult,
+  Store,
+  StoreConfig,
+  StoreUpdateResult,
+  TestResult,
+  WebshopCrawlerOptions
+} from './types/index.js';
+import BaseCrawler from './crawler/BaseCrawler.js';
+import WebshopCrawler from './crawler/WebshopCrawler.js';
+import WebshopHtmlCrawler from './crawler/WebshopHtmlCrawler.js';
+import SQLStoreUpdater, { poolConfig } from './SQLStoreUpdater.js';
+import StoreConfigLoader, { validateStoreConfig } from './StoreConfigLoader.js';
+
+const POLL_INTERVAL_MS = 5000;
+const MAX_RUNNING_TESTS = 2;
+
+interface RunningJob {
+  job: ScrapeJob;
+  crawler?: BaseCrawler;
+  cancelled: boolean;
+}
+
+interface JobResult {
+  scrapeResult?: ScrapeResult;
+  updateResult?: StoreUpdateResult;
+  testResult?: TestResult;
+  errorMessage?: string;
+}
+
+const errorMessage = (e: unknown) =>
+  e instanceof Error ? e.message : String(e);
+
+// UTC 'YYYY-MM-DD HH:MM:SS' for DATETIME columns
+const toSqlDateTime = (date: Date) =>
+  date.toISOString().slice(0, 19).replace('T', ' ');
+
+function reportResults(results: StoreUpdateResult, storeName: string): void {
+  console.log('FINISHED UPDATING', storeName);
+  for (const [name, value] of Object.entries(results)) {
+    console.log(`${name}:`, value);
+  }
+}
+
+// Runs the jobs queued in scrapeJobs, by cron, at startup or from the admin
+// interface. Only one scraper instance should run against a database.
+export default class JobRunner {
+  pool: Pool;
+  attributesPool: Pool;
+  categoriesPool: Pool;
+  manufacturersPool: Pool;
+  configLoader: StoreConfigLoader;
+  concurrency: number;
+  running = new Map<number, RunningJob>();
+  startedAt = new Date();
+  ticking = false;
+
+  constructor(configLoader: StoreConfigLoader, concurrency: number) {
+    this.configLoader = configLoader;
+    this.concurrency = concurrency;
+    this.pool = createPool({ ...poolConfig, connectionLimit: 2 });
+    // Single connection pools so attributes, categories and manufacturers are
+    // not created twice by stores scraped at the same time
+    this.attributesPool = createPool(poolConfig);
+    this.categoriesPool = createPool(poolConfig);
+    this.manufacturersPool = createPool(poolConfig);
+  }
+
+  async start() {
+    const interrupted = await this.pool.query<UpsertResult>(
+      "UPDATE scrapeJobs SET status = 'failed', finishedAt = UTC_TIMESTAMP(), errorMessage = 'Interrupted, the scraper stopped while the job was running' WHERE status = 'running'"
+    );
+    if (interrupted.affectedRows > 0)
+      console.log(
+        `Marked ${interrupted.affectedRows} interrupted jobs as failed`
+      );
+    await this.tick();
+    setInterval(() => void this.tick(), POLL_INTERVAL_MS);
+    console.log('Job runner started');
+  }
+
+  // Queues a job for every enabled store with a config, skipping stores that
+  // already have a job of the same mode queued or running
+  async enqueueAll(mode: ScheduledMode, source: ScrapeJobSource) {
+    const { configs } = await this.configLoader.load();
+    const storeIds = [...configs.keys()];
+    if (storeIds.length === 0) return;
+    const result = await this.pool.query<UpsertResult>(
+      `INSERT INTO scrapeJobs (storeId, mode, source, status, queuedAt)
+       SELECT s.id, ?, ?, 'queued', UTC_TIMESTAMP() FROM stores s
+       WHERE s.scraperEnabled = 1 AND s.id IN (?) AND NOT EXISTS (
+         SELECT 1 FROM scrapeJobs j WHERE j.storeId = s.id AND j.mode = ? AND j.status IN ('queued', 'running')
+       )`,
+      [mode, source, storeIds, mode]
+    );
+    console.log(`Queued ${result.affectedRows} ${mode} jobs (${source})`);
+  }
+
+  async tick() {
+    if (this.ticking) return;
+    this.ticking = true;
+    try {
+      await this.reportStatus();
+      await this.updateRunningJobs();
+      await this.pool.query(
+        "UPDATE scrapeJobs SET status = 'cancelled', finishedAt = UTC_TIMESTAMP() WHERE status = 'queued' AND cancelRequested = 1"
+      );
+      await this.claimJobs();
+    } catch (e) {
+      console.log('Job runner tick failed', e);
+    } finally {
+      this.ticking = false;
+    }
+  }
+
+  async reportStatus() {
+    const { source, commit, errors } = await this.configLoader.load();
+    await this.pool.query(
+      `INSERT INTO scraperStatus (id, startedAt, lastSeenAt, hostname, concurrency, configSource, configCommit, configErrors)
+       VALUES (1, ?, UTC_TIMESTAMP(), ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE startedAt = VALUES(startedAt), lastSeenAt = VALUES(lastSeenAt),
+         hostname = VALUES(hostname), concurrency = VALUES(concurrency), configSource = VALUES(configSource),
+         configCommit = VALUES(configCommit), configErrors = VALUES(configErrors)`,
+      [
+        toSqlDateTime(this.startedAt),
+        hostname(),
+        this.concurrency,
+        source,
+        commit ?? null,
+        JSON.stringify(errors)
+      ]
+    );
+  }
+
+  // Saves progress and stops jobs that were cancelled in the admin interface
+  async updateRunningJobs() {
+    if (this.running.size === 0) return;
+    for (const [id, { crawler }] of this.running) {
+      const result = crawler?.result;
+      await this.pool.query(
+        `UPDATE scrapeJobs SET heartbeatAt = UTC_TIMESTAMP()${result ? ', totalRequests = ?, totalProcessed = ?, totalErrored = ?' : ''} WHERE id = ?`,
+        result
+          ? [
+              result.totalRequests,
+              result.totalProcessed,
+              result.totalErrored,
+              id
+            ]
+          : [id]
+      );
+    }
+    const cancelled = await this.pool.query<{ id: number }[]>(
+      'SELECT id FROM scrapeJobs WHERE id IN (?) AND cancelRequested = 1',
+      [[...this.running.keys()]]
+    );
+    for (const { id } of cancelled) {
+      const entry = this.running.get(id);
+      if (entry && !entry.cancelled) {
+        console.log(`Cancelling job ${id}`);
+        entry.cancelled = true;
+        entry.crawler?.stop();
+      }
+    }
+  }
+
+  async claimJobs() {
+    const runningJobs = [...this.running.values()].map((entry) => entry.job);
+    const busyStoreIds = new Set(runningJobs.map((job) => job.storeId));
+    let storeSlots =
+      this.concurrency -
+      runningJobs.filter((job) => job.mode !== 'test').length;
+    let testSlots =
+      MAX_RUNNING_TESTS -
+      runningJobs.filter((job) => job.mode === 'test').length;
+    if (storeSlots <= 0 && testSlots <= 0) return;
+
+    const queued = await this.pool.query<ScrapeJob[]>(
+      "SELECT id, storeId, mode, source, testUrl, testConfig FROM scrapeJobs WHERE status = 'queued' AND cancelRequested = 0 ORDER BY id LIMIT 100"
+    );
+    for (const job of queued) {
+      if (job.mode === 'test') {
+        if (testSlots <= 0) continue;
+      } else if (storeSlots <= 0 || busyStoreIds.has(job.storeId)) continue;
+
+      const claimed = await this.pool.query<UpsertResult>(
+        "UPDATE scrapeJobs SET status = 'running', startedAt = UTC_TIMESTAMP(), heartbeatAt = UTC_TIMESTAMP() WHERE id = ? AND status = 'queued'",
+        [job.id]
+      );
+      if (claimed.affectedRows !== 1) continue;
+      if (job.mode === 'test') testSlots--;
+      else {
+        storeSlots--;
+        busyStoreIds.add(job.storeId);
+      }
+      this.running.set(job.id, { job, cancelled: false });
+      void this.runJob(job);
+    }
+  }
+
+  async runJob(job: ScrapeJob) {
+    const entry = this.running.get(job.id);
+    if (!entry) return;
+    let status = 'succeeded';
+    let result: JobResult = {};
+    let commit: string | undefined;
+    try {
+      const configs = await this.configLoader.load();
+      commit = configs.commit;
+      result =
+        job.mode === 'test'
+          ? await this.runTest(job, entry)
+          : await this.runStoreJob(job, configs.configs, entry);
+      if (entry.cancelled) status = 'cancelled';
+    } catch (e) {
+      console.log(`Job ${job.id} failed`, e);
+      status = 'failed';
+      result.errorMessage = errorMessage(e);
+    }
+    try {
+      const scrape = result.scrapeResult ?? entry.crawler?.result;
+      await this.pool.query(
+        `UPDATE scrapeJobs SET status = ?, finishedAt = UTC_TIMESTAMP(), heartbeatAt = UTC_TIMESTAMP(), configCommit = ?,
+           totalRequests = ?, totalProcessed = ?, totalErrored = ?, descriptionError = ?, attributeError = ?,
+           imageError = ?, brandError = ?, nameError = ?, inStockError = ?, categoriesError = ?,
+           updateResult = ?, testResult = ?, errorMessage = ?
+         WHERE id = ?`,
+        [
+          status,
+          commit ?? null,
+          scrape?.totalRequests ?? 0,
+          scrape?.totalProcessed ?? 0,
+          scrape?.totalErrored ?? 0,
+          scrape?.descriptionError ?? 0,
+          scrape?.attributeError ?? 0,
+          scrape?.imageError ?? 0,
+          scrape?.brandError ?? 0,
+          scrape?.nameError ?? 0,
+          scrape?.inStockError ?? 0,
+          scrape?.categoriesError ?? 0,
+          result.updateResult ? JSON.stringify(result.updateResult) : null,
+          result.testResult ? JSON.stringify(result.testResult) : null,
+          result.errorMessage ?? null,
+          job.id
+        ]
+      );
+    } catch (e) {
+      console.log(`Saving the result of job ${job.id} failed`, e);
+    } finally {
+      this.running.delete(job.id);
+    }
+  }
+
+  async runStoreJob(
+    job: ScrapeJob,
+    configs: Map<number, WebshopCrawlerOptions>,
+    entry: RunningJob
+  ): Promise<JobResult> {
+    const [store] = await this.pool.query<Store[]>(
+      'SELECT * FROM stores WHERE id = ?',
+      [job.storeId]
+    );
+    if (!store) throw new Error(`Store ${job.storeId} not found`);
+    const options = configs.get(Number(store.id));
+    if (!options) throw new Error(`No config found for store ${store.name}`);
+
+    let urlList: string[] | undefined;
+    if (job.mode === 'list') {
+      // Products whose price was seen in the last scan of the store
+      const products = await this.pool.query<{ url: string }[]>(
+        'SELECT url FROM products JOIN prices ON products.id = prices.productId JOIN stores ON products.storeId = stores.id WHERE products.storeId = ? AND prices.end = stores.lastScanDate AND products.url IS NOT NULL',
+        [store.id]
+      );
+      if (products.length === 0)
+        return { errorMessage: 'No active products to scrape' };
+      urlList = products.map((product) => options.startUrl + product.url);
+      console.log(
+        `Scraping ${urlList.length} products for store ${store.name}`
+      );
+    } else {
+      console.log('UPDATING', store.name);
+    }
+
+    const result = await this.updateStore(store, options, entry, urlList);
+    reportResults(result.updateResult, store.name);
+    return result;
+  }
+
+  createCrawler(
+    store: StoreConfig,
+    currentDate: Date,
+    updateProductInDb: (product: ProductSnapshot) => Promise<void>,
+    requestQueue?: RequestQueue,
+    requestList?: RequestList
+  ): BaseCrawler {
+    if (store.options.type === 'crawler')
+      return new WebshopCrawler(
+        store,
+        currentDate,
+        updateProductInDb,
+        requestQueue,
+        requestList
+      );
+    if (store.options.type === 'httpcrawler')
+      return new WebshopHtmlCrawler(
+        store,
+        currentDate,
+        updateProductInDb,
+        requestQueue,
+        requestList
+      );
+    throw new Error('Type not supported for store ' + store.name);
+  }
+
+  async updateStore(
+    store: Store,
+    options: WebshopCrawlerOptions,
+    entry: RunningJob,
+    urlList?: string[]
+  ): Promise<{ scrapeResult: ScrapeResult; updateResult: StoreUpdateResult }> {
+    const currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+    const safeStoreName = store.name.replace(/[^a-zA-Z0-9]/g, '-');
+    const storeConfig: StoreConfig = {
+      options: options,
+      safeStoreName: safeStoreName,
+      ...store
+    };
+    const storeUpdater = new SQLStoreUpdater(
+      storeConfig,
+      currentDate,
+      this.attributesPool,
+      this.categoriesPool,
+      this.manufacturersPool
+    );
+    const memoryStorage = new MemoryStorage({
+      persistStorage: false,
+      writeMetadata: false
+    });
+    const requestQueue = urlList
+      ? undefined
+      : await RequestQueue.open(safeStoreName, {
+          storageClient: memoryStorage
+        });
+    const requestList = urlList
+      ? await RequestList.open(safeStoreName, urlList)
+      : undefined;
+    const crawler = this.createCrawler(
+      storeConfig,
+      currentDate,
+      (scrapedProduct) => storeUpdater.updateProductInDb(scrapedProduct),
+      requestQueue,
+      requestList
+    );
+    entry.crawler = crawler;
+    await crawler.crawlSite();
+    await requestQueue?.drop();
+    await memoryStorage.teardown();
+    // Products not reached by a cancelled scan would look inactive
+    if (!entry.cancelled) {
+      await this.pool.query('UPDATE stores SET lastScanDate = ? WHERE id = ?', [
+        currentDate,
+        store.id
+      ]);
+    }
+    return { scrapeResult: crawler.result, updateResult: storeUpdater.result };
+  }
+
+  // Scrapes a single url with a draft config, nothing is written to the database
+  async runTest(job: ScrapeJob, entry: RunningJob): Promise<JobResult> {
+    if (!job.testUrl) throw new Error('testUrl is missing');
+    const options = (
+      typeof job.testConfig === 'string'
+        ? JSON.parse(job.testConfig)
+        : job.testConfig
+    ) as WebshopCrawlerOptions;
+    const invalid = validateStoreConfig(options, Number(options?.storeId));
+    if (invalid) throw new Error(`Invalid config: ${invalid}`);
+
+    const currentDate = new Date();
+    const store: StoreConfig = {
+      id: job.storeId ?? 0,
+      name: `test-${job.id}`,
+      createdDate: currentDate,
+      lastScanDate: currentDate,
+      scraperEnabled: false,
+      apiEnabled: false,
+      options,
+      safeStoreName: `test-${job.id}`
+    };
+    const testResult: TestResult = {};
+    const requestList = await RequestList.open(null, [job.testUrl]);
+    const crawler = this.createCrawler(
+      store,
+      currentDate,
+      () => Promise.resolve(),
+      undefined,
+      requestList
+    );
+    crawler.pageListener = {
+      onProductScraped: ({ product, errors }) => {
+        testResult.isProductPage = true;
+        testResult.product = product;
+        testResult.fieldErrors = {};
+        for (const [field, error] of Object.entries(errors)) {
+          if (error)
+            testResult.fieldErrors[field as keyof ProductScrapeErrors] =
+              errorMessage(error);
+        }
+      },
+      onProductError: (error) => {
+        testResult.isProductPage = true;
+        testResult.error = errorMessage(error);
+      },
+      onNotProductPage: () => {
+        testResult.isProductPage = false;
+      },
+      onRequestFailed: (errorMessages) => {
+        testResult.error = errorMessages.join('\n');
+      }
+    };
+    entry.crawler = crawler;
+    await crawler.crawlSite();
+    return { scrapeResult: crawler.result, testResult };
+  }
+}
