@@ -82,53 +82,43 @@ export const indexProduct = async (
 ): Promise<void> => {
   const solrProduct = getSolrProduct(product, price, attributes);
   await submitUpdate('products', [solrProduct]);
-  console.log('Indexed product', product.sku);
 };
 export const indexProducts = async (products: SolrProduct[]): Promise<void> => {
   await submitUpdate('products', products);
-  console.log('Indexed products', products.length);
 };
 export const indexManufacturer = async (
   manufacturer: Manufacturer
 ): Promise<void> => {
   await submitUpdate('manufacturers', [manufacturer]);
-  console.log('Indexed manufacturer', manufacturer.name);
 };
 export const indexManufacturers = async (
   manufacturers: Manufacturer[]
 ): Promise<void> => {
   await submitUpdate('manufacturers', manufacturers);
-  console.log('Indexed manufacturers', manufacturers.length);
 };
 export const indexCategory = async (category: Category): Promise<void> => {
   await submitUpdate('categories', [category]);
-  console.log('Indexed category', category.name);
 };
 export const indexCategories = async (
   categories: Category[]
 ): Promise<void> => {
   await submitUpdate('categories', categories);
-  console.log('Indexed categories', categories.length);
 };
 export const indexAttributeGroup = async (
   attributeGroup: AttributeGroup
 ): Promise<void> => {
   await submitUpdate('attribute-groups', [attributeGroup]);
-  console.log('Indexed attribute group', attributeGroup.name);
 };
 export const indexAttributeGroups = async (
   attributeGroups: AttributeGroup[]
 ): Promise<void> => {
   await submitUpdate('attribute-groups', attributeGroups);
-  console.log('Indexed attribute groups', attributeGroups.length);
 };
 export const indexAttribute = async (attribute: Attribute): Promise<void> => {
   await submitUpdate('attributes', [attribute]);
-  console.log('Indexed attribute', attribute.name);
 };
 export const indexAttributes = async (
   attributes: Attribute[]
 ): Promise<void> => {
   await submitUpdate('attributes', attributes);
-  console.log('Indexed attributes', attributes.length);
 };
