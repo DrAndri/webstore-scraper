@@ -291,7 +291,7 @@ export default class JobRunner {
 
   createCrawler(
     store: StoreConfig,
-    currentDate: Date,
+    jobId: number,
     updateProductInDb: (product: ProductSnapshot) => Promise<void>,
     requestQueue?: RequestQueue,
     requestList?: RequestList
@@ -299,7 +299,7 @@ export default class JobRunner {
     if (store.options.type === 'crawler')
       return new WebshopCrawler(
         store,
-        currentDate,
+        jobId,
         updateProductInDb,
         requestQueue,
         requestList
@@ -307,7 +307,7 @@ export default class JobRunner {
     if (store.options.type === 'httpcrawler')
       return new WebshopHtmlCrawler(
         store,
-        currentDate,
+        jobId,
         updateProductInDb,
         requestQueue,
         requestList
@@ -350,7 +350,7 @@ export default class JobRunner {
       : undefined;
     const crawler = this.createCrawler(
       storeConfig,
-      currentDate,
+      entry.job.id,
       (scrapedProduct) => storeUpdater.updateProductInDb(scrapedProduct),
       requestQueue,
       requestList
@@ -395,7 +395,7 @@ export default class JobRunner {
     const requestList = await RequestList.open(null, [job.testUrl]);
     const crawler = this.createCrawler(
       store,
-      currentDate,
+      job.id,
       () => Promise.resolve(),
       undefined,
       requestList

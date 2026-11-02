@@ -49,7 +49,8 @@ export const logger = createWinstonLogger({
             labels: { app: 'webstore-scraper' },
             format: format.json(),
             json: true,
-            interval: 30
+            // Seconds, the admin interface shows the log live
+            interval: 5
           })
         ]
       : [])
@@ -86,10 +87,12 @@ crawleeLog.getOptions().logger._log = (
 if (['debug', 'silly'].includes(LOG_LEVEL))
   crawleeLog.setLevel(LogLevel.DEBUG);
 
+// The log of a scan, labelled with the page it is about. jobId is the id of
+// the scrapeJobs row, so the admin interface can show the log of each scan.
 export const createLogger = (
   label: string,
   storeName: string,
-  currentDate: Date
+  jobId: number
 ) => {
   const transportsArray = [];
   if (LOKI_URL) {
@@ -98,13 +101,13 @@ export const createLogger = (
         host: LOKI_URL,
         labels: {
           store: storeName,
-          batch: currentDate,
+          jobId,
           page: label
         },
         format: combine(splat(), errors({ stack: true }), format.json()),
         json: true,
         level: 'debug',
-        interval: 30,
+        interval: 5,
         silent: !ENABLE_SCRAPER_LOGGING
       })
     );

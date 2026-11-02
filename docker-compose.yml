@@ -53,6 +53,8 @@ services:
       GITHUB_CONFIG_REPO: ${GITHUB_CONFIG_REPO}
       GITHUB_CONFIG_BRANCH: ${GITHUB_CONFIG_BRANCH}
       GITHUB_TOKEN: ${GITHUB_ADMIN_TOKEN}
+      # The logs in the admin interface
+      LOKI_URL: ${LOKI_URL}
     ports:
       - 3000:3000
 

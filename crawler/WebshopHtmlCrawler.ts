@@ -16,7 +16,6 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
   setupCrawler(configuration: CheerioCrawlerOptions) {
     const { selectors, productPageIdentifier, sanitizers } = this.store.options;
     const store = this.store;
-    const batchTimestamp = this.currentDate;
 
     const pageScraper = new PageHtmlScraper(
       selectors,
@@ -36,7 +35,7 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
       const logger = createLogger(
         request.loadedUrl ?? 'default label',
         store.name,
-        batchTimestamp
+        this.jobId
       );
       const productLocator = $(selectors.productPage);
       const html = $.root().html();

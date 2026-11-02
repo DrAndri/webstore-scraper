@@ -23,7 +23,8 @@ import {
 
 export default abstract class BaseCrawler {
   store: StoreConfig;
-  currentDate: Date;
+  // The scrapeJobs row the crawl runs for, labels its log
+  jobId: number;
   updateProductInDb: (scrapedProduct: ProductSnapshot) => Promise<void>;
   result: ScrapeResult;
   crawler: CheerioCrawler | PlaywrightCrawler;
@@ -34,13 +35,13 @@ export default abstract class BaseCrawler {
 
   constructor(
     store: StoreConfig,
-    currentDate: Date,
+    jobId: number,
     updateProductInDb: (scrapedProduct: ProductSnapshot) => Promise<void>,
     requestQueue?: RequestQueue,
     requestList?: RequestList
   ) {
     this.store = store;
-    this.currentDate = currentDate;
+    this.jobId = jobId;
     this.updateProductInDb = updateProductInDb;
     this.result = {
       totalRequests: 0,
@@ -227,7 +228,7 @@ export default abstract class BaseCrawler {
     const storeLogger = createLogger(
       'Scan log',
       this.store.name,
-      this.currentDate
+      this.jobId
     );
 
     storeLogger.log('info', `Crawl of store ${this.store.name} completed.`);
