@@ -4,6 +4,7 @@
 // replaced. Nothing is removed.
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { logger } from './logger.js';
 
 // Without a trailing slash, Solr answers 400 to a double slash in the path
 const SOLR_URL = (process.env.SOLR_URL ?? 'http://localhost:8983/solr').replace(
@@ -11,6 +12,8 @@ const SOLR_URL = (process.env.SOLR_URL ?? 'http://localhost:8983/solr').replace(
   ''
 );
 const CONFIGSET_DIR = process.env.SOLR_CONFIGSET_DIR ?? 'solr-configsets';
+
+const log = logger.child({ label: 'SolrSchema' });
 
 interface XmlElement {
   name: string;
@@ -192,7 +195,7 @@ const syncCore = async (core: string) => {
     `${SOLR_URL}/admin/cores?action=STATUS&core=${encodeURIComponent(core)}`
   );
   if (!status.status[core]?.name) {
-    console.log(
+    log.warn(
       `Solr core ${core} does not exist, it is created from the configset when Solr starts (see docker-compose.yml)`
     );
     return [];
@@ -204,7 +207,7 @@ const syncCore = async (core: string) => {
   // One request per command, so a failure says which change Solr refused
   for (const { command, value, label } of commands) {
     await solr(`${SOLR_URL}/${core}/schema`, { [command]: value });
-    console.log(`Solr ${core}: ${label}`);
+    log.info(`Solr ${core}: ${label}`);
   }
   return commands.map((c) => c.label);
 };
@@ -221,13 +224,13 @@ export const syncSolrSchemas = async (): Promise<string[]> => {
       if ((await syncCore(core)).length > 0) changed.push(core);
     } catch (e) {
       failed.push(core);
-      console.log(`Syncing the schema of Solr core ${core} failed`, e);
+      log.error(`Syncing the schema of Solr core ${core} failed`, e);
     }
   }
   if (changed.length)
-    console.log(`Solr schemas updated: ${changed.join(', ')}`);
+    log.info(`Solr schemas updated: ${changed.join(', ')}`);
   if (failed.length)
-    console.log(`Solr schemas not synced: ${failed.join(', ')}`);
-  else if (!changed.length) console.log('Solr schemas are up to date');
+    log.warn(`Solr schemas not synced: ${failed.join(', ')}`);
+  else if (!changed.length) log.info('Solr schemas are up to date');
   return changed;
 };

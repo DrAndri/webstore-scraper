@@ -1,6 +1,9 @@
 import cron, { ScheduledTask } from 'node-cron';
 import { Pool } from 'mariadb';
 import { ScheduledMode } from './types/index.js';
+import { logger } from './logger.js';
+
+const log = logger.child({ label: 'Scheduler' });
 
 const SYNC_INTERVAL_MS = 30 * 1000;
 // Used for the rows created on the first start when the env variable is not set
@@ -45,7 +48,7 @@ export default class Scheduler {
     }
     await this.sync();
     setInterval(() => {
-      this.sync().catch((e) => console.log('Syncing schedules failed', e));
+      this.sync().catch((e) => log.error('Syncing schedules failed', e));
     }, SYNC_INTERVAL_MS);
   }
 
@@ -74,7 +77,7 @@ export default class Scheduler {
       if (current) {
         await current.task.destroy();
         this.tasks.delete(row.mode);
-        console.log(`Stopped ${row.mode} schedule ${current.cron}`);
+        log.info(`Stopped ${row.mode} schedule ${current.cron}`);
       }
       if (wanted) {
         const task = cron.schedule(wanted, () => this.run(row.mode), {
@@ -82,7 +85,7 @@ export default class Scheduler {
           timezone: 'UTC'
         });
         this.tasks.set(row.mode, { cron: wanted, task });
-        console.log(`Started ${row.mode} schedule ${wanted}`);
+        log.info(`Started ${row.mode} schedule ${wanted}`);
       }
     }
   }
@@ -95,7 +98,7 @@ export default class Scheduler {
       );
       await this.trigger(mode);
     } catch (e) {
-      console.log(`Running the ${mode} schedule failed`, e);
+      log.error(`Running the ${mode} schedule failed`, e);
     }
   }
 }

@@ -7,8 +7,11 @@ import JobRunner from './JobRunner.js';
 import Scheduler from './Scheduler.js';
 import { syncSolrSchemas } from './SolrSchema.js';
 import StoreConfigLoader from './StoreConfigLoader.js';
+import { logger } from './logger.js';
 
 dotenv.config();
+
+const log = logger.child({ label: 'main' });
 
 const storeConcurrencyLimit = parseInt(
   process.env.STORE_CONCURRENCY_LIMIT ?? '5'
@@ -35,10 +38,10 @@ async function getMongodb(): Promise<Db> {
 }
 
 if (process.env.RUN_MONGO_TO_SQL_MIGRATION === 'true') {
-  console.log('Running migration');
+  log.info('Running migration');
   const mongoDb = await getMongodb();
   await initMongodbCollections(mongoDb);
-  await migrate(mongoDb).catch((error) => console.log(error));
+  await migrate(mongoDb).catch((e) => log.error('Migration failed', e));
 }
 
 // Brings the Solr schemas in line with solr-configsets, documents indexed
@@ -46,20 +49,20 @@ if (process.env.RUN_MONGO_TO_SQL_MIGRATION === 'true') {
 let reindex = process.env.INDEX_EVERYTHING === 'true';
 if (process.env.SOLR_SYNC_SCHEMA !== 'false') {
   const changed = await syncSolrSchemas().catch((e) => {
-    console.log('Syncing the Solr schemas failed', e);
+    log.error('Syncing the Solr schemas failed', e);
     return [];
   });
   if (changed.length > 0) {
     if (process.env.SOLR_REINDEX_ON_SCHEMA_CHANGE === 'true') reindex = true;
     else
-      console.log(
+      log.warn(
         'The Solr schema changed, start once with INDEX_EVERYTHING=true to reindex'
       );
   }
 }
 
 if (reindex) {
-  console.log('Running index everything');
+  log.info('Running index everything');
   await indexEverything();
 }
 
@@ -67,7 +70,7 @@ const runner = new JobRunner(new StoreConfigLoader(), storeConcurrencyLimit);
 await runner.start();
 
 if (process.env.RUN_STARTUP_UPDATE === 'true') {
-  console.log('Running startup crawler on all stores');
+  log.info('Running startup crawler on all stores');
   await runner.enqueueAll('crawler', 'startup');
 }
 
@@ -77,4 +80,4 @@ const scheduler = new Scheduler(runner.pool, (mode) =>
   runner.enqueueAll(mode, 'cron')
 );
 await scheduler.start();
-console.log('Scheduler started');
+log.info('Scheduler started');

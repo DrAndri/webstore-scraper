@@ -2,11 +2,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parse, ParseError, printParseErrorCode } from 'jsonc-parser';
 import { WebshopCrawlerOptions } from './types/index.js';
+import { logger } from './logger.js';
 
 // Configs are reloaded at most this often
 const MAX_AGE_MS = 60 * 1000;
 const CONFIG_FILE = /^(\d+)\.jsonc$/;
 const CRAWLER_TYPES = ['httpcrawler', 'crawler'];
+
+const log = logger.child({ label: 'StoreConfigLoader' });
 
 export interface ConfigError {
   file: string;
@@ -75,7 +78,7 @@ export default class StoreConfigLoader {
         ? await this.loadFromGithub(this.repo)
         : await this.loadFromDisk();
     } catch (e) {
-      console.log('Loading store configs failed', e);
+      log.error('Loading store configs failed', e);
       // Keep using the last configs, or the ones in the image
       this.current ??= await this.loadFromDisk();
     }
@@ -130,7 +133,7 @@ export default class StoreConfigLoader {
           return { name: entry.name, text };
         })
     );
-    console.log(
+    log.info(
       `Loaded ${files.length} store configs from ${source} at ${latest.sha}`
     );
     return this.parseFiles(files, source, latest.sha);
@@ -171,7 +174,7 @@ export default class StoreConfigLoader {
             .join(', ')
         : validateStoreConfig(value, storeId);
       if (message) {
-        console.log(`Invalid store config ${file.name}: ${message}`);
+        log.warn(`Invalid store config ${file.name}: ${message}`);
         errors.push({ file: file.name, message });
       } else {
         configs.set(storeId, value as WebshopCrawlerOptions);

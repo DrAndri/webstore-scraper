@@ -1,5 +1,4 @@
 import {
-  Log,
   PlaywrightCrawler,
   PlaywrightCrawlerOptions,
   PlaywrightCrawlingContext,
@@ -7,7 +6,7 @@ import {
   type Request
 } from 'crawlee';
 import { CacheItems } from '../types/index.js';
-import { createLogger } from '../logger.js';
+import { createLogger, logger as appLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
 import { Locator, Page } from 'playwright';
 import BaseCrawler from './BaseCrawler.js';
@@ -31,6 +30,7 @@ export default class WebshopCrawler extends BaseCrawler {
       menuClicker
     } = this.store.options;
     const store = this.store;
+    const storeLog = appLogger.child({ label: store.name });
 
     const pageScraper = new PageScraper(selectors, sanitizers, categoryBanList);
 
@@ -72,8 +72,7 @@ export default class WebshopCrawler extends BaseCrawler {
         }
         return false;
       } catch (e) {
-        console.log('Error in findProductLocator');
-        console.log(e);
+        storeLog.error(`Error finding the product on ${page.url()}`, e);
         return false;
       }
     };
@@ -243,10 +242,10 @@ export default class WebshopCrawler extends BaseCrawler {
                 body: body
               });
             } catch (e) {
-              crawlLog.error(
-                `Failed to cache script: ${route.request().url()}`
+              storeLog.error(
+                `Failed to cache script: ${route.request().url()}`,
+                e
               );
-              console.log(e);
             }
           }
         } else {
@@ -254,8 +253,6 @@ export default class WebshopCrawler extends BaseCrawler {
         }
       });
     };
-
-    const crawlLog = new Log({ prefix: store.name });
 
     // const config = Configuration.getGlobalConfig();
 

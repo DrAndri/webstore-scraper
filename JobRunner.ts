@@ -19,6 +19,9 @@ import WebshopCrawler from './crawler/WebshopCrawler.js';
 import WebshopHtmlCrawler from './crawler/WebshopHtmlCrawler.js';
 import SQLStoreUpdater, { poolConfig } from './SQLStoreUpdater.js';
 import StoreConfigLoader, { validateStoreConfig } from './StoreConfigLoader.js';
+import { logger } from './logger.js';
+
+const log = logger.child({ label: 'JobRunner' });
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_RUNNING_TESTS = 2;
@@ -44,10 +47,7 @@ const toSqlDateTime = (date: Date) =>
   date.toISOString().slice(0, 19).replace('T', ' ');
 
 function reportResults(results: StoreUpdateResult, storeName: string): void {
-  console.log('FINISHED UPDATING', storeName);
-  for (const [name, value] of Object.entries(results)) {
-    console.log(`${name}:`, value);
-  }
+  log.info(`Finished updating ${storeName}`, results);
 }
 
 // Runs the jobs queued in scrapeJobs, by cron, at startup or from the admin
@@ -79,12 +79,10 @@ export default class JobRunner {
       "UPDATE scrapeJobs SET status = 'failed', finishedAt = UTC_TIMESTAMP(), errorMessage = 'Interrupted, the scraper stopped while the job was running' WHERE status = 'running'"
     );
     if (interrupted.affectedRows > 0)
-      console.log(
-        `Marked ${interrupted.affectedRows} interrupted jobs as failed`
-      );
+      log.warn(`Marked ${interrupted.affectedRows} interrupted jobs as failed`);
     await this.tick();
     setInterval(() => void this.tick(), POLL_INTERVAL_MS);
-    console.log('Job runner started');
+    log.info('Job runner started');
   }
 
   // Queues a job for every enabled store with a config, skipping stores that
@@ -101,7 +99,7 @@ export default class JobRunner {
        )`,
       [mode, source, storeIds, mode]
     );
-    console.log(`Queued ${result.affectedRows} ${mode} jobs (${source})`);
+    log.info(`Queued ${result.affectedRows} ${mode} jobs (${source})`);
   }
 
   async tick() {
@@ -115,7 +113,7 @@ export default class JobRunner {
       );
       await this.claimJobs();
     } catch (e) {
-      console.log('Job runner tick failed', e);
+      log.error('Job runner tick failed', e);
     } finally {
       this.ticking = false;
     }
@@ -164,7 +162,7 @@ export default class JobRunner {
     for (const { id } of cancelled) {
       const entry = this.running.get(id);
       if (entry && !entry.cancelled) {
-        console.log(`Cancelling job ${id}`);
+        log.info(`Cancelling job ${id}`);
         entry.cancelled = true;
         entry.crawler?.stop();
       }
@@ -220,7 +218,7 @@ export default class JobRunner {
           : await this.runStoreJob(job, configs.configs, entry);
       if (entry.cancelled) status = 'cancelled';
     } catch (e) {
-      console.log(`Job ${job.id} failed`, e);
+      log.error(`Job ${job.id} failed`, e);
       status = 'failed';
       result.errorMessage = errorMessage(e);
     }
@@ -252,7 +250,7 @@ export default class JobRunner {
         ]
       );
     } catch (e) {
-      console.log(`Saving the result of job ${job.id} failed`, e);
+      log.error(`Saving the result of job ${job.id} failed`, e);
     } finally {
       this.running.delete(job.id);
     }
@@ -281,11 +279,9 @@ export default class JobRunner {
       if (products.length === 0)
         return { errorMessage: 'No active products to scrape' };
       urlList = products.map((product) => options.startUrl + product.url);
-      console.log(
-        `Scraping ${urlList.length} products for store ${store.name}`
-      );
+      log.info(`Scraping ${urlList.length} products for store ${store.name}`);
     } else {
-      console.log('UPDATING', store.name);
+      log.info(`Crawling store ${store.name}`);
     }
 
     const result = await this.updateStore(store, options, entry, urlList);

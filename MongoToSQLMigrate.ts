@@ -8,6 +8,9 @@ import {
   ProductPrice
 } from './types/db-types.js';
 import { createPool, SqlError, UpsertResult } from 'mariadb';
+import { logger } from './logger.js';
+
+const log = logger.child({ label: 'MongoToSQLMigrate' });
 
 interface MongoStoreConfig {
   name: string;
@@ -91,9 +94,9 @@ const handleManufacturer = async (
 };
 
 const migrate = async (mongoDb: Db) => {
-  console.log('Migrating data from MongoDB to SQL...');
+  log.info('Migrating data from MongoDB to SQL...');
   const stores = await getAllStores(mongoDb);
-  console.log(stores);
+  log.info(`Found ${stores.length} stores`, { stores });
   let migratedStores = 0;
   let migratedProducts = 0;
   let migratedPrices = 0;
@@ -125,15 +128,15 @@ const migrate = async (mongoDb: Db) => {
         priceCount++;
       }
     }
-    console.log(
+    log.info(
       `Migrated store: ${store.name} with ${products.length} products and ${priceCount} prices`
     );
     migratedStores++;
     migratedProducts += products.length;
     migratedPrices += priceCount;
   }
-  console.log(`Done migrating data from MongoDB to SQL`);
-  console.log(
+  log.info(`Done migrating data from MongoDB to SQL`);
+  log.info(
     `Migrated total ${migratedStores} stores, ${migratedProducts} products, and ${migratedPrices} prices`
   );
 };
@@ -168,7 +171,7 @@ async function insertProductIntoSQL(
       )
       .catch(async (e) => {
         if (e instanceof SqlError && e.errno === 1062) {
-          console.log('linking products');
+          log.debug(`Linking product ${product.sku} to an existing product`);
           const existingProduct = await conn
             .query<
               Product[]
@@ -190,7 +193,7 @@ async function insertPriceIntoSQL(
   table: 'prices' | 'salePrices'
 ) {
   if (price.price > 16777215) {
-    console.log('price to large!!!');
+    log.warn(`Price ${price.price} is too large, skipping it`);
     return;
   }
   const mongoPriceStart = new Date(price.start * 1000);
@@ -205,24 +208,25 @@ async function insertPriceIntoSQL(
         [sqlProductId, price.price, mongoPriceStart, mongoPriceEnd]
       );
     } catch (e) {
-      console.log('the exception', e);
       if (e instanceof SqlError && e.errno === 1062) {
         const existingPrice = await conn.query<ProductPrice>(
           `SELECT price, end FROM ${table} WHERE productId = ? AND start = ? `,
           [sqlProductId, mongoPriceStart]
         );
         if (existingPrice.price !== price.price) {
-          console.log('price inconsistant!');
+          log.warn(`Price of product ${sqlProductId} is inconsistent`);
         }
         if (mongoPriceEnd > existingPrice.end) {
-          console.log('update price');
+          log.debug(`Updating the end of price for product ${sqlProductId}`);
           res = await conn.query<UpsertResult>(
             `UPDATE ${table} SET end = ? WHERE productId = ? AND start = ?`,
             [mongoPriceEnd, sqlProductId, mongoPriceStart]
           );
         } else {
-          console.log('ignore');
+          log.debug(`Ignoring duplicate price for product ${sqlProductId}`);
         }
+      } else {
+        log.error(`Inserting price for product ${sqlProductId} failed`, e);
       }
     }
     await conn.release();

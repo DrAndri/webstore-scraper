@@ -7,6 +7,10 @@ import {
   Manufacturer,
   Product
 } from './types/db-types.js';
+import { logger } from './logger.js';
+
+// Every product the scraper saves is indexed, so these are debug logs
+const log = logger.child({ label: 'Solr' });
 
 interface SolrResponse {
   responseHeader: {
@@ -48,7 +52,9 @@ const submitUpdate = async (
     )
   });
   if (!response.ok) {
-    console.error(await response.json());
+    log.error(
+      `Updating Solr core ${core} failed with ${response.status}: ${await response.text()}`
+    );
     throw new Error(`Failed to submit update: ${response.statusText}`);
   }
   return (await response.json()) as SolrResponse;
@@ -82,43 +88,53 @@ export const indexProduct = async (
 ): Promise<void> => {
   const solrProduct = getSolrProduct(product, price, attributes);
   await submitUpdate('products', [solrProduct]);
+  log.debug(`Indexed product ${product.sku}`);
 };
 export const indexProducts = async (products: SolrProduct[]): Promise<void> => {
   await submitUpdate('products', products);
+  log.debug(`Indexed ${products.length} products`);
 };
 export const indexManufacturer = async (
   manufacturer: Manufacturer
 ): Promise<void> => {
   await submitUpdate('manufacturers', [manufacturer]);
+  log.debug(`Indexed manufacturer ${manufacturer.name}`);
 };
 export const indexManufacturers = async (
   manufacturers: Manufacturer[]
 ): Promise<void> => {
   await submitUpdate('manufacturers', manufacturers);
+  log.debug(`Indexed ${manufacturers.length} manufacturers`);
 };
 export const indexCategory = async (category: Category): Promise<void> => {
   await submitUpdate('categories', [category]);
+  log.debug(`Indexed category ${category.name}`);
 };
 export const indexCategories = async (
   categories: Category[]
 ): Promise<void> => {
   await submitUpdate('categories', categories);
+  log.debug(`Indexed ${categories.length} categories`);
 };
 export const indexAttributeGroup = async (
   attributeGroup: AttributeGroup
 ): Promise<void> => {
   await submitUpdate('attribute-groups', [attributeGroup]);
+  log.debug(`Indexed attribute group ${attributeGroup.name}`);
 };
 export const indexAttributeGroups = async (
   attributeGroups: AttributeGroup[]
 ): Promise<void> => {
   await submitUpdate('attribute-groups', attributeGroups);
+  log.debug(`Indexed ${attributeGroups.length} attribute groups`);
 };
 export const indexAttribute = async (attribute: Attribute): Promise<void> => {
   await submitUpdate('attributes', [attribute]);
+  log.debug(`Indexed attribute ${attribute.name}`);
 };
 export const indexAttributes = async (
   attributes: Attribute[]
 ): Promise<void> => {
   await submitUpdate('attributes', attributes);
+  log.debug(`Indexed ${attributes.length} attributes`);
 };

@@ -31,6 +31,9 @@ import {
   indexProducts,
   SolrProduct
 } from './SolrUtils.js';
+import { logger } from './logger.js';
+
+const log = logger.child({ label: 'SQLStoreUpdater' });
 
 export const poolConfig: PoolConfig = {
   host: process.env.MARIADB_HOST,
@@ -86,6 +89,7 @@ export const indexEverything = async (): Promise<void> => {
   const conn = await pool.getConnection();
 
   const products = await conn.query<Product[]>('SELECT * FROM products');
+  log.info(`Indexing ${products.length} products`);
 
   await chunkSolrUpdate(products, async (productsChunk) => {
     const solrProducts: SolrProduct[] = [];
@@ -136,6 +140,9 @@ export const indexEverything = async (): Promise<void> => {
   await chunkSolrUpdate(attributes, async (attributesChunk) => {
     await indexAttributes(attributesChunk);
   });
+  log.info(
+    `Indexed ${categories.length} categories, ${manufacturers.length} manufacturers, ${attributeGroups.length} attribute groups and ${attributes.length} attributes`
+  );
 };
 
 export default class SQLStoreUpdater {
@@ -749,14 +756,10 @@ export default class SQLStoreUpdater {
             this.result.updatedAttributesToProducts++;
           }
         } catch (e) {
-          console.error(
-            'Error upserting attributes for product',
-            product.id,
-            attributeGroup.name,
-            attribute.name,
-            attribute.value
+          log.error(
+            `Error upserting attribute ${attributeGroup.name} / ${attribute.name} = ${attribute.value} for product ${product.id}`,
+            e
           );
-          console.error(e);
         }
       }
       //TODO: delete attributeToProduct entries that are not present in scraped data anymore
