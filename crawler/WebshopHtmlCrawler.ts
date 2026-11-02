@@ -7,7 +7,7 @@ import {
   RequestHandler,
   type Request
 } from 'crawlee';
-import { createProductLogger } from '../logger.js';
+import { createLogger } from '../logger.js';
 import PageHtmlScraper from './PageHtmlScraper.js';
 import BaseCrawler from './BaseCrawler.js';
 import { categoryBanList } from './constants.js';
@@ -33,7 +33,7 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
     > = async ({ request, $ }) => {
       this.result.totalRequests++;
 
-      const logger = createProductLogger(
+      const logger = createLogger(
         request.loadedUrl ?? 'default label',
         store.name,
         batchTimestamp

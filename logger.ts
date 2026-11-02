@@ -4,33 +4,10 @@ import LokiTransport from 'winston-loki';
 const { combine, colorize, splat, timestamp, errors, printf } = format;
 
 const LOKI_URL = process.env.LOKI_URL;
-const ENABLE_PRODUCT_LOGGING =
-  process.env.ENABLE_PRODUCT_LOGGING === 'true' ? true : false;
+const ENABLE_SCRAPER_LOGGING =
+  process.env.ENABLE_SCRAPER_LOGGING === 'true' ? true : false;
 
-export const createStoreLogger = (label: string) => {
-  const customFormat = printf(({ timestamp, level, message, stack }) => {
-    // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-    return `${timestamp} [${level}]: [${label}] ${stack ?? message}`;
-  });
-
-  return new Logger({
-    levels: config.npm.levels,
-    transports: [
-      new transports.Console({
-        level: 'info',
-        format: combine(
-          colorize(),
-          splat(),
-          timestamp(),
-          errors({ stack: true }),
-          customFormat
-        )
-      })
-    ]
-  });
-};
-
-export const createProductLogger = (
+export const createLogger = (
   label: string,
   storeName: string,
   currentDate: Date
@@ -49,7 +26,7 @@ export const createProductLogger = (
         json: true,
         level: 'debug',
         interval: 30,
-        silent: !ENABLE_PRODUCT_LOGGING
+        silent: !ENABLE_SCRAPER_LOGGING
       })
     );
   } else {
@@ -67,7 +44,7 @@ export const createProductLogger = (
           errors({ stack: true }),
           customFormat
         ),
-        silent: !ENABLE_PRODUCT_LOGGING
+        silent: !ENABLE_SCRAPER_LOGGING
       })
     );
   }

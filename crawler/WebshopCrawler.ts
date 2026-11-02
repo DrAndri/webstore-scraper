@@ -7,7 +7,7 @@ import {
   type Request
 } from 'crawlee';
 import { CacheItems } from '../types/index.js';
-import { createProductLogger } from '../logger.js';
+import { createLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
 import { Locator, Page } from 'playwright';
 import BaseCrawler from './BaseCrawler.js';
@@ -98,7 +98,7 @@ export default class WebshopCrawler extends BaseCrawler {
         numberOfChecks: 7
       });
 
-      const logger = createProductLogger(
+      const logger = createLogger(
         request.loadedUrl ?? 'default label',
         store.name,
         this.currentDate

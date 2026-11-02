@@ -14,7 +14,7 @@ import {
   ScrapeResult,
   StoreConfig
 } from '../types/index.js';
-import { createStoreLogger } from '../logger.js';
+import { createLogger } from '../logger.js';
 import { Logger } from 'winston';
 import {
   absoluteUrlRegExp,
@@ -224,7 +224,11 @@ export default abstract class BaseCrawler {
         : [];
     await this.crawler.run(startUrls);
 
-    const storeLogger = createStoreLogger(this.store.name);
+    const storeLogger = createLogger(
+      'Scan log',
+      this.store.name,
+      this.currentDate
+    );
 
     storeLogger.log('info', `Crawl of store ${this.store.name} completed.`);
     storeLogger.log('info', `Total requests: ${this.result.totalRequests}`);
