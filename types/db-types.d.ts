@@ -107,10 +107,27 @@ export interface WebshopCrawlerOptions {
   productPageIdentifier: string;
   urlWhitelist?: string[];
   urlBlacklist?: string[];
+  // More pages the crawl starts from, e.g. a product listing with a larger
+  // page size than the one the site links to
+  startUrls?: string[];
   // Sitemaps whose <loc> urls are queued when crawling, httpcrawler only
   sitemapUrls?: string[];
+  productFeed?: ProductFeed;
   scrollPagesToBottom?: boolean;
   menuClicker?: string;
+}
+
+// A JSON endpoint that lists the products of a store, for stores whose
+// category pages load the products with JavaScript. The product page of each
+// item is queued when crawling.
+export interface ProductFeed {
+  url: string;
+  // Dot path to the list of items, a JSON string on the way is parsed, e.g.
+  // "d.data" for ASP.NET script services
+  items: string;
+  // Url of the product page of an item, {field} is replaced with that field of
+  // the item and {field:5} pads it with zeros to 5 characters
+  productUrl: string;
 }
 
 export interface ProductSanitizers {

@@ -131,7 +131,9 @@ export default class WebshopCrawler extends BaseCrawler {
       }
 
       logger.close();
-      if (this.mode === 'crawler') await addLinksToQueue(page);
+      // Only listing pages are scrolled to load more products
+      if (this.mode === 'crawler')
+        await addLinksToQueue(page, scrollPagesToBottom && !productLocator);
       await page.close();
     };
     const scrollToBottom = async (
@@ -148,18 +150,25 @@ export default class WebshopCrawler extends BaseCrawler {
       await page.evaluate((scrollHeight) => {
         window.scrollTo({ top: scrollHeight, behavior: 'instant' });
       }, scrollHeight);
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      const scrollHeightAfter = await page.evaluate(
-        () => window.document.documentElement.scrollHeight
-      );
-      if (counter >= 10) return;
+      // Wait up to 10 seconds for more products, Advania takes 6 seconds to
+      // load the next 100
+      let scrollHeightAfter = scrollHeight;
+      for (let i = 0; i < 20 && scrollHeightAfter <= scrollHeight; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        scrollHeightAfter = await page.evaluate(
+          () => window.document.documentElement.scrollHeight
+        );
+      }
+      // A store can load a page of products every other scroll, Advania
+      // needs 22 for its 1100 products
+      if (counter >= 30) return;
       counter++;
       if (scrollHeightAfter > scrollHeight)
         return scrollToBottom(page, lastScrollHeight, counter);
     };
 
-    const addLinksToQueue = async (page: Page) => {
-      if (scrollPagesToBottom) await scrollToBottom(page);
+    const addLinksToQueue = async (page: Page, scroll?: boolean) => {
+      if (scroll) await scrollToBottom(page);
       const links = await page
         .getByRole('link')
         .all()

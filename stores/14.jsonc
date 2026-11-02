@@ -4,7 +4,9 @@
   "type": "crawler",
   "productPageIdentifier": "Almennar upplýsingar",
   "urlWhitelist": ["/voruflokkar"],
-  "menuClicker": "span:has-text(\"Vöruflokkar\")",
+  // Lists every product, 100 at a time, the next 100 load when scrolling
+  "startUrls": ["https://vefverslun.advania.is/voruflokkar?PageSize=100"],
+  "scrollPagesToBottom": true,
   "selectors": {
     "productPage": ".product-details__wrapper",
     "oldPrice": "",

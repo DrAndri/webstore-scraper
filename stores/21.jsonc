@@ -3,18 +3,31 @@
   "startUrl": "https://www.vinbudin.is",
   "type": "httpcrawler",
   "productPageIdentifier": "Varan fæst í eftirfarandi Vínbúðum",
-  "urlWhitelist": ["/heim/vorur", "/desktopdefault.aspx/tabid-54"],
+  "urlWhitelist": ["/heim/vorur"],
+  // The category pages load their products from this search with JavaScript
+  "productFeed": {
+    "url": "/addons/origo/module/ajaxwebservices/search.asmx/DoSearch?skip=0&count=10000&orderBy=name",
+    "items": "d.data",
+    "productUrl": "/heim/vorur/stoek-vara.aspx/?productid={ProductID:5}/"
+  },
   "selectors": {
-    "productPage": "#wrapper > .content",
+    // The whole page, so the image can be read from <head>
+    "productPage": "html:has(#wrapper > .content)",
     "listPrice": ".price > .money",
     "name": "h3.title > span:nth-child(1)",
     "sku": "h3.title > .product-number-text",
-    "image": "#first_image",
+    // The gallery is rendered with JavaScript
+    "image": "meta[property=\"og:image\"]",
+    "imageAttribute": "content",
     "description": ".category-description-text .entire-text",
-    "categories": "#breadcrumbs > ul",
-    "inStock": "#cart-link",
-    "inStockText": "Setja í körfu",
-    "categoryItemLocator": "li > a",
+    // The breadcrumb only holds "Forsíða" and "Vörur", the taste line reads
+    // e.g. "Sterkt áfengi- Vodka- Bragðbætt vodka"
+    "categories": ".product-detail .sub .taste",
+    "categorySplitter": "- ",
+    // The cart button is rendered with JavaScript, the stores that have the
+    // product list how many they have
+    "inStock": "#divStockStatus",
+    "inStockText": "stykki",
     "brand": "#ctl00_ctl01_Label_Producer",
     "attributes": {
       "attributesTable": ".product-packaging-info",

@@ -20,6 +20,7 @@ import {
   absoluteUrlRegExp,
   blockedNavigationPathEndings
 } from './constants.js';
+import { fetchProductFeedUrls } from './ProductFeed.js';
 
 export default abstract class BaseCrawler {
   store: StoreConfig;
@@ -215,21 +216,38 @@ export default abstract class BaseCrawler {
   }
 
   async crawlSite(): Promise<void> {
-    // In list mode only the urls in the request list are scraped
-    const startUrls =
-      this.mode === 'crawler'
-        ? [
-            this.store.options.startUrl,
-            ...(this.store.options.sitemapUrls ?? [])
-          ]
-        : [];
-    await this.crawler.run(startUrls);
-
+    const { startUrl, productFeed } = this.store.options;
     const storeLogger = createLogger(
       'Scan log',
       this.store.name,
       this.jobId
     );
+
+    // In list mode only the urls in the request list are scraped
+    const startUrls =
+      this.mode === 'crawler'
+        ? [
+            startUrl,
+            ...(this.store.options.startUrls ?? []),
+            ...(this.store.options.sitemapUrls ?? [])
+          ]
+        : [];
+    if (this.mode === 'crawler' && productFeed) {
+      try {
+        const feedUrls = await fetchProductFeedUrls(productFeed, startUrl);
+        storeLogger.log(
+          'info',
+          `Product feed ${productFeed.url} has ${feedUrls.length} products`
+        );
+        startUrls.push(...feedUrls);
+      } catch (e) {
+        // Fail the scan, without the feed it would miss most of the products
+        storeLogger.log('error', 'Error reading the product feed: %O', e);
+        storeLogger.close();
+        throw e;
+      }
+    }
+    await this.crawler.run(startUrls);
 
     storeLogger.log('info', `Crawl of store ${this.store.name} completed.`);
     storeLogger.log('info', `Total requests: ${this.result.totalRequests}`);
