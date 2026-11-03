@@ -243,7 +243,6 @@ export default abstract class BaseCrawler {
       } catch (e) {
         // Fail the scan, without the feed it would miss most of the products
         storeLogger.log('error', 'Error reading the product feed: %O', e);
-        storeLogger.close();
         throw e;
       }
     }
@@ -266,7 +265,6 @@ export default abstract class BaseCrawler {
       'info',
       `Categories errors: ${this.result.categoriesError}`
     );
-    storeLogger.close();
 
     return;
   }

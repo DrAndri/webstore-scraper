@@ -130,7 +130,6 @@ export default class WebshopCrawler extends BaseCrawler {
         }
       }
 
-      logger.close();
       // Only listing pages are scrolled to load more products
       if (this.mode === 'crawler')
         await addLinksToQueue(page, scrollPagesToBottom && !productLocator);

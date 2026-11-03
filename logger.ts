@@ -31,7 +31,8 @@ const appFormat = printf(
   }
 );
 
-// The log of the scraper itself, modules add a label with logger.child()
+// The log of the scraper itself, modules add a label with logger.child().
+// It goes to Loki when LOKI_URL is set, otherwise to the console.
 export const logger = createWinstonLogger({
   levels: config.npm.levels,
   level: LOG_LEVEL,
@@ -39,21 +40,18 @@ export const logger = createWinstonLogger({
   // the log message, the messages are template strings instead
   format: errors({ stack: true }),
   transports: [
-    new transports.Console({
-      format: combine(colorize(), timestamp(), appFormat)
-    }),
-    ...(LOKI_URL
-      ? [
-          new LokiTransport({
-            host: LOKI_URL,
-            labels: { app: 'webstore-scraper' },
-            format: format.json(),
-            json: true,
-            // Seconds, the admin interface shows the log live
-            interval: 5
-          })
-        ]
-      : [])
+    LOKI_URL
+      ? new LokiTransport({
+          host: LOKI_URL,
+          labels: { app: 'webstore-scraper' },
+          format: format.json(),
+          json: true,
+          // Seconds, the admin interface shows the log live
+          interval: 5
+        })
+      : new transports.Console({
+          format: combine(colorize(), timestamp(), appFormat)
+        })
   ]
 });
 
@@ -87,51 +85,71 @@ crawleeLog.getOptions().logger._log = (
 if (['debug', 'silly'].includes(LOG_LEVEL))
   crawleeLog.setLevel(LogLevel.DEBUG);
 
+interface ScanLabels {
+  store: string;
+  jobId: number;
+  page: string;
+}
+
+// winston-loki sends the labels of an entry as the labels of its stream, the
+// line is the JSON of the rest of the entry
+const jsonLine = format.json({});
+const lineWithoutLabels = format((info) => {
+  const line = { ...info };
+  delete line.labels;
+  const formatted = jsonLine.transform(line, jsonLine.options);
+  if (typeof formatted === 'object')
+    info[Symbol.for('message')] = formatted[Symbol.for('message')];
+  return info;
+});
+
+// All the scans log through this one transport. winston-loki registers an exit
+// hook for every transport that is never removed, so a transport for each page
+// kept every one of them in memory.
+const scanLogger = new Logger({
+  levels: config.npm.levels,
+  transports: [
+    LOKI_URL
+      ? new LokiTransport({
+          host: LOKI_URL,
+          // Without labels the stream would get a job label
+          labels: {},
+          format: combine(
+            splat(),
+            errors({ stack: true }),
+            lineWithoutLabels()
+          ),
+          json: true,
+          level: 'debug',
+          interval: 5,
+          silent: !ENABLE_SCRAPER_LOGGING
+        })
+      : new transports.Console({
+          level: 'warn',
+          format: combine(
+            colorize(),
+            splat(),
+            timestamp(),
+            errors({ stack: true }),
+            printf(({ timestamp, level, message, stack, labels }) => {
+              const { page } = labels as ScanLabels;
+              // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+              return `${timestamp} [${level}]: [${page}] ${stack ?? message}`;
+            })
+          ),
+          silent: !ENABLE_SCRAPER_LOGGING
+        })
+  ]
+});
+
 // The log of a scan, labelled with the page it is about. jobId is the id of
 // the scrapeJobs row, so the admin interface can show the log of each scan.
+// The child shares the transport of scanLogger, it must not be closed.
 export const createLogger = (
   label: string,
   storeName: string,
   jobId: number
-) => {
-  const transportsArray = [];
-  if (LOKI_URL) {
-    transportsArray.push(
-      new LokiTransport({
-        host: LOKI_URL,
-        labels: {
-          store: storeName,
-          jobId,
-          page: label
-        },
-        format: combine(splat(), errors({ stack: true }), format.json()),
-        json: true,
-        level: 'debug',
-        interval: 5,
-        silent: !ENABLE_SCRAPER_LOGGING
-      })
-    );
-  } else {
-    const customFormat = printf(({ timestamp, level, message, stack }) => {
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-      return `${timestamp} [${level}]: [${label}] ${stack ?? message}`;
-    });
-    transportsArray.push(
-      new transports.Console({
-        level: 'warn',
-        format: combine(
-          colorize(),
-          splat(),
-          timestamp(),
-          errors({ stack: true }),
-          customFormat
-        ),
-        silent: !ENABLE_SCRAPER_LOGGING
-      })
-    );
-  }
-  return new Logger({
-    levels: config.npm.levels,
-    transports: transportsArray
+): Logger =>
+  scanLogger.child({
+    labels: { store: storeName, jobId, page: label } satisfies ScanLabels
   });
-};

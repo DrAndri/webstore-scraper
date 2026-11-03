@@ -61,7 +61,6 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
         this.handleNotProductPage(logger, request.loadedUrl);
       }
 
-      logger.close();
       if (this.mode === 'crawler') await addLinksToQueue($);
     };
 
