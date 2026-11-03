@@ -276,8 +276,8 @@ export default class WebshopCrawler extends BaseCrawler {
       requestHandler: requestHandler,
       headless: true,
       browserPoolOptions: {
-        maxOpenPagesPerBrowser: 20,
-        retireBrowserAfterPageCount: 1000,
+        maxOpenPagesPerBrowser: 10,
+        retireBrowserAfterPageCount: 100,
         retireInactiveBrowserAfterSecs: 10,
         closeInactiveBrowserAfterSecs: 1000,
         useFingerprints: false,
@@ -286,7 +286,7 @@ export default class WebshopCrawler extends BaseCrawler {
         }
       },
       launchContext: {
-        userDataDir: '/dev/shm/chrome-user-' + new Date().getTime(),
+        //userDataDir: '/dev/shm/chrome-user-' + new Date().getTime(),
         launchOptions: {
           headless: true,
           args: [

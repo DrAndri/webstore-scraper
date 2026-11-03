@@ -196,6 +196,7 @@ export default abstract class BaseCrawler {
         persistStateKey: `${this.store.safeStoreName}-session-pool`
       },
       // maxRequestsPerCrawl: 30000,
+      maxConcurrency: 5,
       maxRequestsPerMinute: 30,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 240,
@@ -217,11 +218,7 @@ export default abstract class BaseCrawler {
 
   async crawlSite(): Promise<void> {
     const { startUrl, productFeed } = this.store.options;
-    const storeLogger = createLogger(
-      'Scan log',
-      this.store.name,
-      this.jobId
-    );
+    const storeLogger = createLogger('Scan log', this.store.name, this.jobId);
 
     // In list mode only the urls in the request list are scraped
     const startUrls =
