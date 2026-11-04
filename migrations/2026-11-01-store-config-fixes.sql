@@ -1,5 +1,5 @@
 -- Run once before the next scrape after deploying the store config fixes,
--- then reindex Solr (INDEX_EVERYTHING=true).
+-- then reindex Solr from the admin dashboard.
 
 -- Krónan (storeId 11): the sku was taken from the url and stored as
 -- https://kronan.is/vara/100273793, it now comes from JSON-LD as 100273793.

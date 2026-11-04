@@ -6,14 +6,11 @@ import { logger } from './logger.js';
 const log = logger.child({ label: 'Scheduler' });
 
 const SYNC_INTERVAL_MS = 30 * 1000;
-// Used for the rows created on the first start when the env variable is not set
+// The rows created on the first start, turned off until they are turned on in
+// the admin interface
 const DEFAULT_SCHEDULES: Record<ScheduledMode, string> = {
   crawler: '0 1 * * 1',
   list: '0 4 * * *'
-};
-const ENV_SCHEDULES: Record<ScheduledMode, string | undefined> = {
-  crawler: process.env.CRON_SCHEDULE,
-  list: process.env.CRON_ACTIVE_SCHEDULE
 };
 
 interface ScheduleRow {
@@ -36,14 +33,9 @@ export default class Scheduler {
 
   async start() {
     for (const mode of Object.keys(DEFAULT_SCHEDULES) as ScheduledMode[]) {
-      const envSchedule = ENV_SCHEDULES[mode];
       await this.pool.query(
-        "INSERT IGNORE INTO scraperSchedules (mode, cron, enabled, updatedAt, updatedBy) VALUES (?, ?, ?, UTC_TIMESTAMP(), 'env')",
-        [
-          mode,
-          envSchedule ?? DEFAULT_SCHEDULES[mode],
-          envSchedule !== undefined
-        ]
+        'INSERT IGNORE INTO scraperSchedules (mode, cron, enabled, updatedAt) VALUES (?, ?, FALSE, UTC_TIMESTAMP())',
+        [mode, DEFAULT_SCHEDULES[mode]]
       );
     }
     await this.sync();

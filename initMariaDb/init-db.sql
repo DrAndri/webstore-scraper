@@ -57,9 +57,8 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     CONSTRAINT fk_scrapeJobs_store FOREIGN KEY (storeId) REFERENCES webstorinator.stores(id) ON DELETE CASCADE
 );
 
--- One row per mode, seeded from CRON_SCHEDULE and CRON_ACTIVE_SCHEDULE on the
--- first start of the scraper, after that the admin interface owns them.
--- Expressions are evaluated in UTC.
+-- One row per mode, created turned off on the first start of the scraper and
+-- edited in the admin interface. Expressions are evaluated in UTC.
 CREATE TABLE IF NOT EXISTS webstorinator.scraperSchedules (
     mode ENUM('crawler', 'list') PRIMARY KEY,
     cron VARCHAR(64) NOT NULL,
@@ -82,6 +81,17 @@ CREATE TABLE IF NOT EXISTS webstorinator.scraperStatus (
     -- JSON array of { file, message } for store configs that failed to load
     configErrors JSON
 );
+
+-- Settings of the scraper edited in the admin interface, one row with id 1.
+-- The job runner reads them every 5 seconds.
+CREATE TABLE IF NOT EXISTS webstorinator.scraperSettings (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    -- Stores scanned at a time
+    concurrency TINYINT UNSIGNED NOT NULL DEFAULT 5,
+    updatedAt DATETIME,
+    updatedBy VARCHAR(255)
+);
+INSERT IGNORE INTO webstorinator.scraperSettings (id) VALUES (1);
 
 CREATE TABLE IF NOT EXISTS webstorinator.manufacturers (
     id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -244,6 +254,7 @@ GRANT SELECT ON webstorinator.* TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.stores TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.scrapeJobs TO 'webstore-admin'@'%';
 GRANT UPDATE ON webstorinator.scraperSchedules TO 'webstore-admin'@'%';
+GRANT UPDATE ON webstorinator.scraperSettings TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.apiUsers TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.apiTokens TO 'webstore-admin'@'%';
 

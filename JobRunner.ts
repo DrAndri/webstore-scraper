@@ -29,6 +29,8 @@ const log = logger.child({ label: 'JobRunner' });
 
 const POLL_INTERVAL_MS = 5000;
 const MAX_RUNNING_TESTS = 2;
+// Stores scanned at a time until scraperSettings is read
+const DEFAULT_CONCURRENCY = 5;
 
 interface RunningJob {
   job: ScrapeJob;
@@ -73,14 +75,14 @@ export default class JobRunner {
   categoriesPool: Pool;
   manufacturersPool: Pool;
   configLoader: StoreConfigLoader;
-  concurrency: number;
+  // Stores scanned at a time, from scraperSettings
+  concurrency = DEFAULT_CONCURRENCY;
   running = new Map<number, RunningJob>();
   startedAt = new Date();
   ticking = false;
 
-  constructor(configLoader: StoreConfigLoader, concurrency: number) {
+  constructor(configLoader: StoreConfigLoader) {
     this.configLoader = configLoader;
-    this.concurrency = concurrency;
     this.pool = createPool({ ...poolConfig, connectionLimit: 2 });
     // Single connection pools so attributes, categories and manufacturers are
     // not created twice by stores scraped at the same time
@@ -90,6 +92,12 @@ export default class JobRunner {
   }
 
   async start() {
+    // Fails when the scraperSettings migration has not been run
+    await this.pool.query(
+      'INSERT IGNORE INTO scraperSettings (id, concurrency) VALUES (1, ?)',
+      [DEFAULT_CONCURRENCY]
+    );
+    await this.loadSettings();
     const interrupted = await this.pool.query<UpsertResult>(
       "UPDATE scrapeJobs SET status = 'failed', finishedAt = UTC_TIMESTAMP(), errorMessage = 'Interrupted, the scraper stopped while the job was running' WHERE status = 'running'"
     );
@@ -117,10 +125,25 @@ export default class JobRunner {
     log.info(`Queued ${result.affectedRows} ${mode} jobs (${source})`);
   }
 
+  // Queues a reindex of everything in the database to Solr, unless one is
+  // already queued or running
+  async enqueueIndex(source: ScrapeJobSource) {
+    const result = await this.pool.query<UpsertResult>(
+      `INSERT INTO scrapeJobs (storeId, mode, source, status, queuedAt)
+       SELECT NULL, 'index', ?, 'queued', UTC_TIMESTAMP() FROM DUAL
+       WHERE NOT EXISTS (
+         SELECT 1 FROM scrapeJobs WHERE mode = 'index' AND status IN ('queued', 'running')
+       )`,
+      [source]
+    );
+    if (result.affectedRows > 0) log.info(`Queued a Solr reindex (${source})`);
+  }
+
   async tick() {
     if (this.ticking) return;
     this.ticking = true;
     try {
+      await this.loadSettings();
       await this.reportStatus();
       await this.updateRunningJobs();
       await this.pool.query(
@@ -132,6 +155,18 @@ export default class JobRunner {
     } finally {
       this.ticking = false;
     }
+  }
+
+  // Lowering the concurrency lets the running scans finish, new ones wait
+  async loadSettings() {
+    const [settings] = await this.pool.query<{ concurrency: number }[]>(
+      'SELECT concurrency FROM scraperSettings WHERE id = 1'
+    );
+    const concurrency = Number(settings?.concurrency);
+    if (!Number.isInteger(concurrency) || concurrency < 1) return;
+    if (concurrency !== this.concurrency)
+      log.info(`Scanning at most ${concurrency} stores at a time`);
+    this.concurrency = concurrency;
   }
 
   async reportStatus() {

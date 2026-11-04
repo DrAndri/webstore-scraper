@@ -18,24 +18,26 @@ shown on the admin dashboard.
 
 ## Scans
 
-Scans are rows in the `scrapeJobs` table. The cron schedules, the admin
-interface and `RUN_STARTUP_UPDATE` all queue jobs, and the job runner in the
-scraper picks them up:
+Scans are rows in the `scrapeJobs` table. The cron schedules and the admin
+interface queue jobs, and the job runner in the scraper picks them up:
 
 - `crawler` crawls a store from its start url and sitemaps.
 - `list` re-scrapes the product pages seen in the last scan of a store.
 - `test` scrapes one url with a draft config and saves nothing, for the config
   tester in the admin interface.
 
-At most `STORE_CONCURRENCY_LIMIT` stores are scanned at a time and a store is
-never scanned twice at once. Running jobs report their progress every 5
+The number of stores scanned at a time is set under Schedules in the admin
+interface and kept in `scraperSettings`, 5 by default. The job runner reads it
+every 5 seconds, when it is lowered the running scans finish and new ones wait.
+A store is never scanned twice at once. Running jobs report their progress every 5
 seconds and stop when they are cancelled. Jobs that were running when the
 scraper stopped are marked as failed on the next start. Only one scraper
 instance should run against a database.
 
-The schedules are in `scraperSchedules`. `CRON_SCHEDULE` (full crawl) and
-`CRON_ACTIVE_SCHEDULE` (active products) create them on the first start, after
-that they are edited in the admin interface. Expressions are evaluated in UTC.
+The schedules are in `scraperSchedules` and are edited under Schedules in the
+admin interface. The scraper creates them turned off on the first start, a full
+crawl on Mondays at 01:00 and active products every night at 04:00, and applies
+changes within 30 seconds. Expressions are evaluated in UTC.
 
 ## Solr
 
@@ -47,10 +49,10 @@ The cores and their schemas are defined in `solr-configsets/<core>`:
   fields of `schema.xml` that are missing from a core, and replaces the ones
   that differ, through the Schema API. Nothing is removed. Set
   `SOLR_SYNC_SCHEMA=false` to skip this.
-- Documents only get new fields when they are reindexed. Start once with
-  `INDEX_EVERYTHING=true` after a schema change, or set
-  `SOLR_REINDEX_ON_SCHEMA_CHANGE=true` to reindex automatically when the sync
-  changed something.
+- Documents only get new fields when they are reindexed. Reindex Solr from the
+  admin interface after a schema change, or set
+  `SOLR_REINDEX_ON_SCHEMA_CHANGE=true` to queue a reindex on start when the
+  sync changed something.
 - **Reindex Solr** on the dashboard of the admin interface queues an `index`
   job in `scrapeJobs`. The job runner sends everything in the database to Solr
   again, one reindex at a time and next to the scans. Its progress is the
@@ -78,14 +80,10 @@ since it creates indexes there.
 | `MARIADB_HOST`, `MARIADB_DATABASE`                  | Database                                                    |
 | `MARIADB_SCRAPER_USER`, `MARIADB_SCRAPER_PASSWORD`  | Database user                                               |
 | `SOLR_URL`                                          | Solr base url, e.g. `http://solr:8983/solr`                 |
-| `STORE_CONCURRENCY_LIMIT`                           | Stores scanned at a time, default 5                         |
-| `CRON_SCHEDULE`, `CRON_ACTIVE_SCHEDULE`             | Schedules created on the first start                        |
-| `RUN_STARTUP_UPDATE`                                | Queue an active products scan of every store on start       |
 | `GITHUB_CONFIG_REPO`, `GITHUB_CONFIG_BRANCH`        | Load store configs from GitHub, branch defaults to `master` |
 | `GITHUB_TOKEN`                                      | Optional read only token, raises the GitHub rate limit      |
 | `STORE_CONFIG_DIR`                                  | Directory of the configs, default `stores`                  |
 | `SOLR_SYNC_SCHEMA`, `SOLR_REINDEX_ON_SCHEMA_CHANGE` | See Solr above                                              |
-| `INDEX_EVERYTHING`                                  | Reindex everything in Solr on start                         |
 
 ## TODO
 

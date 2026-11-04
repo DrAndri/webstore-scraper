@@ -1,7 +1,6 @@
 import { Db, MongoClient } from 'mongodb';
 
 import * as dotenv from 'dotenv';
-import { indexEverything } from './SQLStoreUpdater.js';
 import migrate from './MongoToSQLMigrate.js';
 import JobRunner from './JobRunner.js';
 import Scheduler from './Scheduler.js';
@@ -12,10 +11,6 @@ import { logger } from './logger.js';
 dotenv.config();
 
 const log = logger.child({ label: 'main' });
-
-const storeConcurrencyLimit = parseInt(
-  process.env.STORE_CONCURRENCY_LIMIT ?? '5'
-);
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -46,7 +41,7 @@ if (process.env.RUN_MONGO_TO_SQL_MIGRATION === 'true') {
 
 // Brings the Solr schemas in line with solr-configsets, documents indexed
 // before a schema change only get the new fields when they are reindexed
-let reindex = process.env.INDEX_EVERYTHING === 'true';
+let reindex = false;
 if (process.env.SOLR_SYNC_SCHEMA !== 'false') {
   const changed = await syncSolrSchemas().catch((e) => {
     log.error('Syncing the Solr schemas failed', e);
@@ -56,26 +51,19 @@ if (process.env.SOLR_SYNC_SCHEMA !== 'false') {
     if (process.env.SOLR_REINDEX_ON_SCHEMA_CHANGE === 'true') reindex = true;
     else
       log.warn(
-        'The Solr schema changed, start once with INDEX_EVERYTHING=true to reindex'
+        'The Solr schema changed, reindex Solr from the admin dashboard'
       );
   }
 }
 
-if (reindex) {
-  log.info('Running index everything');
-  await indexEverything();
-}
-
-const runner = new JobRunner(new StoreConfigLoader(), storeConcurrencyLimit);
+// The number of stores scanned at a time is set in the admin interface
+const runner = new JobRunner(new StoreConfigLoader());
 await runner.start();
+// The reindex runs as a job, shown in the admin interface like a reindex
+// queued there
+if (reindex) await runner.enqueueIndex('startup');
 
-if (process.env.RUN_STARTUP_UPDATE === 'true') {
-  log.info('Running startup crawler on all stores');
-  await runner.enqueueAll('crawler', 'startup');
-}
-
-// CRON_SCHEDULE and CRON_ACTIVE_SCHEDULE are only used for the first start,
-// after that the schedules are edited in the admin interface
+// The schedules are edited in the admin interface
 const scheduler = new Scheduler(runner.pool, (mode) =>
   runner.enqueueAll(mode, 'cron')
 );
