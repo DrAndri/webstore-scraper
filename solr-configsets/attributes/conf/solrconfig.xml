@@ -44,18 +44,19 @@
     <lst name="defaults">
       <str name="defType">edismax</str>
       <str name="echoParams">explicit</str>
-      <str name="qf">name</str>
-      <str name="pf">name</str>
+      <!-- Whole words rank above prefixes -->
+      <str name="qf">name^3 name_prefix</str>
+      <str name="pf">name^5</str>
       <int name="rows">20</int>
       <str name="wt">json</str>
     </lst>
   </requestHandler>
 
-  <!-- Autocomplete handler: searches name + SKU edge n-gram fields -->
+  <!-- Autocomplete handler: prefixes of the name, whole words rank first -->
   <requestHandler name="/autocomplete" class="solr.SearchHandler">
     <lst name="defaults">
       <str name="defType">edismax</str>
-      <str name="qf">name</str>
+      <str name="qf">name^3 name_prefix</str>
       <str name="fl">id,name</str>
       <int name="rows">10</int>
       <str name="wt">json</str>

@@ -44,18 +44,23 @@
     <lst name="defaults">
       <str name="defType">edismax</str>
       <str name="echoParams">explicit</str>
-      <str name="qf">name^3 sku^4</str>
+      <!-- Whole words of the name, the sku or its prefix, a whole sku first -->
+      <str name="qf">name^3 sku^4 sku_prefix^2</str>
       <str name="pf">name^5</str>
+      <!-- Every term must match for up to 2 terms, all but one for 3 to 5
+           and 80% above that -->
+      <str name="mm">2&lt;-1 5&lt;80%</str>
       <int name="rows">20</int>
       <str name="wt">json</str>
     </lst>
   </requestHandler>
 
-  <!-- Autocomplete handler: searches name + SKU edge n-gram fields -->
+  <!-- Autocomplete handler: prefixes of the name and sku, whole words and
+       skus rank above prefixes -->
   <requestHandler name="/autocomplete" class="solr.SearchHandler">
     <lst name="defaults">
       <str name="defType">edismax</str>
-      <str name="qf">name^2 sku</str>
+      <str name="qf">name^4 name_prefix^2 sku^2 sku_prefix</str>
       <str name="fl">id,name,sku,storeId</str>
       <int name="rows">10</int>
       <str name="wt">json</str>

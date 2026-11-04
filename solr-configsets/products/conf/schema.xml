@@ -26,7 +26,7 @@
       <tokenizer class="solr.StandardTokenizerFactory"/>
       <filter class="solr.LowerCaseFilterFactory"/>
       <filter class="solr.ASCIIFoldingFilterFactory"/>
-      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="20"/>
+      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="20" preserveOriginal="true"/>
     </analyzer>
     <analyzer type="query">
       <tokenizer class="solr.StandardTokenizerFactory"/>
@@ -35,11 +35,20 @@
     </analyzer>
   </fieldType>
 
+  <!-- The whole sku, case insensitive -->
   <fieldType name="text_sku" class="solr.TextField" positionIncrementGap="100">
+    <analyzer>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- Prefixes of the whole sku, for search as you type -->
+  <fieldType name="text_sku_prefix" class="solr.TextField" positionIncrementGap="100">
     <analyzer type="index">
       <tokenizer class="solr.KeywordTokenizerFactory"/>
       <filter class="solr.LowerCaseFilterFactory"/>
-      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="30"/>
+      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="30" preserveOriginal="true"/>
     </analyzer>
     <analyzer type="query">
       <tokenizer class="solr.KeywordTokenizerFactory"/>
@@ -93,6 +102,13 @@
   <copyField source="name" dest="name_ci"/>
   <copyField source="sku" dest="sku_ci"/>
   <copyField source="attr_*" dest="attrci_*"/>
+
+  <!-- Search as you type. name and sku match whole words and skus, these
+       match their prefixes. Stored so webstore-api can highlight the match. -->
+  <field name="name_prefix" type="text_edge_ngram" indexed="true" stored="true"/>
+  <field name="sku_prefix" type="text_sku_prefix" indexed="true" stored="true"/>
+  <copyField source="name" dest="name_prefix"/>
+  <copyField source="sku" dest="sku_prefix"/>
 
   <uniqueKey>id</uniqueKey>
 </schema>
