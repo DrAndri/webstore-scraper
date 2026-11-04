@@ -91,9 +91,9 @@ export interface CacheItem {
 
 export type CacheItems = Record<string, CacheItem>;
 
-export type ScrapeJobMode = 'crawler' | 'list' | 'test';
+export type ScrapeJobMode = 'crawler' | 'list' | 'test' | 'index';
 export type ScrapeJobSource = 'cron' | 'manual' | 'startup';
-export type ScheduledMode = Exclude<ScrapeJobMode, 'test'>;
+export type ScheduledMode = Exclude<ScrapeJobMode, 'test' | 'index'>;
 
 export interface ScrapeJob {
   id: number;

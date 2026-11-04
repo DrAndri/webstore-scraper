@@ -15,8 +15,9 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     -- NULL for test jobs of stores that have not been created yet
     storeId TINYINT UNSIGNED,
     -- crawler: full crawl, list: re-scrape the urls of active products,
-    -- test: scrape testUrl with testConfig without writing to the database
-    mode ENUM('crawler', 'list', 'test') NOT NULL,
+    -- test: scrape testUrl with testConfig without writing to the database,
+    -- index: reindex everything in the database to Solr, storeId is NULL
+    mode ENUM('crawler', 'list', 'test', 'index') NOT NULL,
     source ENUM('cron', 'manual', 'startup') NOT NULL,
     status ENUM('queued', 'running', 'succeeded', 'failed', 'cancelled') NOT NULL DEFAULT 'queued',
     cancelRequested BOOLEAN NOT NULL DEFAULT FALSE,

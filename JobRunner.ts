@@ -17,7 +17,11 @@ import {
 import BaseCrawler from './crawler/BaseCrawler.js';
 import WebshopCrawler from './crawler/WebshopCrawler.js';
 import WebshopHtmlCrawler from './crawler/WebshopHtmlCrawler.js';
-import SQLStoreUpdater, { poolConfig } from './SQLStoreUpdater.js';
+import SQLStoreUpdater, {
+  indexEverything,
+  IndexProgress,
+  poolConfig
+} from './SQLStoreUpdater.js';
 import StoreConfigLoader, { validateStoreConfig } from './StoreConfigLoader.js';
 import { logger } from './logger.js';
 
@@ -29,15 +33,26 @@ const MAX_RUNNING_TESTS = 2;
 interface RunningJob {
   job: ScrapeJob;
   crawler?: BaseCrawler;
+  // Of an index job
+  indexProgress?: IndexProgress;
   cancelled: boolean;
 }
 
 interface JobResult {
   scrapeResult?: ScrapeResult;
-  updateResult?: StoreUpdateResult;
+  // Documents indexed in each Solr core by an index job
+  updateResult?: StoreUpdateResult | Record<string, number>;
   testResult?: TestResult;
   errorMessage?: string;
 }
+
+// The counters of an index job in the columns of a scan: the documents to
+// index as requests and the documents indexed as processed
+const indexCounters = ({ total, indexed }: IndexProgress) => ({
+  totalRequests: total,
+  totalProcessed: indexed,
+  totalErrored: 0
+});
 
 const errorMessage = (e: unknown) =>
   e instanceof Error ? e.message : String(e);
@@ -141,8 +156,9 @@ export default class JobRunner {
   // Saves progress and stops jobs that were cancelled in the admin interface
   async updateRunningJobs() {
     if (this.running.size === 0) return;
-    for (const [id, { crawler }] of this.running) {
-      const result = crawler?.result;
+    for (const [id, { crawler, indexProgress }] of this.running) {
+      const result =
+        crawler?.result ?? (indexProgress && indexCounters(indexProgress));
       await this.pool.query(
         `UPDATE scrapeJobs SET heartbeatAt = UTC_TIMESTAMP()${result ? ', totalRequests = ?, totalProcessed = ?, totalErrored = ?' : ''} WHERE id = ?`,
         result
@@ -178,7 +194,9 @@ export default class JobRunner {
     let testSlots =
       MAX_RUNNING_TESTS -
       runningJobs.filter((job) => job.mode === 'test').length;
-    if (storeSlots <= 0 && testSlots <= 0) return;
+    // One reindex at a time, it doesn't take the slot of a store
+    let indexSlots = runningJobs.some((job) => job.mode === 'index') ? 0 : 1;
+    if (storeSlots <= 0 && testSlots <= 0 && indexSlots <= 0) return;
 
     const queued = await this.pool.query<ScrapeJob[]>(
       "SELECT id, storeId, mode, source, testUrl, testConfig FROM scrapeJobs WHERE status = 'queued' AND cancelRequested = 0 ORDER BY id LIMIT 100"
@@ -186,6 +204,8 @@ export default class JobRunner {
     for (const job of queued) {
       if (job.mode === 'test') {
         if (testSlots <= 0) continue;
+      } else if (job.mode === 'index') {
+        if (indexSlots <= 0) continue;
       } else if (storeSlots <= 0 || busyStoreIds.has(job.storeId)) continue;
 
       const claimed = await this.pool.query<UpsertResult>(
@@ -194,6 +214,7 @@ export default class JobRunner {
       );
       if (claimed.affectedRows !== 1) continue;
       if (job.mode === 'test') testSlots--;
+      else if (job.mode === 'index') indexSlots--;
       else {
         storeSlots--;
         busyStoreIds.add(job.storeId);
@@ -212,10 +233,9 @@ export default class JobRunner {
     try {
       const configs = await this.configLoader.load();
       commit = configs.commit;
-      result =
-        job.mode === 'test'
-          ? await this.runTest(job, entry)
-          : await this.runStoreJob(job, configs.configs, entry);
+      if (job.mode === 'test') result = await this.runTest(job, entry);
+      else if (job.mode === 'index') result = await this.runIndex(entry);
+      else result = await this.runStoreJob(job, configs.configs, entry);
       if (entry.cancelled) status = 'cancelled';
     } catch (e) {
       log.error(`Job ${job.id} failed`, e);
@@ -223,7 +243,10 @@ export default class JobRunner {
       result.errorMessage = errorMessage(e);
     }
     try {
-      const scrape = result.scrapeResult ?? entry.crawler?.result;
+      const scrape: Partial<ScrapeResult> | undefined =
+        result.scrapeResult ??
+        entry.crawler?.result ??
+        (entry.indexProgress && indexCounters(entry.indexProgress));
       await this.pool.query(
         `UPDATE scrapeJobs SET status = ?, finishedAt = UTC_TIMESTAMP(), heartbeatAt = UTC_TIMESTAMP(), configCommit = ?,
            totalRequests = ?, totalProcessed = ?, totalErrored = ?, descriptionError = ?, attributeError = ?,
@@ -367,6 +390,18 @@ export default class JobRunner {
       ]);
     }
     return { scrapeResult: crawler.result, updateResult: storeUpdater.result };
+  }
+
+  // Indexes everything in the database to Solr, queued from the admin interface
+  async runIndex(entry: RunningJob): Promise<JobResult> {
+    log.info(`Reindexing Solr, job ${entry.job.id}`);
+    const indexed = await indexEverything({
+      onProgress: (progress) => {
+        entry.indexProgress = progress;
+      },
+      isCancelled: () => entry.cancelled
+    });
+    return { updateResult: { ...indexed } };
   }
 
   // Scrapes a single url with a draft config, nothing is written to the database

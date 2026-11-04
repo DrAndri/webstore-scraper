@@ -51,6 +51,11 @@ The cores and their schemas are defined in `solr-configsets/<core>`:
   `INDEX_EVERYTHING=true` after a schema change, or set
   `SOLR_REINDEX_ON_SCHEMA_CHANGE=true` to reindex automatically when the sync
   changed something.
+- **Reindex Solr** on the dashboard of the admin interface queues an `index`
+  job in `scrapeJobs`. The job runner sends everything in the database to Solr
+  again, one reindex at a time and next to the scans. Its progress is the
+  documents indexed of the documents to index, cancelling it stops it after the
+  current chunk of 100. Documents of rows deleted from the database are kept.
 
 ## Database
 

@@ -63,16 +63,8 @@ const getLatestPrice = async (
     >(`SELECT price, start, end FROM ${table} WHERE productId = ? ORDER BY start DESC LIMIT 1`, [productId])
     .then((res) => getFirstResult(res));
 };
-const chunkSolrUpdate = async <T>(
-  items: T[],
-  updateFunc: (chunk: T[]) => Promise<void>
-): Promise<void> => {
-  const chunkSize = 100;
-  for (let i = 0; i < items.length; i += chunkSize) {
-    const chunk = items.slice(i, i + chunkSize);
-    await updateFunc(chunk);
-  }
-};
+// Documents sent to Solr in one update
+const SOLR_CHUNK_SIZE = 100;
 
 const getAttriButesToProducts = async (
   conn: PoolConnection,
@@ -84,40 +76,64 @@ const getAttriButesToProducts = async (
   );
 };
 
-export const indexEverything = async (): Promise<void> => {
-  const pool = createPool(poolConfig);
-  const conn = await pool.getConnection();
+export interface IndexProgress {
+  // Documents to index in all the cores
+  total: number;
+  indexed: number;
+}
 
-  const products = await conn.query<Product[]>('SELECT * FROM products');
-  log.info(`Indexing ${products.length} products`);
+export interface IndexEverythingOptions {
+  onProgress?: (progress: IndexProgress) => void;
+  // Checked before each chunk, indexing stops when it returns true
+  isCancelled?: () => boolean;
+}
 
-  await chunkSolrUpdate(products, async (productsChunk) => {
-    const solrProducts: SolrProduct[] = [];
-    for (const product of productsChunk) {
-      const attributes = await getAttriButesToProducts(conn, product);
-      const latestPrice = await getLatestPrice(conn, 'prices', product.id);
-      const latestSalePrice = await getLatestPrice(
-        conn,
-        'salePrices',
-        product.id
-      );
+// Documents indexed in each core
+export interface IndexResult {
+  products: number;
+  categories: number;
+  manufacturers: number;
+  attributeGroups: number;
+  attributes: number;
+}
 
-      let price;
-      if (latestPrice && latestSalePrice) {
-        price =
-          latestSalePrice.end >= latestPrice.end
-            ? latestSalePrice.price
-            : latestPrice.price;
-      } else if (latestPrice) {
-        price = latestPrice.price;
-      } else if (latestSalePrice) {
-        price = latestSalePrice.price;
-      }
+// The Solr documents of the products with their current price and attributes
+const toSolrProducts = async (
+  conn: PoolConnection,
+  products: Product[]
+): Promise<SolrProduct[]> => {
+  const solrProducts: SolrProduct[] = [];
+  for (const product of products) {
+    const attributes = await getAttriButesToProducts(conn, product);
+    const latestPrice = await getLatestPrice(conn, 'prices', product.id);
+    const latestSalePrice = await getLatestPrice(
+      conn,
+      'salePrices',
+      product.id
+    );
 
-      solrProducts.push(getSolrProduct(product, price, attributes));
+    let price;
+    if (latestPrice && latestSalePrice) {
+      price =
+        latestSalePrice.end >= latestPrice.end
+          ? latestSalePrice.price
+          : latestPrice.price;
+    } else if (latestPrice) {
+      price = latestPrice.price;
+    } else if (latestSalePrice) {
+      price = latestSalePrice.price;
     }
-    await indexProducts(solrProducts);
-  });
+
+    solrProducts.push(getSolrProduct(product, price, attributes));
+  }
+  return solrProducts;
+};
+
+const indexAll = async (
+  conn: PoolConnection,
+  { onProgress, isCancelled }: IndexEverythingOptions
+): Promise<IndexResult> => {
+  const products = await conn.query<Product[]>('SELECT * FROM products');
   const categories = await conn.query<Category[]>('SELECT * FROM categories');
   const manufacturers = await conn.query<Manufacturer[]>(
     'SELECT * FROM manufacturers'
@@ -127,22 +143,75 @@ export const indexEverything = async (): Promise<void> => {
   );
   const attributes = await conn.query<Attribute[]>('SELECT * FROM attributes');
 
-  await conn.release();
-  await chunkSolrUpdate(categories, async (categoriesChunk) => {
-    await indexCategories(categoriesChunk);
-  });
-  await chunkSolrUpdate(manufacturers, async (manufacturersChunk) => {
-    await indexManufacturers(manufacturersChunk);
-  });
-  await chunkSolrUpdate(attributeGroups, async (attributeGroupsChunk) => {
-    await indexAttributeGroups(attributeGroupsChunk);
-  });
-  await chunkSolrUpdate(attributes, async (attributesChunk) => {
-    await indexAttributes(attributesChunk);
-  });
+  const result: IndexResult = {
+    products: 0,
+    categories: 0,
+    manufacturers: 0,
+    attributeGroups: 0,
+    attributes: 0
+  };
+  const total =
+    products.length +
+    categories.length +
+    manufacturers.length +
+    attributeGroups.length +
+    attributes.length;
+  let indexed = 0;
+  onProgress?.({ total, indexed });
+
+  // Indexes the rows of one core in chunks, false when it was cancelled
+  const indexCore = async <T>(
+    core: keyof IndexResult,
+    rows: T[],
+    submit: (chunk: T[]) => Promise<void>
+  ): Promise<boolean> => {
+    for (let i = 0; i < rows.length; i += SOLR_CHUNK_SIZE) {
+      if (isCancelled?.()) return false;
+      const chunk = rows.slice(i, i + SOLR_CHUNK_SIZE);
+      await submit(chunk);
+      result[core] += chunk.length;
+      indexed += chunk.length;
+      onProgress?.({ total, indexed });
+    }
+    return true;
+  };
+
+  log.info(`Indexing ${products.length} products`);
+  const completed =
+    (await indexCore('products', products, async (chunk) =>
+      indexProducts(await toSolrProducts(conn, chunk))
+    )) &&
+    (await indexCore('categories', categories, indexCategories)) &&
+    (await indexCore('manufacturers', manufacturers, indexManufacturers)) &&
+    (await indexCore(
+      'attributeGroups',
+      attributeGroups,
+      indexAttributeGroups
+    )) &&
+    (await indexCore('attributes', attributes, indexAttributes));
   log.info(
-    `Indexed ${categories.length} categories, ${manufacturers.length} manufacturers, ${attributeGroups.length} attribute groups and ${attributes.length} attributes`
+    `${completed ? 'Indexed' : 'Cancelled after indexing'} ${result.products} products, ${result.categories} categories, ${result.manufacturers} manufacturers, ${result.attributeGroups} attribute groups and ${result.attributes} attributes`
   );
+  return result;
+};
+
+// Indexes every product, category, manufacturer, attribute group and attribute
+// in the database to Solr. Documents of rows deleted from the database stay in
+// Solr.
+export const indexEverything = async (
+  options: IndexEverythingOptions = {}
+): Promise<IndexResult> => {
+  const pool = createPool(poolConfig);
+  try {
+    const conn = await pool.getConnection();
+    try {
+      return await indexAll(conn, options);
+    } finally {
+      await conn.release();
+    }
+  } finally {
+    await pool.end();
+  }
 };
 
 export default class SQLStoreUpdater {
