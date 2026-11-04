@@ -40,7 +40,9 @@ const submitUpdate = async (
   data:
     SolrProduct[] | Manufacturer[] | Category[] | AttributeGroup[] | Attribute[]
 ): Promise<SolrResponse> => {
-  const url = `${SOLR_URL}/${core}/update?commit=true`;
+  // No commit, the autoSoftCommit in solrconfig.xml makes the documents
+  // searchable. A commit per update opens a new searcher every time.
+  const url = `${SOLR_URL}/${core}/update`;
   const response = await fetch(url, {
     method: 'POST',
     headers: {
