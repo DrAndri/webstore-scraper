@@ -194,12 +194,10 @@ const syncCore = async (core: string) => {
   const status = await solr<{ status: Record<string, { name?: string }> }>(
     `${SOLR_URL}/admin/cores?action=STATUS&core=${encodeURIComponent(core)}`
   );
-  if (!status.status[core]?.name) {
-    log.warn(
+  if (!status.status[core]?.name)
+    throw new Error(
       `Solr core ${core} does not exist, it is created from the configset when Solr starts (see docker-compose.yml)`
     );
-    return [];
-  }
   const { schema: current } = await solr<{ schema: Schema }>(
     `${SOLR_URL}/${core}/schema`
   );
@@ -212,25 +210,37 @@ const syncCore = async (core: string) => {
   return commands.map((c) => c.label);
 };
 
-// Returns the cores whose schema changed, their documents need reindexing
-export const syncSolrSchemas = async (): Promise<string[]> => {
+export interface SchemaSyncResult {
+  // Changes made to the schema of each core, the documents of a core that
+  // changed need reindexing to get the new fields
+  changes: Record<string, number>;
+  // The cores that could not be synced, with the reason
+  failed: { core: string; error: string }[];
+}
+
+// Syncs every core in CONFIGSET_DIR, a core that fails doesn't stop the others
+export const syncSolrSchemas = async (): Promise<SchemaSyncResult> => {
   const cores = (await fs.readdir(CONFIGSET_DIR, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
-  const changed: string[] = [];
-  const failed: string[] = [];
+  const result: SchemaSyncResult = { changes: {}, failed: [] };
   for (const core of cores) {
     try {
-      if ((await syncCore(core)).length > 0) changed.push(core);
+      result.changes[core] = (await syncCore(core)).length;
     } catch (e) {
-      failed.push(core);
+      const error = e instanceof Error ? e.message : String(e);
+      result.failed.push({ core, error });
       log.error(`Syncing the schema of Solr core ${core} failed`, e);
     }
   }
-  if (changed.length)
-    log.info(`Solr schemas updated: ${changed.join(', ')}`);
-  if (failed.length)
-    log.warn(`Solr schemas not synced: ${failed.join(', ')}`);
+  const changed = Object.keys(result.changes).filter(
+    (core) => result.changes[core] > 0
+  );
+  if (changed.length) log.info(`Solr schemas updated: ${changed.join(', ')}`);
+  if (result.failed.length)
+    log.warn(
+      `Solr schemas not synced: ${result.failed.map((f) => f.core).join(', ')}`
+    );
   else if (!changed.length) log.info('Solr schemas are up to date');
-  return changed;
+  return result;
 };

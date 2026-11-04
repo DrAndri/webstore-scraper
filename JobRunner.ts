@@ -6,6 +6,7 @@ import {
   ProductSnapshot,
   ScheduledMode,
   ScrapeJob,
+  ScrapeJobOptions,
   ScrapeJobSource,
   ScrapeResult,
   Store,
@@ -22,6 +23,7 @@ import SQLStoreUpdater, {
   IndexProgress,
   poolConfig
 } from './SQLStoreUpdater.js';
+import { syncSolrSchemas } from './SolrSchema.js';
 import StoreConfigLoader, { validateStoreConfig } from './StoreConfigLoader.js';
 import { logger } from './logger.js';
 
@@ -46,7 +48,17 @@ interface JobResult {
   updateResult?: StoreUpdateResult | Record<string, number>;
   testResult?: TestResult;
   errorMessage?: string;
+  // The job failed without throwing, e.g. a schema sync where a core failed
+  failed?: boolean;
 }
+
+// The jobs that work on Solr, one of them runs at a time
+const SOLR_MODES = new Set(['index', 'schema']);
+
+const parseOptions = (job: ScrapeJob): ScrapeJobOptions =>
+  (typeof job.options === 'string'
+    ? (JSON.parse(job.options) as ScrapeJobOptions | null)
+    : job.options) ?? {};
 
 // The counters of an index job in the columns of a scan: the documents to
 // index as requests and the documents indexed as processed
@@ -126,15 +138,15 @@ export default class JobRunner {
   }
 
   // Queues a reindex of everything in the database to Solr, unless one is
-  // already queued or running
-  async enqueueIndex(source: ScrapeJobSource) {
+  // already queued
+  async enqueueIndex(source: ScrapeJobSource, requestedBy: string | null) {
     const result = await this.pool.query<UpsertResult>(
-      `INSERT INTO scrapeJobs (storeId, mode, source, status, queuedAt)
-       SELECT NULL, 'index', ?, 'queued', UTC_TIMESTAMP() FROM DUAL
+      `INSERT INTO scrapeJobs (storeId, mode, source, status, requestedBy, queuedAt)
+       SELECT NULL, 'index', ?, 'queued', ?, UTC_TIMESTAMP() FROM DUAL
        WHERE NOT EXISTS (
-         SELECT 1 FROM scrapeJobs WHERE mode = 'index' AND status IN ('queued', 'running')
+         SELECT 1 FROM scrapeJobs WHERE mode = 'index' AND status = 'queued'
        )`,
-      [source]
+      [source, requestedBy]
     );
     if (result.affectedRows > 0) log.info(`Queued a Solr reindex (${source})`);
   }
@@ -229,18 +241,18 @@ export default class JobRunner {
     let testSlots =
       MAX_RUNNING_TESTS -
       runningJobs.filter((job) => job.mode === 'test').length;
-    // One reindex at a time, it doesn't take the slot of a store
-    let indexSlots = runningJobs.some((job) => job.mode === 'index') ? 0 : 1;
-    if (storeSlots <= 0 && testSlots <= 0 && indexSlots <= 0) return;
+    // One reindex or schema sync at a time, they don't take the slot of a store
+    let solrSlots = runningJobs.some((job) => SOLR_MODES.has(job.mode)) ? 0 : 1;
+    if (storeSlots <= 0 && testSlots <= 0 && solrSlots <= 0) return;
 
     const queued = await this.pool.query<ScrapeJob[]>(
-      "SELECT id, storeId, mode, source, testUrl, testConfig FROM scrapeJobs WHERE status = 'queued' AND cancelRequested = 0 ORDER BY id LIMIT 100"
+      "SELECT id, storeId, mode, source, requestedBy, testUrl, testConfig, options FROM scrapeJobs WHERE status = 'queued' AND cancelRequested = 0 ORDER BY id LIMIT 100"
     );
     for (const job of queued) {
       if (job.mode === 'test') {
         if (testSlots <= 0) continue;
-      } else if (job.mode === 'index') {
-        if (indexSlots <= 0) continue;
+      } else if (SOLR_MODES.has(job.mode)) {
+        if (solrSlots <= 0) continue;
       } else if (storeSlots <= 0 || busyStoreIds.has(job.storeId)) continue;
 
       const claimed = await this.pool.query<UpsertResult>(
@@ -249,7 +261,7 @@ export default class JobRunner {
       );
       if (claimed.affectedRows !== 1) continue;
       if (job.mode === 'test') testSlots--;
-      else if (job.mode === 'index') indexSlots--;
+      else if (SOLR_MODES.has(job.mode)) solrSlots--;
       else {
         storeSlots--;
         busyStoreIds.add(job.storeId);
@@ -270,8 +282,11 @@ export default class JobRunner {
       commit = configs.commit;
       if (job.mode === 'test') result = await this.runTest(job, entry);
       else if (job.mode === 'index') result = await this.runIndex(entry);
+      else if (job.mode === 'schema') result = await this.runSchemaSync(job);
       else result = await this.runStoreJob(job, configs.configs, entry);
-      if (entry.cancelled) status = 'cancelled';
+      if (result.failed) status = 'failed';
+      // A schema sync doesn't stop when it is cancelled, it finished
+      else if (entry.cancelled && job.mode !== 'schema') status = 'cancelled';
     } catch (e) {
       log.error(`Job ${job.id} failed`, e);
       status = 'failed';
@@ -437,6 +452,24 @@ export default class JobRunner {
       isCancelled: () => entry.cancelled
     });
     return { updateResult: { ...indexed } };
+  }
+
+  // Syncs the Solr schemas with solr-configsets, queued from the admin
+  // interface. It is quick, so it doesn't stop when it is cancelled.
+  async runSchemaSync(job: ScrapeJob): Promise<JobResult> {
+    log.info(`Syncing the Solr schemas, job ${job.id}`);
+    const { changes, failed } = await syncSolrSchemas();
+    const changed = Object.values(changes).some((count) => count > 0);
+    if (changed && parseOptions(job).reindex)
+      await this.enqueueIndex(job.source, job.requestedBy);
+    return {
+      // Changes made to the schema of each core
+      updateResult: changes,
+      failed: failed.length > 0,
+      errorMessage: failed.length
+        ? failed.map(({ core, error }) => `${core}: ${error}`).join('\n')
+        : undefined
+    };
   }
 
   // Scrapes a single url with a draft config, nothing is written to the database

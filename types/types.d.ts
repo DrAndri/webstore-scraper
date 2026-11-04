@@ -91,17 +91,25 @@ export interface CacheItem {
 
 export type CacheItems = Record<string, CacheItem>;
 
-export type ScrapeJobMode = 'crawler' | 'list' | 'test' | 'index';
+export type ScrapeJobMode = 'crawler' | 'list' | 'test' | 'index' | 'schema';
 export type ScrapeJobSource = 'cron' | 'manual' | 'startup';
-export type ScheduledMode = Exclude<ScrapeJobMode, 'test' | 'index'>;
+export type ScheduledMode = Exclude<ScrapeJobMode, 'test' | 'index' | 'schema'>;
+
+// The options column of a job
+export interface ScrapeJobOptions {
+  // schema: queue a reindex when the sync changed a schema
+  reindex?: boolean;
+}
 
 export interface ScrapeJob {
   id: number;
   storeId: number | null;
   mode: ScrapeJobMode;
   source: ScrapeJobSource;
+  requestedBy: string | null;
   testUrl: string | null;
   testConfig: string | object | null;
+  options: string | ScrapeJobOptions | null;
 }
 
 // Result of a test job, scraping a single url without writing to the database

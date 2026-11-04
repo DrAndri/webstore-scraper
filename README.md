@@ -45,17 +45,18 @@ The cores and their schemas are defined in `solr-configsets/<core>`:
 
 - `docker-compose.yml` creates a core from each configset that does not have
   one yet when Solr starts.
-- On startup the scraper adds the field types, fields, dynamic fields and copy
-  fields of `schema.xml` that are missing from a core, and replaces the ones
-  that differ, through the Schema API. Nothing is removed. Set
-  `SOLR_SYNC_SCHEMA=false` to skip this.
-- Documents only get new fields when they are reindexed. Reindex Solr from the
-  admin interface after a schema change, or set
-  `SOLR_REINDEX_ON_SCHEMA_CHANGE=true` to queue a reindex on start when the
-  sync changed something.
+- **Sync Solr schema** on the dashboard of the admin interface queues a
+  `schema` job. It adds the field types, fields, dynamic fields and copy fields
+  of `schema.xml` that are missing from a core, and replaces the ones that
+  differ, through the Schema API. Nothing is removed. Run it after deploying a
+  change to `solr-configsets`, the scraper no longer does it on start. A core
+  that is missing or refuses a change fails the job, the other cores are still
+  synced.
+- Documents only get new fields when they are reindexed. The schema sync can
+  queue a reindex when it changed something.
 - **Reindex Solr** on the dashboard of the admin interface queues an `index`
   job in `scrapeJobs`. The job runner sends everything in the database to Solr
-  again, one reindex at a time and next to the scans. Its progress is the
+  again, next to the scans. One reindex or schema sync runs at a time. Its progress is the
   documents indexed of the documents to index, cancelling it stops it after the
   current chunk of 100. Documents of rows deleted from the database are kept.
 
@@ -75,15 +76,14 @@ since it creates indexes there.
 
 ## Environment variables
 
-| Variable                                            | Used for                                                    |
-| --------------------------------------------------- | ----------------------------------------------------------- |
-| `MARIADB_HOST`, `MARIADB_DATABASE`                  | Database                                                    |
-| `MARIADB_SCRAPER_USER`, `MARIADB_SCRAPER_PASSWORD`  | Database user                                               |
-| `SOLR_URL`                                          | Solr base url, e.g. `http://solr:8983/solr`                 |
-| `GITHUB_CONFIG_REPO`, `GITHUB_CONFIG_BRANCH`        | Load store configs from GitHub, branch defaults to `master` |
-| `GITHUB_TOKEN`                                      | Optional read only token, raises the GitHub rate limit      |
-| `STORE_CONFIG_DIR`                                  | Directory of the configs, default `stores`                  |
-| `SOLR_SYNC_SCHEMA`, `SOLR_REINDEX_ON_SCHEMA_CHANGE` | See Solr above                                              |
+| Variable                                           | Used for                                                    |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| `MARIADB_HOST`, `MARIADB_DATABASE`                 | Database                                                    |
+| `MARIADB_SCRAPER_USER`, `MARIADB_SCRAPER_PASSWORD` | Database user                                               |
+| `SOLR_URL`                                         | Solr base url, e.g. `http://solr:8983/solr`                 |
+| `GITHUB_CONFIG_REPO`, `GITHUB_CONFIG_BRANCH`       | Load store configs from GitHub, branch defaults to `master` |
+| `GITHUB_TOKEN`                                     | Optional read only token, raises the GitHub rate limit      |
+| `STORE_CONFIG_DIR`                                 | Directory of the configs, default `stores`                  |
 
 ## TODO
 

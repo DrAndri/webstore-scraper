@@ -16,8 +16,9 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     storeId TINYINT UNSIGNED,
     -- crawler: full crawl, list: re-scrape the urls of active products,
     -- test: scrape testUrl with testConfig without writing to the database,
-    -- index: reindex everything in the database to Solr, storeId is NULL
-    mode ENUM('crawler', 'list', 'test', 'index') NOT NULL,
+    -- index: reindex everything in the database to Solr, storeId is NULL,
+    -- schema: sync the Solr schemas with solr-configsets, storeId is NULL
+    mode ENUM('crawler', 'list', 'test', 'index', 'schema') NOT NULL,
     source ENUM('cron', 'manual', 'startup') NOT NULL,
     status ENUM('queued', 'running', 'succeeded', 'failed', 'cancelled') NOT NULL DEFAULT 'queued',
     cancelRequested BOOLEAN NOT NULL DEFAULT FALSE,
@@ -50,6 +51,8 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     testUrl VARCHAR(2048),
     testConfig JSON,
     testResult JSON,
+    -- Settings of the job, e.g. { "reindex": true } for a schema sync
+    options JSON,
 
     INDEX ix_status (status),
     INDEX ix_store_queued (storeId, queuedAt),
