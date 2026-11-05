@@ -265,6 +265,16 @@ export default class SQLStoreUpdater {
     };
   }
 
+  // Ends the pools of this updater, the shared pools stay open. A pool that is
+  // not ended keeps its connections and timers, and so itself, alive forever.
+  async close(): Promise<void> {
+    await Promise.all([
+      this.productsPool.end(),
+      this.pricePool.end(),
+      this.salePricePool.end()
+    ]);
+  }
+
   async queryPool<T>(
     pool: Pool,
     query: (conn: PoolConnection) => Promise<T>

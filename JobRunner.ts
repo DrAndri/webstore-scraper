@@ -429,9 +429,14 @@ export default class JobRunner {
       requestList
     );
     entry.crawler = crawler;
-    await crawler.crawlSite();
-    await requestQueue?.drop();
-    await memoryStorage.teardown();
+    try {
+      await crawler.crawlSite();
+    } finally {
+      // Also when the crawl throws, e.g. on an unreadable product feed
+      await requestQueue?.drop();
+      await memoryStorage.teardown();
+      await storeUpdater.close();
+    }
     // Products not reached by a cancelled scan would look inactive
     if (!entry.cancelled) {
       await this.pool.query('UPDATE stores SET lastScanDate = ? WHERE id = ?', [

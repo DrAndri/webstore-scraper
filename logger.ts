@@ -11,6 +11,17 @@ import { log as crawleeLog, LogLevel } from 'crawlee';
 
 const { combine, colorize, splat, timestamp, errors, printf } = format;
 
+// winston-loki puts a batch Loki rejected back in the queue and retries it with
+// the next one, without a limit. When Loki keeps rejecting (it is down, or a
+// limit like max streams or ingestion rate is hit) the queue grows until the
+// heap runs out, so a failed batch is dropped and the failure is reported to
+// the console, as logging it to Loki would fail the same way.
+const lokiErrorOptions = {
+  clearOnError: true,
+  onConnectionError: (error: unknown) =>
+    console.error('Sending logs to Loki failed, the batch was dropped', error)
+};
+
 const LOKI_URL = process.env.LOKI_URL;
 const ENABLE_SCRAPER_LOGGING =
   process.env.ENABLE_SCRAPER_LOGGING === 'true' ? true : false;
@@ -47,7 +58,8 @@ export const logger = createWinstonLogger({
           format: format.json(),
           json: true,
           // Seconds, the admin interface shows the log live
-          interval: 5
+          interval: 5,
+          ...lokiErrorOptions
         })
       : new transports.Console({
           format: combine(colorize(), timestamp(), appFormat)
@@ -122,6 +134,7 @@ const scanLogger = new Logger({
           json: true,
           level: 'debug',
           interval: 5,
+          ...lokiErrorOptions,
           silent: !ENABLE_SCRAPER_LOGGING
         })
       : new transports.Console({
