@@ -8,7 +8,7 @@ import {
 import { CacheItems } from '../types/index.js';
 import { createLogger, logger as appLogger } from '../logger.js';
 import PageScraper from './PageScraper.js';
-import { Locator, Page } from 'playwright';
+import { errors, Page } from 'playwright';
 import BaseCrawler from './BaseCrawler.js';
 import {
   blockedPagePathEndings,
@@ -34,44 +34,62 @@ export default class WebshopCrawler extends BaseCrawler {
 
     const pageScraper = new PageScraper(selectors, sanitizers, categoryBanList);
 
-    const once = (
-      checkFn: () => Promise<false | Locator>,
-      opts: { numberOfChecks: number; interval: number }
-    ): Promise<false | Locator> => {
-      return new Promise((resolve, reject) => {
-        const numberOfChecks = opts.numberOfChecks;
-        const interval = opts.interval;
-        let checksPerformed = 0;
-        const intervalID = setInterval(() => {
-          void checkFn()
-            .then((locator) => {
-              if (locator) {
-                clearInterval(intervalID);
-                resolve(locator);
-              } else if (checksPerformed >= numberOfChecks) {
-                clearInterval(intervalID);
-                resolve(false);
-              }
-              checksPerformed++;
-            })
-            .catch(() => reject(new Error('Error in once function')));
-        }, interval);
-      });
-    };
+    // const once = (
+    //   checkFn: () => Promise<false | Locator>,
+    //   opts: { numberOfChecks: number; interval: number }
+    // ): Promise<false | Locator> => {
+    //   return new Promise((resolve, reject) => {
+    //     const numberOfChecks = opts.numberOfChecks;
+    //     const interval = opts.interval;
+    //     let checksPerformed = 0;
+    //     const intervalID = setInterval(() => {
+    //       void checkFn()
+    //         .then((locator) => {
+    //           if (locator) {
+    //             clearInterval(intervalID);
+    //             resolve(locator);
+    //           } else if (checksPerformed >= numberOfChecks) {
+    //             clearInterval(intervalID);
+    //             resolve(false);
+    //           }
+    //           checksPerformed++;
+    //         })
+    //         .catch(() => reject(new Error('Error in once function')));
+    //     }, interval);
+    //   });
+    // };
 
-    const findProductLocator = async (page: Page) => {
+    // const findProductLocator = async (page: Page) => {
+    //   try {
+    //     const productLocator = page.locator(selectors.productPage);
+    //     const count = await productLocator.count();
+    //     if (count > 0) {
+    //       const pageContent = await page.content();
+    //       // eslint-disable-next-line @typescript-eslint/prefer-includes
+    //       if (pageContent.indexOf(productPageIdentifier) > -1) {
+    //         return productLocator;
+    //       }
+    //     }
+    //     return false;
+    //   } catch (e) {
+    //     storeLog.error(`Error finding the product on ${page.url()}`, e);
+    //     return false;
+    //   }
+    // };
+
+    const findProductLocator = async (page: Page, timeout = 5000) => {
+      const productLocator = page.locator(selectors.productPage);
       try {
-        const productLocator = page.locator(selectors.productPage);
-        const count = await productLocator.count();
-        if (count > 0) {
-          const pageContent = await page.content();
-          // eslint-disable-next-line @typescript-eslint/prefer-includes
-          if (pageContent.indexOf(productPageIdentifier) > -1) {
-            return productLocator;
-          }
-        }
-        return false;
+        await productLocator.first().waitFor({ state: 'attached', timeout });
+        await page.waitForFunction(
+          (identifier) =>
+            document.documentElement.outerHTML.includes(identifier),
+          productPageIdentifier,
+          { timeout, polling: 1000 }
+        );
+        return productLocator;
       } catch (e) {
+        if (e instanceof errors.TimeoutError) return false; // not a product page
         storeLog.error(`Error finding the product on ${page.url()}`, e);
         return false;
       }
@@ -92,10 +110,12 @@ export default class WebshopCrawler extends BaseCrawler {
       //     /* wait for 30 seconds or until network is idle */
       //   });
 
-      const productLocator = await once(() => findProductLocator(page), {
-        interval: 3000,
-        numberOfChecks: 7
-      });
+      // const productLocator = await once(() => findProductLocator(page), {
+      //   interval: 3000,
+      //   numberOfChecks: 7
+      // });
+
+      const productLocator = await findProductLocator(page);
 
       const logger = createLogger(
         request.loadedUrl ?? 'default label',
