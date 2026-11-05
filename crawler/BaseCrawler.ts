@@ -115,6 +115,16 @@ export default abstract class BaseCrawler {
     this.pageListener?.onNotProductPage();
   }
 
+  // Requests not handled yet, in the queue or the list, including the ones in
+  // progress. Crawlee's in-memory estimate, the same as RequestManagerTandem's.
+  get pendingRequests(): number {
+    const { requestQueue, requestList } = this.crawler;
+    return (
+      (requestQueue?.getPendingCount() ?? 0) +
+      (requestList ? requestList.length() - requestList.handledCount() : 0)
+    );
+  }
+
   // Finishes the requests in progress and skips the rest
   stop() {
     this.crawler.stop();

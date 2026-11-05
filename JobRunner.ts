@@ -207,12 +207,13 @@ export default class JobRunner {
       const result =
         crawler?.result ?? (indexProgress && indexCounters(indexProgress));
       await this.pool.query(
-        `UPDATE scrapeJobs SET heartbeatAt = UTC_TIMESTAMP()${result ? ', totalRequests = ?, totalProcessed = ?, totalErrored = ?' : ''} WHERE id = ?`,
+        `UPDATE scrapeJobs SET heartbeatAt = UTC_TIMESTAMP()${result ? ', totalRequests = ?, totalProcessed = ?, totalErrored = ?, pendingRequests = ?' : ''} WHERE id = ?`,
         result
           ? [
               result.totalRequests,
               result.totalProcessed,
               result.totalErrored,
+              crawler?.pendingRequests ?? null,
               id
             ]
           : [id]
@@ -301,7 +302,7 @@ export default class JobRunner {
         `UPDATE scrapeJobs SET status = ?, finishedAt = UTC_TIMESTAMP(), heartbeatAt = UTC_TIMESTAMP(), configCommit = ?,
            totalRequests = ?, totalProcessed = ?, totalErrored = ?, descriptionError = ?, attributeError = ?,
            imageError = ?, brandError = ?, nameError = ?, inStockError = ?, categoriesError = ?,
-           updateResult = ?, testResult = ?, errorMessage = ?
+           pendingRequests = ?, updateResult = ?, testResult = ?, errorMessage = ?
          WHERE id = ?`,
         [
           status,
@@ -316,6 +317,8 @@ export default class JobRunner {
           scrape?.nameError ?? 0,
           scrape?.inStockError ?? 0,
           scrape?.categoriesError ?? 0,
+          // What a cancelled or failed scan didn't get to
+          entry.crawler?.pendingRequests ?? null,
           result.updateResult ? JSON.stringify(result.updateResult) : null,
           result.testResult ? JSON.stringify(result.testResult) : null,
           result.errorMessage ?? null,

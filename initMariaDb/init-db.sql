@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     nameError INT UNSIGNED NOT NULL DEFAULT 0,
     inStockError INT UNSIGNED NOT NULL DEFAULT 0,
     categoriesError INT UNSIGNED NOT NULL DEFAULT 0,
+    -- Requests in the crawler's request queue not handled yet, saved with the
+    -- heartbeat, NULL for jobs that don't crawl
+    pendingRequests INT UNSIGNED,
     -- StoreUpdateResult counters
     updateResult JSON,
     errorMessage TEXT,
