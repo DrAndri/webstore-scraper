@@ -207,7 +207,7 @@ export default abstract class BaseCrawler {
       },
       // maxRequestsPerCrawl: 30000,
       maxConcurrency: 50,
-      maxRequestsPerMinute: 30,
+      maxRequestsPerMinute: 60,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 240,
       navigationTimeoutSecs: 120,
