@@ -1,0 +1,30 @@
+{
+  "storeId": 22,
+  // Heimkaup runs on the Jiffy grocery platform, mostly drinks, snacks and
+  // nicotine products
+  "startUrl": "https://heimkaup.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\": \"Product\"",
+  // The sitemap lists products that are long gone (404). /shop links to every
+  // category and each category to its subcategories, a category page only
+  // renders its first 48 products but the subcategories hold fewer.
+  "urlWhitelist": ["/p/", "/c/", "/shop"],
+  "selectors": {
+    "productPage": "#content",
+    // JSON-LD has the name, price, brand, image and stock but no sku, and its
+    // description is "Buy <name> online"
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "description": false }
+    },
+    // /p/pepsi-max-12x330ml-42434
+    "sku": { "source": "url", "delimiter": "-", "index": "last" },
+    // The class names are CSS modules (_oldPrice_1ksxr_30), match the readable
+    // part. The JSON-LD price is the discounted one.
+    "oldPrice": "section[class*=\"_info_\"] [class*=\"_oldPrice_\"]",
+    "description": ".markdown-content",
+    // Heim / Allar flokkar / <category> / <product>
+    "categories": "[class*=\"_breadcrumbs_\"]",
+    "categoryItemLocator": "a[href^=\"/c/\"]"
+  }
+}

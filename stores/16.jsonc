@@ -1,0 +1,35 @@
+{
+  "storeId": 16,
+  "startUrl": "https://byko.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "id=\"product-ean-numbers\"",
+  "urlWhitelist": ["/vara", "/voruflokkar"],
+  "selectors": {
+    "productPage": "#wrapper",
+    "structuredData": {
+      "source": "nextdata",
+      "fields": {
+        "price": "props.pageProps.product.variants.0.price.gross",
+        "name": "props.pageProps.product.name",
+        "brand": "props.pageProps.product.attributes.brand",
+        "image": [
+          "props.pageProps.product.variants.0.firstImage.image.productGallery",
+          "props.pageProps.product.firstImage.image.productGallery"
+        ],
+        "description": "props.pageProps.product.description.is",
+        "inStock": "props.pageProps.product.webstoreInStock",
+        "categories": "props.pageProps.breadCrumbs"
+      }
+    },
+    "oldPrice": "div:nth-child(2) div:nth-child(2) div:contains(\"VERÐ ÁÐUR\") > div:nth-child(1) > div:nth-child(2) > span",
+    "sku": "p:contains(\"VNR.\")"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "VNR.",
+        "replace": ""
+      }
+    ]
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "storeId": 35,
+  // Angular app on the same platform as Fjallakofinn (28) and AB varahlutir
+  // (36), the HTML is empty until the scripts run and the data comes from a
+  // POST-only API.
+  "startUrl": "https://stilling.is",
+  "type": "crawler",
+  // The price, only rendered once the item has loaded
+  "productPageIdentifier": "text-4xl font-black",
+  // The sitemap lists every product, 28131 on 2026-11-06. Some of them have
+  // no name.
+  "sitemapUrls": ["https://stilling.is/api/sitemap/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "selectors": {
+    // There are no breadcrumbs or categories on the product page
+    "productPage": "app-item",
+    "name": "h1",
+    // "Vörunúmer: NO9879-54-00"
+    "sku": "h1 + button",
+    // "2.995 kr", the discounted price on sale with the full price below it
+    // in a line-through div. No product was on sale to check, the selectors
+    // are from the app's template.
+    "listPrice": "div.text-4xl.font-black",
+    "oldPrice": "div.text-xl.line-through",
+    // The large image beside the thumbnails, /shared/vantarmynd.png when
+    // the product has none
+    "image": "img.cursor-zoom-in",
+    // The "Lýsing" tab, products without one show "Engin lýsing skráð." in a
+    // <p> instead
+    "description": "div.mt-8 div.leading-relaxed",
+    // "Setja í körfu", or "Sérpöntun" (special order), "Uppselt" or
+    // "Í pöntun" when it is not in stock
+    "inStock": "button.w-full",
+    "inStockText": "Setja í körfu"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      }
+    ]
+  }
+}

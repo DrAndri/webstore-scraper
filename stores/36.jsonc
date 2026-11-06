@@ -1,0 +1,44 @@
+{
+  "storeId": 36,
+  // AB varahlutir, abvarahlutir.is is a placeholder page. An older version
+  // of the Angular app Stilling (35) runs, the HTML is empty until the
+  // scripts run.
+  "startUrl": "https://ab.is",
+  "type": "crawler",
+  // The product column is added once the item has loaded
+  "productPageIdentifier": "item-detail-info",
+  // The sitemap lists every product, 2573 on 2026-11-06
+  "sitemapUrls": ["https://ab.is/api/sitemap/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "selectors": {
+    // The whole app, the breadcrumbs are outside app-item
+    "productPage": "app-root:has(app-item)",
+    // The name, and "30% afsláttur" in a div when on sale
+    "name": "app-item h1.item-name > span",
+    // "Vörunúmer: Clco1059", the app title cases the number
+    "sku": "app-item h4.item-number",
+    // "11.893kr" in h4.discount-item-price on sale, with the full price
+    // "16.990 kr" in .full-item-price
+    "listPrice": "app-item h4.item-price, app-item h4.discount-item-price",
+    "oldPrice": "app-item .full-item-price",
+    // The swiper loops, so the first and last slides are duplicates
+    "image": "app-item .swiper-slide:not(.swiper-slide-duplicate) img.img-desktop",
+    "description": "app-item .item-description p.description",
+    // "Setja í körfu", or "Uppselt"
+    "inStock": "app-item button.single-item-add-basket-button",
+    "inStockText": "Setja í körfu",
+    // "Forsíða / Vöruflokkar / Verkfæri og Iðnaður / Handverkfæri /
+    // Topplyklasett / TOPPLYKLASETT 108STK", the slashes are in the items.
+    // The mobile and desktop headers both have it.
+    "categories": "app-nav-store-header nav.main-breadcrumb ol.breadcrumb",
+    "categorySplitter": "/"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      }
+    ]
+  }
+}

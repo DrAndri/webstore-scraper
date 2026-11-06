@@ -1,0 +1,57 @@
+{
+  "storeId": 3,
+  "startUrl": "https://tl.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlBlacklist": [
+    "/giftcard",
+    "/contact",
+    "/catalogsearch",
+    "/greioslumatar",
+    "/afhendingarmatar",
+    "/verkstaedi",
+    "/abyrg",
+    "/vi-botartrygging",
+    "/skilarettur",
+    "/algengar-spurningar",
+    "/innkollun",
+    "/um-tolvulistann",
+    "/atvinna",
+    "/giftcard",
+    "/styrktarsjodur",
+    "/vidskiptaskilmalar",
+    "/vafrakokur",
+    "/netklubbur",
+    "/fyrirtaekjapjonusta"
+  ],
+  "selectors": {
+    "productPage": "#__next > div > div > div.rz-main-content-backup > div > main > div > div",
+    // Price and stock are rendered client-side, so they come from JSON-LD. Its
+    // availability is unreliable (OutOfStock for products in stock) and the sale
+    // price is not in the HTML. JSON-LD sku is the parent of configurable products,
+    // keep the variant sku from the page. JSON-LD brand is an id.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "brand": false,
+        "inStock": false,
+        "description": false
+      }
+    },
+    "name": ".product-details .title-content > h1",
+    "sku": ".product-details .title-content > p",
+    "image": ".section-gallery .image-large-display img",
+    "description": ".detail-desc div.rz-magento-html",
+    "categories": ".page-breadcrumb > ul",
+    "categoryItemLocator": "li",
+    "attributes": {
+      "attributesTable": ".page-section-left-wrapper .detail-spec > .section-content",
+      "attribute": ".product-spec-group > div",
+      "attributeLabel": ".product-spec-label > p",
+      "attributeValue": ".product-spec-content > p",
+      "attributeGroup": "div:has(> .product-spec-group-label)",
+      "attributeGroupName": ".product-spec-group-label > p"
+    }
+  }
+}

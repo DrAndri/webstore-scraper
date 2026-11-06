@@ -1,0 +1,35 @@
+{
+  "storeId": 2,
+  // Moved to Odoo (/shop/...) in October 2026, the JSON-LD sku is the old Vörunúmer
+  "startUrl": "https://www.tolvutek.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\": \"Product\"",
+  // Category pages only list subcategories, products are found through the sitemap
+  "sitemapUrls": ["https://www.tolvutek.is/sitemap.xml"],
+  "urlWhitelist": ["/shop"],
+  "urlBlacklist": ["/shop/category", "/shop/cart", "/shop/wishlist"],
+  "selectors": {
+    "productPage": "main",
+    "structuredData": { "source": "jsonld" },
+    "description": "#product_full_description",
+    "categories": ".breadcrumb",
+    "categoryItemLocator": "li",
+    "attributes": {
+      "attributesTable": "#product_specifications",
+      // No <tbody> in the source and the crawler's parser does not add one
+      "attributeGroup": "table",
+      "attributeGroupName": "tr > th",
+      "attribute": "tr",
+      "attributeLabel": "td:nth-child(1)",
+      "attributeValue": "td:nth-child(2)"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      }
+    ]
+  }
+}

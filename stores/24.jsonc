@@ -1,0 +1,34 @@
+{
+  "storeId": 24,
+  "startUrl": "https://www.lyfja.is",
+  "type": "httpcrawler",
+  // Astro site without structured data, the product controls island is only
+  // on product pages
+  "productPageIdentifier": "component-export=\"ProductControls\"",
+  "sitemapUrls": ["https://www.lyfja.is/sitemap.xml"],
+  "urlWhitelist": ["/verslun/"],
+  "selectors": {
+    "productPage": "main",
+    "name": "h1",
+    "sku": "span:contains(\"Vörunúmer:\")",
+    "oldPrice": ".product-quantity-control .line-through",
+    "listPrice": ".product-quantity-control .text-green",
+    "brand": "a[href^=\"/voerumerki/\"]",
+    // The first images are the 50px thumbnails
+    "image": "astro-island[component-export=\"ProductViewer\"] img[loading=\"eager\"]",
+    "description": ".rich-text-product-description",
+    "inStock": "astro-island[component-export=\"ProductControls\"]",
+    "inStockText": "Bæta við í körfu",
+    // Forsíða / Verslun / <categories> / <product>
+    "categories": "nav[aria-label=\"Breadcrumb\"]",
+    "categoryItemLocator": "a[href^=\"/verslun/\"]"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      }
+    ]
+  }
+}

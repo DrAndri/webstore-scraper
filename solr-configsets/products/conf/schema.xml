@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schema name="products" version="1.7">
+  <!-- Field types -->
+  <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
+  <fieldType name="boolean" class="solr.BoolField" sortMissingLast="true"/>
+  <fieldType name="pint" class="solr.IntPointField"/>
+  <fieldType name="plong" class="solr.LongPointField"/>
+  <fieldType name="pdouble" class="solr.DoublePointField"/>
+  <fieldType name="pdate" class="solr.DatePointField"/>
+
+  <fieldType name="text_general" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <fieldType name="text_edge_ngram" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory"/>
+      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="20" preserveOriginal="true"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.StandardTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- The whole sku, case insensitive -->
+  <fieldType name="text_sku" class="solr.TextField" positionIncrementGap="100">
+    <analyzer>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- Prefixes of the whole sku, for search as you type -->
+  <fieldType name="text_sku_prefix" class="solr.TextField" positionIncrementGap="100">
+    <analyzer type="index">
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.EdgeNGramFilterFactory" minGramSize="2" maxGramSize="30" preserveOriginal="true"/>
+    </analyzer>
+    <analyzer type="query">
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- Whole value, case and accent insensitive. Used by the advanced search in
+       webstore-api for starts with, ends with, includes and exact matches. -->
+  <fieldType name="text_ci" class="solr.TextField" positionIncrementGap="100">
+    <analyzer>
+      <tokenizer class="solr.KeywordTokenizerFactory"/>
+      <filter class="solr.LowerCaseFilterFactory"/>
+      <filter class="solr.ASCIIFoldingFilterFactory"/>
+    </analyzer>
+  </fieldType>
+
+  <!-- Required Solr internal fields -->
+  <field name="_version_" type="plong" indexed="false" stored="false"/>
+  <field name="_root_" type="string" indexed="true" stored="false" docValues="false"/>
+
+  <!-- Fields -->
+  <field name="id" type="string" indexed="true" stored="true" required="true"/>
+  <field name="storeId" type="pint" indexed="true" stored="true"/>
+  <field name="manufacturerId" type="pint" indexed="true" stored="true"/>
+  <field name="categoryId" type="plong" indexed="true" stored="true"/>
+
+  <field name="sku" type="text_sku" indexed="true" stored="true"/>
+
+  <field name="name" type="text_general" indexed="true" stored="true"/>
+
+  <field name="ean" type="string" indexed="true" stored="true"/>
+  <field name="description" type="text_general" indexed="true" stored="true"/>
+  <field name="url" type="string" indexed="false" stored="true"/>
+  <field name="image" type="string" indexed="false" stored="true"/>
+  <field name="inStock" type="boolean" indexed="true" stored="true"/>
+
+  <field name="price" type="pdouble" indexed="true" stored="true"/>
+  <field name="firstSeenDate" type="pdate" indexed="true" stored="true"/>
+  <field name="lastChangeDate" type="pdate" indexed="true" stored="true"/>
+
+  <!-- Dynamic attribute fields -->
+  <dynamicField name="attr_*" type="string" indexed="true" stored="true" multiValued="true"/>
+
+  <!-- Advanced search in webstore-api -->
+  <!-- Ids of the attributes a product has, faceted to find the attributes in a result -->
+  <field name="attrIds" type="pint" indexed="true" stored="false" docValues="true" multiValued="true"/>
+  <field name="name_ci" type="text_ci" indexed="true" stored="false"/>
+  <field name="sku_ci" type="text_ci" indexed="true" stored="false"/>
+  <dynamicField name="attrci_*" type="text_ci" indexed="true" stored="false" multiValued="true"/>
+  <copyField source="name" dest="name_ci"/>
+  <copyField source="sku" dest="sku_ci"/>
+  <copyField source="attr_*" dest="attrci_*"/>
+
+  <!-- Search as you type. name and sku match whole words and skus, these
+       match their prefixes. Stored so webstore-api can highlight the match. -->
+  <field name="name_prefix" type="text_edge_ngram" indexed="true" stored="true"/>
+  <field name="sku_prefix" type="text_sku_prefix" indexed="true" stored="true"/>
+  <copyField source="name" dest="name_prefix"/>
+  <copyField source="sku" dest="sku_prefix"/>
+
+  <uniqueKey>id</uniqueKey>
+</schema>

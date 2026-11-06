@@ -1,0 +1,48 @@
+{
+  "storeId": 18,
+  "startUrl": "https://utilif.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "BaseProductPageLayoutWrapper",
+  "urlBlacklist": [
+    "/customer",
+    "/cart",
+    "/blog-list",
+    "/TNF-algengarSpurningar",
+    "/verslanir",
+    "/jardsambandid_skraning",
+    "/gjafakort",
+    "/verkstaedi",
+    "/thjonusta",
+    "/algengarspurningar",
+    "/umutilif",
+    "/starfsumsokn",
+    "/vafrakokur",
+    "/skilmalar",
+    "/personuverndarstefna",
+    "/catalogsearch"
+  ],
+  "selectors": {
+    "productPage": "div.rz-main-content-backup > div > main > div > div",
+    // Same platform as tl.is. The gallery is rendered client-side, only the image is
+    // taken from JSON-LD, its sku is the parent of the variant on the page.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "name": false,
+        "brand": false,
+        "price": false,
+        "inStock": false
+      }
+    },
+    "listPrice": ".section-price > h4",
+    "name": ".title-content > h1",
+    "sku": ".title-content > p",
+    "description": ".detail-desc div.rz-magento-html",
+    "categories": ".page-breadcrumb > ul",
+    "inStock": ".stocks-delivery-wrapper",
+    "inStockText": "Til á lager",
+    "categoryItemLocator": "li > a > p",
+    "brand": ".brand-wrapper > a > p"
+  }
+}

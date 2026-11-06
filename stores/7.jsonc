@@ -1,0 +1,29 @@
+{
+  "storeId": 7,
+  "startUrl": "https://kd.is/",
+  "type": "crawler",
+  "productPageIdentifier": "Vörulýsing",
+  "urlWhitelist": ["/category"],
+  "selectors": {
+    "productPage": "div.product",
+    "oldPrice": "header > .title > h4",
+    "listPrice": "header > .title h3",
+    "name": "h1",
+    "sku": "h5",
+    "description": ".description",
+    "attributes": {
+      "attributesTable": "table",
+      "attribute": "tr",
+      "attributeLabel": "td:nth-child(1)",
+      "attributeValue": "td:nth-child(2)"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      }
+    ]
+  }
+}

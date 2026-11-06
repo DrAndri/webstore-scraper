@@ -1,0 +1,26 @@
+{
+  "storeId": 10,
+  "startUrl": "https://epli.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "product-layout",
+  "urlBlacklist": [
+    "/uppitaka",
+    "/um-okkur",
+    "/thjonustuvefur",
+    "/epliogumhverfid",
+    "/minar-sidur",
+    "/hafdu-samband",
+    "/leit"
+  ],
+  "selectors": {
+    "productPage": ".main",
+    "oldPrice": "#product-prices > p.product-info__price--old",
+    "listPrice": "#product-prices > p:last-child",
+    "name": "#product-title",
+    "sku": "#product-sku",
+    "image": "#product-image .product-images-slider__image img",
+    "description": "#product-description",
+    "categories": ".breadcrumbs",
+    "categoryItemLocator": "a"
+  }
+}

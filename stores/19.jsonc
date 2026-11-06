@@ -1,0 +1,38 @@
+{
+  "storeId": 19,
+  "startUrl": "https://hverslun.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\": \"Product\"",
+  "urlBlacklist": [
+    "/build-hverslun",
+    "/um-okkur",
+    "/innskraning",
+    "/minar-sidur",
+    "/gjafabref",
+    "/h-klubburinn",
+    "/skilmalar",
+    "/personuverndarstefna",
+    "/leit",
+    "/gefdu-gjafabref-sem-gledur-og-hvetur"
+  ],
+  "selectors": {
+    "productPage": "#main",
+    // The price on the page is filled in by JS, JSON-LD has the price, sku and name.
+    // Stock and sale price are not in the html.
+    "structuredData": { "source": "jsonld" },
+    "sku": ".product-page-details__sku--desktop",
+    "brand": ".product-page-details__brand",
+    "image": ".product-page-image-slider__image",
+    "description": ".product-description__text",
+    "categories": ".breadcrumbs-desktop",
+    "categoryItemLocator": "a"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vnr.",
+        "replace": ""
+      }
+    ]
+  }
+}
