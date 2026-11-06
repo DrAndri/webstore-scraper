@@ -1,0 +1,34 @@
+{
+  "storeId": 27,
+  "startUrl": "https://ggsport.is",
+  "type": "httpcrawler",
+  // Server rendered without structured data or a sitemap (sitemap.xml is
+  // empty). Each color of a product is its own page.
+  "productPageIdentifier": "id=\"productNrfield\"",
+  // /products/<category> lists 21 products a page with ?page=N links,
+  // /product/<product> is a product page
+  "urlWhitelist": ["/product"],
+  "selectors": {
+    "productPage": "#product",
+    "name": "h1",
+    // "705-1028997 Bis/Blk", the item number and the color
+    "sku": "#productNrfield",
+    "oldPrice": ".catalog-single .old-price",
+    "listPrice": ".catalog-single .price.thisprice",
+    // The brand is only shown as a logo
+    "image": ".prod-gal .ms-slide img:not(.ms-thumb)",
+    "imageAttribute": "data-src",
+    // The description is in <p class="p-style2">, which the parser closes at
+    // the first block inside it, so it ends up as siblings of an empty
+    // paragraph. Only one element is read, the wrapping <div> when there is
+    // one, else the first paragraph (without the lists and headings after it).
+    "description": ".p-style2 + div, #product .p-style2 ~ p:not(:empty)",
+    // Sold out products get an "Uppselt" notice instead of the quantity
+    // buttons and the add to cart button
+    "inStock": "form.pantavoru :is(.incr-btn, .soldout)",
+    "inStockText": "+",
+    // Heim / <categories> / <product>
+    "categories": ".breadcrumb",
+    "categoryItemLocator": "a"
+  }
+}

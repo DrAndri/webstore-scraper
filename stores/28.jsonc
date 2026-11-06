@@ -1,0 +1,44 @@
+{
+  "storeId": 28,
+  "startUrl": "https://fjallakofinn.is",
+  // Angular app, the HTML is empty until the scripts run. The category menu
+  // and the paging are buttons, not links, so the products are found from the
+  // sitemap.
+  "type": "crawler",
+  // The JSON-LD the app adds to product pages
+  "productPageIdentifier": "json-ld-product",
+  "sitemapUrls": ["https://fjallakofinn.is/api/sitemap/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "selectors": {
+    "productPage": "app-item",
+    "name": ".item-detail h1.item-name",
+    "brand": ".item-detail .item-brand-name",
+    // The item number is empty on products with sizes or colors until one is
+    // picked, /vara/<slug> is unique
+    "sku": { "source": "url", "delimiter": "/vara/", "index": "last" },
+    // "1.256 <span class="discounted">1.795</span>" on sale. Products whose
+    // variants have different prices show a range, the lowest one is read and
+    // the old price is not shown.
+    "listPrice": ".item-detail .item-price app-price",
+    "oldPrice": ".item-detail .item-price .discounted",
+    // The first slide of the gallery is a copy of the last one
+    "image": ".swiper-slide:not(.swiper-slide-duplicate) img.swiper-slide-img",
+    "description": ".item-detail .desktop-only app-panel-item.description-panels div.description-panel-desc",
+    // "Setja í körfu", or "Veldu stærð" when a size is in stock. Sold out and
+    // coming soon products have a disabled button with an envelope icon.
+    "inStock": ".item-detail .item-controls button:has(i.fa-shopping-cart)",
+    // "Forsíða / Útbúnaður / Eldun & ílát / Brennarar", the items are not
+    // links and hold the slashes
+    "categories": ".item-detail .breadcrumb",
+    "categorySplitter": "/"
+  },
+  "sanitizers": {
+    // The app adds an empty query, /vara/<slug>?, to products with variants
+    "sku": [
+      {
+        "match": "?",
+        "replace": ""
+      }
+    ]
+  }
+}

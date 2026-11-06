@@ -1,0 +1,35 @@
+{
+  "storeId": 30,
+  // Lindex is one of the S4S web stores, like Ellingsen (26).
+  // The pages are rendered by a Vue app, the products are only in a script
+  // in the HTML.
+  "startUrl": "https://s4s.is/lindex",
+  "type": "crawler",
+  "productPageIdentifier": "productNumber_Container",
+  // Every S4S store lists the products of the other stores under its own path,
+  // /lindex/voerur/lindex holds Lindex's own categories. A product page is a
+  // category url with ?ProductId=<product number>, categories have 36 products
+  // a page with a ?sida=N link to the next page.
+  "urlWhitelist": ["/lindex/voerur/lindex"],
+  "startUrls": ["https://s4s.is/lindex/voerur/lindex"],
+  "selectors": {
+    // Holds the breadcrumbs and the product, and the related products after
+    // #productDetail
+    "productPage": ".productDetail_Page",
+    "name": "#productDetail .productHeader .productName",
+    "sku": "#productDetail .productHeader .productNumber",
+    "oldPrice": "#productDetail .productHeader .oldPrice",
+    "listPrice": "#productDetail .productHeader .productPrice",
+    "brand": "#productDetail .productHeader .productBrand",
+    "image": "#productDetail .productGallery__image",
+    "description": "#productDetail .productDescription",
+    // The button is disabled when the product is sold out, in every size.
+    // Special order products have a contact form instead and read as out of
+    // stock.
+    "inStock": "#productDetail .addToCart__buy button:not([disabled])",
+    "inStockText": "Bæta í körfu",
+    // Heim / <categories>, the last one is not a link
+    "categories": ".breadCrumb",
+    "categoryItemLocator": ".crumb_Link"
+  }
+}
