@@ -16,6 +16,14 @@
     "inStock": ".stock",
     "inStockText": "Á lager",
     "categoryItemLocator": "a",
-    "brand": "span.tagged_as:contains(\"Vörumerki:\") > a:nth-child(1)"
+    "brand": "span.tagged_as:contains(\"Vörumerki:\") > a:nth-child(1)",
+    "attributes": {
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr.woocommerce-product-attributes-item",
+      "attributeLabel": "th.woocommerce-product-attributes-item__label",
+      // WooCommerce wraps values in <p> followed by a newline, so the <p> gives
+      // the value without trailing whitespace
+      "attributeValue": "td.woocommerce-product-attributes-item__value > p"
+    }
   }
 }
