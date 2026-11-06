@@ -9,7 +9,9 @@ export const categoryBanList = [
   'vörur',
   'allar vörur',
   'til baka',
-  'leitarniðurstöður'
+  'leitarniðurstöður',
+  'vöruflokkar',
+  'ikea vefverslun'
 ];
 export const blockedPageResourceTypes = [
   'image',

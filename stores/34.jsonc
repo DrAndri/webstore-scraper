@@ -1,0 +1,69 @@
+{
+  "storeId": 34,
+  // N1's web shop is a Next.js storefront on Saleor, the category listings
+  // are Algolia. The pages are server rendered, but streamed: the product
+  // and its price are in <div hidden id="S:n"> blocks that a script moves
+  // into place, so the selectors do not rely on where they end up.
+  "startUrl": "https://n1.is/is/vefverslun",
+  "type": "httpcrawler",
+  // Only product pages have a /vara/ og:url
+  "productPageIdentifier": "og:url\" content=\"https://n1.is/is/vefverslun/vara/",
+  // The sitemap has no products and the category menu is only in a script,
+  // so the crawl starts from the top categories. A category lists 60
+  // products a page with ?sida=N links, and the breadcrumbs of a product
+  // link to its subcategories.
+  "urlWhitelist": ["/is/vefverslun/voruflokkur/", "/is/vefverslun/vara/"],
+  "startUrls": [
+    "https://n1.is/is/vefverslun/voruflokkur/bilavorur",
+    "https://n1.is/is/vefverslun/voruflokkur/efnavorur",
+    "https://n1.is/is/vefverslun/voruflokkur/fatnadur-skor-og-oryggisvorur",
+    "https://n1.is/is/vefverslun/voruflokkur/felgur-og-hjolkoppar",
+    "https://n1.is/is/vefverslun/voruflokkur/ferda-grill-og-gasvorur",
+    "https://n1.is/is/vefverslun/voruflokkur/hjolbardar-og-tengdar-vorur",
+    "https://n1.is/is/vefverslun/voruflokkur/hreinsivorur",
+    "https://n1.is/is/vefverslun/voruflokkur/rafhledsluvorur",
+    "https://n1.is/is/vefverslun/voruflokkur/rekstrarvorur",
+    "https://n1.is/is/vefverslun/voruflokkur/smuroliur",
+    "https://n1.is/is/vefverslun/voruflokkur/velar-og-onnur-taeki",
+    "https://n1.is/is/vefverslun/voruflokkur/verkfaeri"
+  ],
+  "selectors": {
+    // The streamed blocks are outside <main>
+    "productPage": "body",
+    // The JSON-LD Product is only used for the image, the gallery is not
+    // always in the HTML. Its price and availability are not the ones shown
+    // (45.995 kr and OutOfStock for a jacket shown at 47.895 kr with an add
+    // to cart button), probably those of another variant.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "gtin": false,
+        "name": false,
+        "brand": false,
+        "description": false,
+        "price": false,
+        "inStock": false
+      }
+    },
+    // The name, number and short description are rendered twice, for
+    // mobile and desktop, the first one is read
+    "name": "h1",
+    // e.g. "100039890" or "A999 8950002", above the name
+    "sku": ".py-6 > div.text-xs",
+    // "Verð 47.895 kr.", the price of the first variant (size or color).
+    // No product was on sale to see how an old price is shown.
+    "listPrice": ".bg-grey-100 > div > .justify-between.font-bold > div:last-child",
+    // The first slide of the gallery, when the JSON-LD has no image
+    "image": "[aria-label=\"Product image gallery\"] [data-image-url]",
+    "imageAttribute": "data-image-url",
+    "description": ".py-6 > p",
+    // "Setja í körfu", sold out products have a disabled "Uppselt í
+    // vefverslun" button
+    "inStock": "button",
+    "inStockText": "Setja í körfu",
+    // Heim / <categories>, the last one is the product's category
+    "categories": "nav",
+    "categoryItemLocator": "a"
+  }
+}
