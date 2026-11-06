@@ -58,9 +58,10 @@ const getLatestPrice = async (
   productId: DbId
 ): Promise<ProductPrice | undefined> => {
   return await conn
-    .query<
-      ProductPrice[]
-    >(`SELECT price, start, end FROM ${table} WHERE productId = ? ORDER BY start DESC LIMIT 1`, [productId])
+    .query<ProductPrice[]>(
+      `SELECT price, start, end FROM ${table} WHERE productId = ? ORDER BY start DESC LIMIT 1`,
+      [productId]
+    )
     .then((res) => getFirstResult(res));
 };
 // Documents sent to Solr in one update
@@ -322,7 +323,10 @@ export default class SQLStoreUpdater {
         return priceResult;
       })
     );
-    if (scrapedProduct.salePrice !== undefined) {
+    if (
+      scrapedProduct.salePrice !== undefined &&
+      scrapedProduct.salePrice < scrapedProduct.price
+    ) {
       const salePrice = scrapedProduct.salePrice;
       promises.push(
         this.queryPool(this.salePricePool, async (priceConn) => {
@@ -550,9 +554,10 @@ export default class SQLStoreUpdater {
     scrapedProduct: ProductSnapshot
   ): Promise<{ product: Product; result?: 'new' | 'updated' }> {
     const existingProduct = await productsConn
-      .query<
-        Product[]
-      >('SELECT * FROM products WHERE sku = ? AND storeId = ? LIMIT 1', [scrapedProduct.sku, this.storeConfig.id])
+      .query<Product[]>(
+        'SELECT * FROM products WHERE sku = ? AND storeId = ? LIMIT 1',
+        [scrapedProduct.sku, this.storeConfig.id]
+      )
       .then((res) => getFirstResult(res));
     if (existingProduct) {
       return await this.updateProduct(
@@ -613,9 +618,10 @@ export default class SQLStoreUpdater {
     categories: string[]
   ): Promise<DbId> {
     let existingRootId = await conn
-      .query<
-        IdLookup[]
-      >('SELECT id FROM categories WHERE name = ? AND parentId IS NULL LIMIT 1', [categories[0]])
+      .query<IdLookup[]>(
+        'SELECT id FROM categories WHERE name = ? AND parentId IS NULL LIMIT 1',
+        [categories[0]]
+      )
       .then((res) => getFirstDbId(res));
     if (!existingRootId) {
       const res = await conn.query<UpsertResult>(
@@ -629,9 +635,10 @@ export default class SQLStoreUpdater {
     let parentId = existingRootId;
     for (let i = 1; i < categories.length; i++) {
       const existingCategoryId = await conn
-        .query<
-          IdLookup[]
-        >('SELECT id FROM categories WHERE name = ? AND parentId = ? LIMIT 1', [categories[i], parentId])
+        .query<IdLookup[]>(
+          'SELECT id FROM categories WHERE name = ? AND parentId = ? LIMIT 1',
+          [categories[i], parentId]
+        )
         .then((res) => getFirstDbId(res));
       if (!existingCategoryId) {
         const res = await conn.query<UpsertResult>(
@@ -667,9 +674,10 @@ export default class SQLStoreUpdater {
           break;
         }
         const parent = await conn
-          .query<
-            Category[]
-          >('SELECT id, parentId FROM categories WHERE id = ? AND name = ? LIMIT 1', [currentCategory.parentId, categories[i]])
+          .query<Category[]>(
+            'SELECT id, parentId FROM categories WHERE id = ? AND name = ? LIMIT 1',
+            [currentCategory.parentId, categories[i]]
+          )
           .then((res) => getFirstResult(res));
         if (parent) {
           i--;
@@ -697,9 +705,10 @@ export default class SQLStoreUpdater {
     manufacturer: string
   ): Promise<boolean> {
     let existingManufacturerId = await conn
-      .query<
-        IdLookup[]
-      >('SELECT id FROM manufacturers WHERE name = ? LIMIT 1', [manufacturer])
+      .query<IdLookup[]>(
+        'SELECT id FROM manufacturers WHERE name = ? LIMIT 1',
+        [manufacturer]
+      )
       .then((res) => getFirstDbId(res));
     if (!existingManufacturerId) {
       const res = await conn.query<UpsertResult>(
@@ -773,9 +782,10 @@ export default class SQLStoreUpdater {
       let existingAttributeGroupId: DbId | undefined = undefined;
       if (attributeGroup.name) {
         existingAttributeGroupId = await conn
-          .query<
-            IdLookup[]
-          >('SELECT id FROM attributeGroups WHERE name = ? LIMIT 1', [attributeGroup.name])
+          .query<IdLookup[]>(
+            'SELECT id FROM attributeGroups WHERE name = ? LIMIT 1',
+            [attributeGroup.name]
+          )
           .then((res) => getFirstDbId(res));
 
         if (!existingAttributeGroupId) {
