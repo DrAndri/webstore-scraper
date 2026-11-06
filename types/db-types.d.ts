@@ -110,7 +110,7 @@ export interface WebshopCrawlerOptions {
   // More pages the crawl starts from, e.g. a product listing with a larger
   // page size than the one the site links to
   startUrls?: string[];
-  // Sitemaps whose <loc> urls are queued when crawling, httpcrawler only
+  // Sitemaps whose <loc> urls are queued when crawling
   sitemapUrls?: string[];
   productFeed?: ProductFeed;
   scrollPagesToBottom?: boolean;

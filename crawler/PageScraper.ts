@@ -16,21 +16,24 @@ export default class PageScraper extends BaseScraper {
     listPrice: number;
     salePrice: number | undefined;
   }> {
-    let oldPrice: number | undefined = undefined;
-    if (this.selectors.oldPrice) {
-      const oldPriceLocator = productLocator.locator(this.selectors.oldPrice);
-      oldPrice =
-        oldPriceLocator && (await oldPriceLocator.count()) === 1
-          ? await this.evalPrice(this.selectors.oldPrice, productLocator)
-          : undefined;
-    }
     if (!this.selectors.listPrice)
       throw new Error('No listPrice selector configured');
+    // First, as reading it waits for the price to be rendered. count() does
+    // not wait, the old price was missed when the page rendered the product
+    // number before the prices (S4S).
     const price = await this.evalPrice(
       this.selectors.listPrice,
       productLocator
     );
     expect(price).toBeTruthy();
+    let oldPrice: number | undefined = undefined;
+    if (this.selectors.oldPrice) {
+      const oldPriceLocator = productLocator.locator(this.selectors.oldPrice);
+      oldPrice =
+        (await oldPriceLocator.count()) === 1
+          ? await this.evalPrice(this.selectors.oldPrice, productLocator)
+          : undefined;
+    }
     const listPrice = oldPrice && oldPrice > 0 ? oldPrice : price;
     const salePrice = price;
 
@@ -70,7 +73,12 @@ export default class PageScraper extends BaseScraper {
     } else if (categorySplitter) {
       const categoriesString = await locator.textContent();
       if (!categoriesString) return [];
-      if (categorySplitter) return categoriesString.split(categorySplitter);
+      // Trimmed and without banned names like the categoryItemLocator ones
+      if (categorySplitter)
+        return this.cleanCategories(
+          categoriesString.split(categorySplitter),
+          productName
+        );
       return [categoriesString];
     } else return undefined;
   }
@@ -202,6 +210,9 @@ export default class PageScraper extends BaseScraper {
   async scrapeDescription(productLocator: Locator) {
     if (!this.selectors.description) return undefined;
     const locator = productLocator.locator(this.selectors.description);
+    // Products without a description, innerHTML() would wait for one until
+    // it times out (30s). The prices are read first, so the page is rendered.
+    if ((await locator.count()) === 0) return undefined;
     const html = await locator.innerHTML();
     return sanitizeHtml(html);
   }
@@ -304,9 +315,19 @@ export default class PageScraper extends BaseScraper {
   }
 
   async evalPrice(selector: string, locator: Locator) {
-    const string = await this.evalText(selector, locator);
+    // The element's own text when it holds the price, without the old price
+    // in a child element, e.g. <app-price>1.256 <span>1.795</span></app-price>
+    const string = await locator.locator(selector).evaluate((element) => {
+      const ownText = Array.from(element.childNodes)
+        .filter((node) => node.nodeType === 3) // text nodes
+        .map((node) => node.textContent)
+        .join('');
+      return /\d/.test(ownText) ? ownText : element.textContent;
+    });
     if (!string) return undefined;
-    return parseInt(string.replace(/\D/g, ''));
+    // The lowest price of a range, "34.998 - 41.997"
+    const price = string.split(/\s[-–]\s/)[0];
+    return parseInt(price.replace(/\D/g, ''));
   }
 
   async evalSku(locator: Locator) {

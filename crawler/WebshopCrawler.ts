@@ -200,6 +200,9 @@ export default class WebshopCrawler extends BaseCrawler {
           )
         )
         .then((links) => links.filter((link) => link !== null));
+      // Sitemap entries, the browser keeps the XML elements of a sitemap
+      const locs = await page.locator('loc').allTextContents();
+      links.push(...locs.map((loc) => loc.trim()).filter((loc) => loc));
 
       await this.filterAndAddLinksToQueue(links);
     };

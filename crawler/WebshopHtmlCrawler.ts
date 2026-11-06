@@ -29,7 +29,7 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
         request: LoadedRequest<Request<any>>;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } & Omit<CheerioCrawlingContext<any, any>, 'request'>
-    > = async ({ request, $ }) => {
+    > = async ({ request, $, body }) => {
       this.result.totalRequests++;
 
       const logger = createLogger(
@@ -38,11 +38,13 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
         this.jobId
       );
       const productLocator = $(selectors.productPage);
-      const html = $.root().html();
-      const identifierInHtml = html
-        ? // eslint-disable-next-line @typescript-eslint/prefer-includes
-          html.indexOf(productPageIdentifier) > -1
-        : false;
+      // The serialized html writes characters like "æ" as entities ("&#xe6;"),
+      // so an identifier like "Varan fæst í" is only found in the response
+      // body, while one like id="x" may only match the serialized attribute
+      const html = $.root().html() ?? '';
+      const identifierInHtml =
+        html.includes(productPageIdentifier) ||
+        body.toString().includes(productPageIdentifier);
       if (productLocator.length > 0 && identifierInHtml) {
         //TODO: check if productLocator matches multiple elements
         logger.log('debug', 'processing url: %s', request.loadedUrl);
