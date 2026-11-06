@@ -3,6 +3,9 @@
   "startUrl": "https://ofar.is",
   "type": "crawler",
   "productPageIdentifier": "Vörulýsing",
+  // Categories show 30 products and page with buttons, not links, the
+  // sitemap has them all
+  "sitemapUrls": ["https://ofar.is/sitemap-products.xml"],
   "urlBlacklist": [
     "/blogg",
     "/frettir",
