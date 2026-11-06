@@ -33,6 +33,8 @@ export default abstract class BaseCrawler {
   hostnameIncludesWww: boolean;
   mode: 'list' | 'crawler';
   pageListener?: PageListener;
+  // Skus of the products handled in this crawl
+  scrapedSkus = new Set<string>();
 
   constructor(
     store: StoreConfig,
@@ -68,6 +70,16 @@ export default abstract class BaseCrawler {
     logger: Logger,
     scrapeResult: ProductScrapeResult
   ) {
+    // A product can be reached from several urls, it is only updated and
+    // counted the first time. Claimed before the first await, the handlers
+    // run concurrently.
+    const { sku } = scrapeResult.product;
+    if (this.scrapedSkus.has(sku)) {
+      logger.log('debug', 'Product %s already scraped in this crawl', sku);
+      return;
+    }
+    this.scrapedSkus.add(sku);
+
     const errors = scrapeResult.errors;
     if (errors.description) {
       logger.log('warn', 'Error scraping description: %O', errors.description);
@@ -99,7 +111,13 @@ export default abstract class BaseCrawler {
     }
 
     this.pageListener?.onProductScraped(scrapeResult);
-    await this.updateProductInDb(scrapeResult.product);
+    try {
+      await this.updateProductInDb(scrapeResult.product);
+    } catch (e) {
+      // Let another url of the product try again
+      this.scrapedSkus.delete(sku);
+      throw e;
+    }
     this.result.totalProcessed++;
   }
 
