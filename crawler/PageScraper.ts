@@ -342,6 +342,11 @@ export default class PageScraper extends BaseScraper {
         .locator(sku.selector)
         .first()
         .getAttribute(sku.attribute);
+    } else if (sku?.source === 'json') {
+      string = this.skuFromJson(
+        await locator.page().locator(sku.selector).first().textContent(),
+        sku
+      );
     }
     return this.sanitizeSku(string);
   }

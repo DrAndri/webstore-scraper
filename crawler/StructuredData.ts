@@ -37,14 +37,14 @@ const isObject = (value: unknown): value is Json =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
 // Arrays are stepped into at their first element unless the key is an index
-const getPath = (root: unknown, path: string): unknown =>
+export const getPath = (root: unknown, path: string): unknown =>
   path.split('.').reduce<unknown>((value, key) => {
     if (Array.isArray(value) && !/^\d+$/.test(key)) value = value[0];
     if (value === null || typeof value !== 'object') return undefined;
     return (value as Json)[key];
   }, root);
 
-const toText = (value: unknown): string | undefined => {
+export const toText = (value: unknown): string | undefined => {
   if (Array.isArray(value)) return toText(value[0]);
   if (typeof value === 'string') return value.trim() || undefined;
   if (typeof value === 'number') return String(value);

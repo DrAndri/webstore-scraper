@@ -150,6 +150,15 @@ export type ProductSelector =
       source: 'attribute';
       selector: string;
       attribute: string;
+    }
+  | {
+      // Read a dot path from the JSON text of an element, e.g. "id" from a
+      // Shopify theme's <script id="ProductJson-product-template">. The
+      // selector is matched in the whole page, not only in productPage, since
+      // such scripts are usually outside the product element.
+      source: 'json';
+      selector: string;
+      path: string;
     };
 
 export type StructuredDataField =

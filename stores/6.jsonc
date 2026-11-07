@@ -18,12 +18,12 @@
     "productPage": "[itemtype=\"http://schema.org/Product\"]",
     "name": "h1[itemprop=\"name\"]",
     // The variant SKUs are not unique, 40 products have "1" and some have
-    // none, so the product's handle is used. Not from the page url, the
-    // script adds ?variant=<id> to it when the product is sold out.
+    // none, so the Shopify product id is used, from the theme's product JSON
+    // (a script after the product element)
     "sku": {
-      "source": "attribute",
-      "selector": "meta[itemprop=\"url\"]",
-      "attribute": "content"
+      "source": "json",
+      "selector": "#ProductJson-product-template",
+      "path": "id"
     },
     // The script replaces the server rendered <small> price with
     // <span>2.093 kr</span> <span><s>2.990 kr</s></span>, so this waits for
@@ -39,14 +39,5 @@
     "inStockText": "Bæta í körfu"
     // No categories, the breadcrumbs are Heim › <product>, and no brand, the
     // vendor is only in scripts
-  },
-  "sanitizers": {
-    // https://tolvutaekni.is/products/<handle>
-    "sku": [
-      {
-        "match": "https://tolvutaekni.is/products/",
-        "replace": ""
-      }
-    ]
   }
 }

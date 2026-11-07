@@ -346,6 +346,8 @@ export default class PageHtmlScraper extends BaseScraper {
       string = this.skuFromUrl(url, sku);
     } else if (sku?.source === 'attribute') {
       string = $(this.getSelector(sku.selector)).first().attr(sku.attribute);
+    } else if (sku?.source === 'json') {
+      string = this.skuFromJson($(sku.selector).first().text(), sku);
     }
     return this.sanitizeSku(string);
   }

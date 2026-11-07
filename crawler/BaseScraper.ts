@@ -3,6 +3,7 @@ import {
   ProductSelector,
   ProductSelectors
 } from '../types/db-types.js';
+import { getPath, toText } from './StructuredData.js';
 
 export default abstract class BaseScraper {
   selectors: ProductSelectors;
@@ -31,6 +32,14 @@ export default abstract class BaseScraper {
     if (selector.index === 'first') return parts[0];
     if (selector.index === 'last') return parts[parts.length - 1];
     return parts[selector.index];
+  }
+
+  skuFromJson(
+    json: string | null | undefined,
+    selector: Extract<ProductSelector, { source: 'json' }>
+  ): string | undefined {
+    if (!json) return undefined;
+    return toText(getPath(JSON.parse(json), selector.path));
   }
 
   sanitizeSku(sku: string | null | undefined): string {
