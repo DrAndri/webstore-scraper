@@ -149,9 +149,9 @@ export default class PageScraper extends BaseScraper {
                   selectors.attributeValue,
                   oneAttribute
                 );
-                const name = await this.evalText(
-                  selectors.attributeLabel,
-                  oneAttribute
+                const name = this.cleanAttributeName(
+                  (await this.evalText(selectors.attributeLabel, oneAttribute)) ??
+                    ''
                 );
                 if (!value) throw new Error('Attribute value not found');
                 if (!name) throw new Error('Attribute name not found');

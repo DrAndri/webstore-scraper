@@ -55,6 +55,11 @@ export default abstract class BaseScraper {
     return string;
   }
 
+  // "Litur:" and "Litur :" are the same attribute as "Litur"
+  cleanAttributeName(name: string): string {
+    return name.trim().replace(/\s*:+$/, '');
+  }
+
   isValidCategory(category: string) {
     if (category.length < 2) return false;
     const lowerCased = category.toLocaleLowerCase();

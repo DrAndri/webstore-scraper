@@ -152,10 +152,9 @@ export default class PageHtmlScraper extends BaseScraper {
                   .find(selectors.attributeValue)
                   .first()
                   .text();
-                const name = $(oneAttribute)
-                  .find(selectors.attributeLabel)
-                  .first()
-                  .text();
+                const name = this.cleanAttributeName(
+                  $(oneAttribute).find(selectors.attributeLabel).first().text()
+                );
                 if (!value) throw new Error('Attribute value not found');
                 if (!name) throw new Error('Attribute name not found');
                 attributes.push({
