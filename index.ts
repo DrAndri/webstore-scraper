@@ -43,9 +43,9 @@ if (process.env.RUN_MONGO_TO_SQL_MIGRATION === 'true') {
 const runner = new JobRunner(new StoreConfigLoader());
 await runner.start();
 
-// The schedules are edited in the admin interface
-const scheduler = new Scheduler(runner.pool, (mode) =>
-  runner.enqueueAll(mode, 'cron')
+// The schedules of each store are edited in the admin interface
+const scheduler = new Scheduler(runner.pool, (storeId, mode) =>
+  runner.enqueue(storeId, mode, 'cron')
 );
 await scheduler.start();
 log.info('Scheduler started');

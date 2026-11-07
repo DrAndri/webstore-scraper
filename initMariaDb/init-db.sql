@@ -63,16 +63,23 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
     CONSTRAINT fk_scrapeJobs_store FOREIGN KEY (storeId) REFERENCES webstorinator.stores(id) ON DELETE CASCADE
 );
 
--- One row per mode, created turned off on the first start of the scraper and
--- edited in the admin interface. Expressions are evaluated in UTC.
-CREATE TABLE IF NOT EXISTS webstorinator.scraperSchedules (
-    mode ENUM('crawler', 'list') PRIMARY KEY,
+-- The scan schedules of each store, one row per store and mode, edited on the
+-- stores page of the admin interface. The scraper creates the rows of a store
+-- that has none with the default schedules. A schedule runs while it and
+-- stores.scraperEnabled are on. Expressions are evaluated in UTC.
+CREATE TABLE IF NOT EXISTS webstorinator.storeSchedules (
+    storeId TINYINT UNSIGNED NOT NULL,
+    mode ENUM('crawler', 'list') NOT NULL,
     cron VARCHAR(64) NOT NULL,
     enabled BOOLEAN NOT NULL DEFAULT FALSE,
     updatedAt DATETIME,
+    -- Email of the admin that changed the schedule
     updatedBy VARCHAR(255),
     lastRunAt DATETIME,
-    lastError VARCHAR(255)
+    -- Why the scraper rejected the expression
+    lastError VARCHAR(255),
+    PRIMARY KEY (storeId, mode),
+    CONSTRAINT fk_storeSchedules_store FOREIGN KEY (storeId) REFERENCES webstorinator.stores(id) ON DELETE CASCADE
 );
 
 -- Heartbeat of the scraper, a single row
@@ -284,7 +291,7 @@ CREATE USER 'webstore-admin'@'%' IDENTIFIED BY 'pass3';
 GRANT SELECT ON webstorinator.* TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.stores TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.scrapeJobs TO 'webstore-admin'@'%';
-GRANT UPDATE ON webstorinator.scraperSchedules TO 'webstore-admin'@'%';
+GRANT INSERT, UPDATE ON webstorinator.storeSchedules TO 'webstore-admin'@'%';
 GRANT UPDATE ON webstorinator.scraperSettings TO 'webstore-admin'@'%';
 GRANT INSERT ON webstorinator.configReloads TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.apiUsers TO 'webstore-admin'@'%';

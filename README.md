@@ -39,10 +39,14 @@ seconds and stop when they are cancelled. Jobs that were running when the
 scraper stopped are marked as failed on the next start. Only one scraper
 instance should run against a database.
 
-The schedules are in `scraperSchedules` and are edited under Schedules in the
-admin interface. The scraper creates them turned off on the first start, a full
-crawl on Mondays at 01:00 and active products every night at 04:00, and applies
-changes within 30 seconds. Expressions are evaluated in UTC.
+Each store has its own schedule for full crawls and for active products, rows
+in `storeSchedules` edited on the stores page of the admin interface. A
+schedule queues a scan of its store while the schedule and **Scheduled scans**
+of the store are on. The scraper gives a store that has no schedules yet a full
+crawl on Mondays at 01:00 and active products every night at 04:00, turned on,
+and applies changes within 30 seconds. Expressions are evaluated in UTC.
+`migrations/2026-11-07-store-schedules.sql` copies the schedules that applied
+to every store before to each store.
 
 ## Solr
 

@@ -130,21 +130,28 @@ export default class JobRunner {
     log.info('Job runner started');
   }
 
-  // Queues a job for every enabled store with a config, skipping stores that
-  // already have a job of the same mode queued or running
-  async enqueueAll(mode: ScheduledMode, source: ScrapeJobSource) {
+  // Queues a job for the store when it is enabled and has a config, unless it
+  // already has a job of the same mode queued or running
+  async enqueue(storeId: number, mode: ScheduledMode, source: ScrapeJobSource) {
     const { configs } = await this.configLoader.get();
-    const storeIds = [...configs.keys()];
-    if (storeIds.length === 0) return;
+    if (!configs.has(storeId)) {
+      log.warn(`Not queueing a ${mode} job for store ${storeId}, no config`);
+      return;
+    }
     const result = await this.pool.query<UpsertResult>(
       `INSERT INTO scrapeJobs (storeId, mode, source, status, queuedAt)
        SELECT s.id, ?, ?, 'queued', UTC_TIMESTAMP() FROM stores s
-       WHERE s.scraperEnabled = 1 AND s.id IN (?) AND NOT EXISTS (
+       WHERE s.id = ? AND s.scraperEnabled = 1 AND NOT EXISTS (
          SELECT 1 FROM scrapeJobs j WHERE j.storeId = s.id AND j.mode = ? AND j.status IN ('queued', 'running')
        )`,
-      [mode, source, storeIds, mode]
+      [mode, source, storeId, mode]
     );
-    log.info(`Queued ${result.affectedRows} ${mode} jobs (${source})`);
+    if (result.affectedRows > 0)
+      log.info(`Queued a ${mode} job for store ${storeId} (${source})`);
+    else
+      log.info(
+        `Not queueing a ${mode} job for store ${storeId}, it is disabled or already has one`
+      );
   }
 
   // Queues a reindex of everything in the database to Solr, unless one is
