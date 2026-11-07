@@ -99,10 +99,14 @@ crawleeLog.getOptions().logger._log = (
 };
 if (['debug', 'silly'].includes(LOG_LEVEL)) crawleeLog.setLevel(LogLevel.DEBUG);
 
+// Each distinct set of labels is a Loki stream, which the ingester keeps until
+// it has been idle for chunk_idle_period (30 minutes by default), so a label
+// for each page hit the max streams limit on large stores. The page is a field
+// of the entry instead, winston-loki sends it as structured metadata, which is
+// searched with {jobId="1"} | page="https://..."
 interface ScanLabels {
   store: string;
   jobId: number;
-  page: string;
 }
 
 // winston-loki sends the labels of an entry as the labels of its stream, the
@@ -146,8 +150,7 @@ const scanLogger = new Logger({
             splat(),
             timestamp(),
             errors({ stack: true }),
-            printf(({ timestamp, level, message, stack, labels }) => {
-              const { page } = labels as ScanLabels;
+            printf(({ timestamp, level, message, stack, page }) => {
               // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
               return `${timestamp} [${level}]: [${page}] ${stack ?? message}`;
             })
@@ -166,5 +169,6 @@ export const createLogger = (
   jobId: number
 ): Logger =>
   scanLogger.child({
-    labels: { store: storeName, jobId, page: label } satisfies ScanLabels
+    labels: { store: storeName, jobId } satisfies ScanLabels,
+    page: label
   });
