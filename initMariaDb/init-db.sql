@@ -83,9 +83,34 @@ CREATE TABLE IF NOT EXISTS webstorinator.scraperStatus (
     hostname VARCHAR(255),
     concurrency TINYINT UNSIGNED,
     configSource VARCHAR(255),
+    -- Commit and time of the last reload of every store config
     configCommit VARCHAR(64),
+    configLoadedAt DATETIME,
     -- JSON array of { file, message } for store configs that failed to load
-    configErrors JSON
+    configErrors JSON,
+    -- JSON object of the config each store uses by store id,
+    -- { sha, commit, loadedAt } where sha is the git blob sha of the file
+    storeConfigs JSON
+);
+
+-- Store config reloads requested in the admin interface. The scraper loads the
+-- configs on start and after that only when a reload is queued here.
+CREATE TABLE IF NOT EXISTS webstorinator.configReloads (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    -- NULL reloads every store config
+    storeId TINYINT UNSIGNED,
+    status ENUM('queued', 'succeeded', 'failed') NOT NULL DEFAULT 'queued',
+    -- Email of the admin that requested the reload
+    requestedBy VARCHAR(255),
+    -- All times are UTC
+    requestedAt DATETIME NOT NULL,
+    finishedAt DATETIME,
+    -- Commit the configs were read at
+    configCommit VARCHAR(64),
+    -- The configs that failed to load, they keep the version loaded before
+    errorMessage TEXT,
+    INDEX ix_status (status),
+    CONSTRAINT fk_configReloads_store FOREIGN KEY (storeId) REFERENCES webstorinator.stores(id) ON DELETE CASCADE
 );
 
 -- Settings of the scraper edited in the admin interface, one row with id 1.
@@ -261,6 +286,7 @@ GRANT INSERT, UPDATE ON webstorinator.stores TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.scrapeJobs TO 'webstore-admin'@'%';
 GRANT UPDATE ON webstorinator.scraperSchedules TO 'webstore-admin'@'%';
 GRANT UPDATE ON webstorinator.scraperSettings TO 'webstore-admin'@'%';
+GRANT INSERT ON webstorinator.configReloads TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.apiUsers TO 'webstore-admin'@'%';
 GRANT INSERT, UPDATE ON webstorinator.apiTokens TO 'webstore-admin'@'%';
 

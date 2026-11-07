@@ -24,7 +24,11 @@ import SQLStoreUpdater, {
   poolConfig
 } from './SQLStoreUpdater.js';
 import { syncSolrSchemas } from './SolrSchema.js';
-import StoreConfigLoader, { validateStoreConfig } from './StoreConfigLoader.js';
+import StoreConfigLoader, {
+  LoadedConfig,
+  ReloadResult,
+  validateStoreConfig
+} from './StoreConfigLoader.js';
 import { logger } from './logger.js';
 
 const log = logger.child({ label: 'JobRunner' });
@@ -50,6 +54,12 @@ interface JobResult {
   errorMessage?: string;
   // The job failed without throwing, e.g. a schema sync where a core failed
   failed?: boolean;
+}
+
+// A row of configReloads, storeId is null for a reload of every config
+interface ConfigReload {
+  id: number;
+  storeId: number | null;
 }
 
 // The jobs that work on Solr, one of them runs at a time
@@ -123,7 +133,7 @@ export default class JobRunner {
   // Queues a job for every enabled store with a config, skipping stores that
   // already have a job of the same mode queued or running
   async enqueueAll(mode: ScheduledMode, source: ScrapeJobSource) {
-    const { configs } = await this.configLoader.load();
+    const { configs } = await this.configLoader.get();
     const storeIds = [...configs.keys()];
     if (storeIds.length === 0) return;
     const result = await this.pool.query<UpsertResult>(
@@ -156,6 +166,7 @@ export default class JobRunner {
     this.ticking = true;
     try {
       await this.loadSettings();
+      await this.reloadConfigs();
       await this.reportStatus();
       await this.updateRunningJobs();
       await this.pool.query(
@@ -181,21 +192,91 @@ export default class JobRunner {
     this.concurrency = concurrency;
   }
 
+  // Reloads the store configs as requested in the admin interface, they are
+  // not reloaded otherwise. Running jobs keep the config they started with.
+  async reloadConfigs() {
+    const queued = await this.pool.query<ConfigReload[]>(
+      "SELECT id, storeId FROM configReloads WHERE status = 'queued' ORDER BY id"
+    );
+    if (queued.length === 0) return;
+    const reload = async (
+      load: () => Promise<ReloadResult>
+    ): Promise<ReloadResult | Error> => {
+      try {
+        return await load();
+      } catch (e) {
+        log.error('Reloading store configs failed', e);
+        return e instanceof Error ? e : new Error(String(e));
+      }
+    };
+    // A reload of every config covers the stores queued with it
+    const all = queued.some((row) => row.storeId === null)
+      ? await reload(() => this.configLoader.reloadAll())
+      : undefined;
+    const byStore = new Map<number, ReloadResult | Error>();
+    if (!all) {
+      for (const { storeId } of queued) {
+        if (storeId !== null && !byStore.has(storeId))
+          byStore.set(
+            storeId,
+            await reload(() => this.configLoader.reloadStore(storeId))
+          );
+      }
+    }
+    for (const row of queued) {
+      const result = all ?? byStore.get(row.storeId!)!;
+      const errors =
+        result instanceof Error
+          ? [result.message]
+          : result.errors
+              // A store's reload only reports the errors of its file
+              .filter(
+                (e) => row.storeId === null || e.file === `${row.storeId}.jsonc`
+              )
+              .map((e) => `${e.file}: ${e.message}`);
+      await this.pool.query(
+        'UPDATE configReloads SET status = ?, finishedAt = UTC_TIMESTAMP(), configCommit = ?, errorMessage = ? WHERE id = ?',
+        [
+          errors.length ? 'failed' : 'succeeded',
+          result instanceof Error ? null : (result.commit ?? null),
+          errors.length ? errors.join('\n') : null,
+          row.id
+        ]
+      );
+    }
+  }
+
   async reportStatus() {
-    const { source, commit, errors } = await this.configLoader.load();
+    const { source, commit, loadedAt, configs, errors } =
+      await this.configLoader.get();
+    // The blob sha of each store's config, compared to GitHub in the admin
+    // interface to show configs that were saved but not reloaded
+    const storeConfigs = Object.fromEntries(
+      [...configs].map(([storeId, config]) => [
+        storeId,
+        {
+          sha: config.sha,
+          commit: config.commit ?? null,
+          loadedAt: config.loadedAt.toISOString()
+        }
+      ])
+    );
     await this.pool.query(
-      `INSERT INTO scraperStatus (id, startedAt, lastSeenAt, hostname, concurrency, configSource, configCommit, configErrors)
-       VALUES (1, ?, UTC_TIMESTAMP(), ?, ?, ?, ?, ?)
+      `INSERT INTO scraperStatus (id, startedAt, lastSeenAt, hostname, concurrency, configSource, configCommit, configLoadedAt, configErrors, storeConfigs)
+       VALUES (1, ?, UTC_TIMESTAMP(), ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE startedAt = VALUES(startedAt), lastSeenAt = VALUES(lastSeenAt),
          hostname = VALUES(hostname), concurrency = VALUES(concurrency), configSource = VALUES(configSource),
-         configCommit = VALUES(configCommit), configErrors = VALUES(configErrors)`,
+         configCommit = VALUES(configCommit), configLoadedAt = VALUES(configLoadedAt),
+         configErrors = VALUES(configErrors), storeConfigs = VALUES(storeConfigs)`,
       [
         toSqlDateTime(this.startedAt),
         hostname(),
         this.concurrency,
         source,
         commit ?? null,
-        JSON.stringify(errors)
+        toSqlDateTime(loadedAt),
+        JSON.stringify(errors),
+        JSON.stringify(storeConfigs)
       ]
     );
   }
@@ -279,8 +360,13 @@ export default class JobRunner {
     let result: JobResult = {};
     let commit: string | undefined;
     try {
-      const configs = await this.configLoader.load();
-      commit = configs.commit;
+      const configs = await this.configLoader.get();
+      // A store's config can be reloaded on its own, so its commit can differ
+      // from the one of the last reload of every config
+      commit =
+        job.storeId !== null && job.mode !== 'test'
+          ? configs.configs.get(Number(job.storeId))?.commit
+          : configs.commit;
       if (job.mode === 'test') result = await this.runTest(job, entry);
       else if (job.mode === 'index') result = await this.runIndex(entry);
       else if (job.mode === 'schema') result = await this.runSchemaSync(job);
@@ -334,7 +420,7 @@ export default class JobRunner {
 
   async runStoreJob(
     job: ScrapeJob,
-    configs: Map<number, WebshopCrawlerOptions>,
+    configs: Map<number, LoadedConfig>,
     entry: RunningJob
   ): Promise<JobResult> {
     const [store] = await this.pool.query<Store[]>(
@@ -342,7 +428,7 @@ export default class JobRunner {
       [job.storeId]
     );
     if (!store) throw new Error(`Store ${job.storeId} not found`);
-    const options = configs.get(Number(store.id));
+    const options = configs.get(Number(store.id))?.options;
     if (!options) throw new Error(`No config found for store ${store.name}`);
 
     let urlList: string[] | undefined;

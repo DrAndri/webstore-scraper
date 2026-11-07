@@ -11,10 +11,15 @@ admin interface edits them by committing to this repository, so the history of
 a store is the history of its file.
 
 When `GITHUB_CONFIG_REPO` is set the scraper loads the configs from GitHub,
-checking for new commits at most once a minute, so a saved config is used from
-the next scan without a redeploy. Otherwise they are read from `stores/` in the
-image. Configs that do not parse or miss required settings are skipped and
-shown on the admin dashboard.
+otherwise from `stores/` in the image. It loads them all on start and after
+that only when a reload is requested in the admin interface: **Reload config**
+on a store's page reloads that store's config and **Reload all configs** on the
+stores page reloads every config. A saved config is not used until it is
+reloaded, the stores page and the store's page show configs that were saved but
+not reloaded. Requests are rows in `configReloads`, the job runner picks them
+up within 5 seconds. Scans that are running keep the config they started with.
+Configs that do not parse or miss required settings keep the version loaded
+before, or are skipped on start, and are shown on the admin dashboard.
 
 ## Scans
 
