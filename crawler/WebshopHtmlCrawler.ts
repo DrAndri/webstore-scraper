@@ -47,7 +47,7 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
         body.toString().includes(productPageIdentifier);
       if (productLocator.length > 0 && identifierInHtml) {
         //TODO: check if productLocator matches multiple elements
-        logger.log('debug', 'processing url: %s', request.loadedUrl);
+        logger.log('debug', 'processing url');
         try {
           const scrapeResult = pageScraper.scrapeProductPage(
             $,
@@ -57,10 +57,10 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
 
           await this.handleProductScrapeResult(logger, scrapeResult);
         } catch (e) {
-          this.handleProductScrapeError(logger, e, request.loadedUrl);
+          this.handleProductScrapeError(logger, e);
         }
       } else {
-        this.handleNotProductPage(logger, request.loadedUrl);
+        this.handleNotProductPage(logger);
       }
 
       if (this.mode === 'crawler') await addLinksToQueue($);

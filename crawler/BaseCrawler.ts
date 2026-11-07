@@ -121,15 +121,15 @@ export default abstract class BaseCrawler {
     this.result.totalProcessed++;
   }
 
-  handleProductScrapeError(logger: Logger, e: unknown, url?: string) {
-    logger.log('error', 'Error processing product from url %s', url);
+  handleProductScrapeError(logger: Logger, e: unknown) {
+    logger.log('error', 'Error processing product');
     logger.log('error', '%O', e);
     this.result.totalErrored++;
     this.pageListener?.onProductError(e);
   }
 
-  handleNotProductPage(logger: Logger, url?: string) {
-    logger.log('info', 'url is not a product page: %s', url);
+  handleNotProductPage(logger: Logger) {
+    logger.log('info', 'Not a product page');
     this.pageListener?.onNotProductPage();
   }
 

@@ -125,7 +125,7 @@ export default class WebshopCrawler extends BaseCrawler {
 
       if (productLocator) {
         //TODO: check if productLocator matches multiple elements
-        logger.log('debug', 'processing url: %s', request.loadedUrl);
+        logger.log('debug', 'Processing...');
         try {
           const scrapeResult = await pageScraper.scrapeProductPage(
             productLocator,
@@ -134,10 +134,10 @@ export default class WebshopCrawler extends BaseCrawler {
 
           await this.handleProductScrapeResult(logger, scrapeResult);
         } catch (e) {
-          this.handleProductScrapeError(logger, e, request.loadedUrl);
+          this.handleProductScrapeError(logger, e);
         }
       } else {
-        this.handleNotProductPage(logger, request.loadedUrl);
+        this.handleNotProductPage(logger);
       }
 
       if (menuClicker && request.url === startUrl) {
