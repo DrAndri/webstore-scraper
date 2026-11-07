@@ -16,7 +16,10 @@ const { combine, colorize, splat, timestamp, errors, printf } = format;
 // limit like max streams or ingestion rate is hit) the queue grows until the
 // heap runs out, so a failed batch is dropped and the failure is reported to
 // the console, as logging it to Loki would fail the same way.
-const lokiErrorOptions = {
+// Without a timeout the push used the 5 second idle timeout of Node's default
+// agent, which a busy Loki can exceed.
+const lokiSendOptions = {
+  timeout: 30000,
   clearOnError: true,
   onConnectionError: (error: unknown) =>
     console.error('Sending logs to Loki failed, the batch was dropped', error)
@@ -59,7 +62,7 @@ export const logger = createWinstonLogger({
           json: true,
           // Seconds, the admin interface shows the log live
           interval: 5,
-          ...lokiErrorOptions
+          ...lokiSendOptions
         })
       : new transports.Console({
           format: combine(colorize(), timestamp(), appFormat)
@@ -94,8 +97,7 @@ crawleeLog.getOptions().logger._log = (
     stack: error?.stack
   });
 };
-if (['debug', 'silly'].includes(LOG_LEVEL))
-  crawleeLog.setLevel(LogLevel.DEBUG);
+if (['debug', 'silly'].includes(LOG_LEVEL)) crawleeLog.setLevel(LogLevel.DEBUG);
 
 interface ScanLabels {
   store: string;
@@ -134,7 +136,7 @@ const scanLogger = new Logger({
           json: true,
           level: 'debug',
           interval: 5,
-          ...lokiErrorOptions,
+          ...lokiSendOptions,
           silent: !ENABLE_SCRAPER_LOGGING
         })
       : new transports.Console({
