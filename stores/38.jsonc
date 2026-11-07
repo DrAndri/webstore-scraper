@@ -1,0 +1,52 @@
+{
+  "storeId": 38,
+  // Nova's web shop is a React app on headless Shopify. The product pages are
+  // server rendered, but the stock and the buy button are only filled in
+  // about a second after the page loads ("Ekki til í vefverslun" until then),
+  // so a browser is needed. There is no structured data and the class names
+  // are CSS modules (StickyBar__bar__button___3eURc, _1A6KQNOkFI).
+  "startUrl": "https://www.nova.is/vefverslun",
+  "type": "crawler",
+  // The stock of each store, rendered once the stock has loaded and only on
+  // product pages
+  "productPageIdentifier": "Selfossi</p>",
+  // /barinn/<collection> renders 15 products and the rest of the collection,
+  // up to 250, when scrolling. /barinn/vara/<handle> is a product page. The
+  // collections listed 674 products on 2026-11-07, aukahlutir and forsida
+  // are cut off at 250.
+  "urlWhitelist": ["/barinn/"],
+  // Phone and watch comparisons, and pre-registration pages that show a
+  // product without its /vara/ url
+  "urlBlacklist": [
+    "/barinn/bera-saman-sima",
+    "/barinn/bera-saman-ur",
+    "/barinn/forskraning"
+  ],
+  "scrollPagesToBottom": true,
+  // Last updated in 2025, most of its products are gone (an empty page) but
+  // it has a few that are in no collection
+  "sitemapUrls": ["https://www.nova.is/sitemap.xml"],
+  "selectors": {
+    "productPage": "main",
+    // The h1 has soft hyphens (Dual&shy;Sen&shy;se)
+    "name": "header h1",
+    // No product number on the page, the url ends with the Shopify handle
+    "sku": {
+      "source": "url",
+      "delimiter": "/vara/",
+      "index": "last"
+    },
+    // The price of the selected variant. The page only shows the sale price
+    // and a "60% afsláttur" badge, the full price is only on the product cards.
+    "listPrice": "[class*=\"OptionPrice__optionPrice\"]",
+    // The brand logo button
+    "brand": "header button p",
+    "image": "header img[src*=\"cdn.shopify.com\"]",
+    "description": "header ._2OB1NyNq6F",
+    // "Ekki til í vefverslun" when out of stock in the web shop
+    "inStock": "[class*=\"StickyBar__bar__button\"]",
+    "inStockText": "Kaupa"
+    // No breadcrumbs, and the specs (Shopify metafields) are in the page data
+    // but not rendered
+  }
+}

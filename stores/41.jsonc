@@ -1,0 +1,31 @@
+{
+  "storeId": 41,
+  // Smith & Norland, a server rendered Next.js site with JSON-LD. The shop has
+  // two departments, Heimilistæki (/heimilistaeki, where / redirects) and
+  // Rafbúnaður (/rafbunadur), their products are all under /vorur/flokkur/.
+  "startUrl": "https://www.sminor.is",
+  "type": "httpcrawler",
+  // Most Rafbúnaður products are only sold to account customers and have no
+  // price or Product JSON-LD, so they are not product pages
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemap index links to sitemap-productheim.xml (1024 products on
+  // 2026-11-07) and sitemap-productraf.xml (11523, of which about 1 in 20
+  // has a price), 500 products a page with ?p=N for the next ones
+  "sitemapUrls": ["https://www.sminor.is/sitemap.xml"],
+  "urlWhitelist": ["/vorur/flokkur/", "/sitemap-product"],
+  "selectors": {
+    "productPage": "main",
+    // The JSON-LD price is the discounted one. The JSON-LD description is
+    // the HTML one without its paragraphs. The attributes are only rendered
+    // when their tab (Eiginleikar) is opened.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "category", "description": false },
+      // "Heimilistæki > Kaffivélar > Espressó-kaffivélar"
+      "categorySplitter": " > "
+    },
+    // The price is followed by the old one in <div class="line-through">
+    "oldPrice": "h1 ~ .mt-8 .line-through",
+    "description": "[class*=\"product-details-description\"]"
+  }
+}

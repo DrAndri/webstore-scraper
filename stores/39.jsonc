@@ -1,0 +1,66 @@
+{
+  "storeId": 39,
+  // Same Next.js on Magento platform as tl.is (3) and ht.is (8)
+  "startUrl": "https://rafland.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemap index links to products.xml, which lists the categories and
+  // every product, 2132 urls on 2026-11-07
+  "sitemapUrls": ["https://rafland.is/sitemap.xml"],
+  "urlBlacklist": [
+    "/customer",
+    "/cart",
+    "/minar",
+    "/giftcard",
+    "/contact",
+    "/catalogsearch",
+    "/brand",
+    "/abyrg",
+    "/afhendingarmatar",
+    "/algengar-spurningar",
+    "/atvinna",
+    "/baeklingar",
+    "/mannaudur",
+    "/netklubbur",
+    "/sendingarmatar",
+    "/skilarettur",
+    "/styrktarsjodur",
+    "/um-rafland",
+    "/vafrakokur",
+    "/verkstaedi",
+    "/vi-botartrygging",
+    "/vidbotartrygging",
+    "/vidskiptaskilmalar",
+    "/insurance",
+    "/wolt"
+  ],
+  "selectors": {
+    "productPage": "#__next > div > div > div.rz-main-content-backup",
+    // The JSON-LD is of the configurable product: its sku is the parent's, its
+    // brand an id and its availability unreliable (OutOfStock for products in
+    // stock). The page shows the default variant, read everything from it.
+    "name": ".product-details .title-content > h1",
+    "sku": ".product-details .title-content > p",
+    // The price before a discount is struck through above the price
+    "oldPrice": ".section-price-row .regular-price",
+    "listPrice": ".section-price-row h4",
+    "image": ".section-gallery .image-large-display .rz-image-view img",
+    // The description and specs are rendered twice, the first one is used
+    "description": ".page-section-left-wrapper .detail-desc .rz-magento-html",
+    // Products that can not be bought have "Senda fyrirspurn" instead
+    "inStock": ".product-details",
+    "inStockText": "Setja í körfu",
+    // <categories> / <product>, the product is not a <p>
+    "categories": ".page-breadcrumb ul",
+    "categoryItemLocator": "p",
+    // The brand is only the alt text of its logo
+    "attributes": {
+      "attributesTable": ".page-section-left-wrapper .detail-spec > .section-content",
+      "attribute": ".product-spec-group > div",
+      "attributeLabel": ".product-spec-label > p",
+      "attributeValue": ".product-spec-content > p",
+      "attributeGroup": "div:has(> .product-spec-group-label)",
+      "attributeGroupName": ".product-spec-group-label"
+    }
+  }
+}
