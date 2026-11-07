@@ -21,22 +21,19 @@
     "mariadb": "3.5.5",
     "mongodb": "^7.8.0",
     "node-cron": "^4.6.0",
-    "node-fetch": "^3.3.2",
     "p-limit": "^7.3.3",
     "playwright": "^1.65.0",
     "sanitize-html": "^2.18.1",
-    "ts-node": "^10.9.2",
     "winston": "^3.19.0",
     "winston-loki": "^6.1.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node-cron": "^3.0.11",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^10.14.0",
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.1"
   },
   "repository": "https://github.com/DrAndri/webstore-scraper.git"
