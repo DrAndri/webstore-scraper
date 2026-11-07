@@ -4,6 +4,9 @@
   "type": "crawler",
   "productPageIdentifier": "Vörulýsing",
   "urlWhitelist": ["/category"],
+  // Category links carry filters, e.g. ?manufacturer=ASRock;;Gamemax, which
+  // only list a subset of the category page
+  "keepQueryParams": [],
   "selectors": {
     "productPage": "div.product",
     "oldPrice": "header > .title > h4",

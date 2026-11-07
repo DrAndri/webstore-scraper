@@ -107,6 +107,10 @@ export interface WebshopCrawlerOptions {
   productPageIdentifier: string;
   urlWhitelist?: string[];
   urlBlacklist?: string[];
+  // Query parameters kept on links before they are queued, the others are
+  // removed. [] removes the whole query string, e.g. for filter links that
+  // only list a subset of a category. Unset keeps all of them.
+  keepQueryParams?: string[];
   // More pages the crawl starts from, e.g. a product listing with a larger
   // page size than the one the site links to
   startUrls?: string[];

@@ -197,8 +197,31 @@ export default abstract class BaseCrawler {
       );
     }
 
+    const keepQueryParams = this.store.options.keepQueryParams;
+    if (keepQueryParams !== undefined) {
+      filteredUrls = filteredUrls.map((url) =>
+        this.keepOnlyQueryParams(url, keepQueryParams)
+      );
+    }
+
+    // Links that differed only in removed parameters are now the same
+    const hrefs = [...new Set(filteredUrls.map((url) => url.href))];
     // Finally, we have to add the URLs to the queue
-    await this.crawler?.addRequests(filteredUrls.map((url) => url.href));
+    await this.crawler?.addRequests(hrefs);
+  }
+
+  keepOnlyQueryParams(url: URL, keep: string[]): URL {
+    // Rewriting the query re-encodes it, e.g. %20 as +, so a url with nothing
+    // to remove is left as it is
+    if ([...url.searchParams.keys()].every((name) => keep.includes(name)))
+      return url;
+    const result = new URL(url);
+    for (const name of [...result.searchParams.keys()]) {
+      if (!keep.includes(name)) result.searchParams.delete(name);
+    }
+    // Leaves no dangling "?" when every parameter is removed
+    if (result.searchParams.size === 0) result.search = '';
+    return result;
   }
 
   getConfiguration(
