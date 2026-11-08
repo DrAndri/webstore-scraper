@@ -59,6 +59,10 @@ const getFirstResult = <T>(res: T[]): T | undefined => {
 const differs = (scraped: unknown, stored: unknown): boolean =>
   (scraped ?? null) !== (stored ?? null);
 
+// Ids read from the database are numbers and insert ids are bigints
+const sameId = (a?: DbId | null, b?: DbId | null): boolean =>
+  a != null && b != null && BigInt(a) === BigInt(b);
+
 // The database returns inStock, a BOOLEAN column, as 0 or 1
 const toProduct = (row: Product): Product => ({
   ...row,
@@ -435,6 +439,7 @@ export default class SQLStoreUpdater {
 
     promises.push(
       this.queryPool(this.categoriesPool, async (categoriesConn) => {
+        const hadCategory = !!existingProduct.categoryId;
         let categoryChanged = false;
         if (scrapedProduct.categories && scrapedProduct.categories.length > 0) {
           categoryChanged = await this.updateCategories(
@@ -447,10 +452,11 @@ export default class SQLStoreUpdater {
             'UPDATE products SET categoryId = NULL WHERE id = ?',
             [existingProduct.id]
           );
+          existingProduct.categoryId = undefined;
           categoryChanged = true;
         }
         if (categoryChanged) {
-          if (existingProduct.categoryId) this.result.updatedCategories++;
+          if (hadCategory) this.result.updatedCategories++;
           else this.result.newCategories++;
         }
         return categoryChanged;
@@ -459,6 +465,7 @@ export default class SQLStoreUpdater {
 
     promises.push(
       this.queryPool(this.manufacturersPool, async (manufacturersConn) => {
+        const hadManufacturer = !!existingProduct.manufacturerId;
         let manufacturerChanged = false;
         if (scrapedProduct.brand) {
           manufacturerChanged = await this.updateManufacturer(
@@ -471,11 +478,11 @@ export default class SQLStoreUpdater {
             'UPDATE products SET manufacturerId = NULL WHERE id = ?',
             [existingProduct.id]
           );
+          existingProduct.manufacturerId = undefined;
           manufacturerChanged = true;
         }
         if (manufacturerChanged) {
-          if (existingProduct.manufacturerId)
-            this.result.updatedManufacturers++;
+          if (hadManufacturer) this.result.updatedManufacturers++;
           else this.result.newManufacturers++;
         }
         return manufacturerChanged;
@@ -746,49 +753,18 @@ export default class SQLStoreUpdater {
     return parentId;
   }
 
+  // Puts the product in the category with the scraped path from the root,
+  // created when it is missing. Returns whether its category changed.
   async updateCategories(
     conn: PoolConnection,
     product: Product,
     categories: string[]
   ): Promise<boolean> {
-    const leafCategoryName = categories[categories.length - 1];
-    const existingCategories = await conn.query<Category[]>(
-      'SELECT id, parentId, name FROM categories WHERE name = ?',
-      [leafCategoryName]
-    );
-    let match = false;
-    for (const category of existingCategories) {
-      let i = categories.length - 2;
-      let currentCategory = category;
-      while (i >= 0 && !match) {
-        if (!currentCategory.parentId) {
-          match = true;
-          break;
-        }
-        const parent = await conn
-          .query<Category[]>(
-            'SELECT id, parentId FROM categories WHERE id = ? AND name = ? LIMIT 1',
-            [currentCategory.parentId, categories[i]]
-          )
-          .then((res) => getFirstResult(res));
-        if (parent) {
-          i--;
-          currentCategory = parent;
-        } else match = true;
-      }
-      if (match) {
-        if (category.id !== product.categoryId) {
-          await this.assignProductToCategory(conn, product.id, category.id);
-          return true;
-        } else return false;
-      }
-    }
-    if (!match) {
-      const lastCategoryId = await this.upsertCategories(conn, categories);
-      await this.assignProductToCategory(conn, product.id, lastCategoryId);
-      return true;
-    }
-    return false;
+    const categoryId = await this.upsertCategories(conn, categories);
+    if (sameId(categoryId, product.categoryId)) return false;
+    await this.assignProductToCategory(conn, product.id, categoryId);
+    product.categoryId = categoryId;
+    return true;
   }
 
   async updateManufacturer(
@@ -810,11 +786,12 @@ export default class SQLStoreUpdater {
       this.solrManufacturers.add({ id: res.insertId, name: manufacturer });
       existingManufacturerId = res.insertId;
     }
-    if (existingManufacturerId !== product.manufacturerId) {
+    if (!sameId(existingManufacturerId, product.manufacturerId)) {
       await conn.query('UPDATE products SET manufacturerId = ? WHERE id = ?', [
         existingManufacturerId,
         product.id
       ]);
+      product.manufacturerId = existingManufacturerId;
       return true;
     }
     return false;
