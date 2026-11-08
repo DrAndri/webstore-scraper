@@ -8,7 +8,8 @@ the data and has the admin interface for the scraper.
 
 Each store has a config in `stores/<storeId>.jsonc` (JSON with comments). The
 admin interface edits them by committing to this repository, so the history of
-a store is the history of its file.
+a store is the history of its file. Every setting is described in
+[docs/store-config.md](docs/store-config.md).
 
 When `GITHUB_CONFIG_REPO` is set the scraper loads the configs from GitHub,
 otherwise from `stores/` in the image. It loads them all on start and after
