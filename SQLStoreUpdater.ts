@@ -97,21 +97,45 @@ export interface IndexResult {
   attributes: number;
 }
 
-// The Solr documents of the products with their current price and attributes
+// The latest price of each of the products that has one, by product id
+const getLatestPrices = async (
+  conn: PoolConnection,
+  table: 'prices' | 'salePrices',
+  productIds: DbId[]
+): Promise<Map<string, ProductPrice>> => {
+  const rows = await conn.query<ProductPrice[]>(
+    `SELECT p.productId, p.price, p.start, p.end FROM ${table} p JOIN (SELECT productId, MAX(start) AS start FROM ${table} WHERE productId IN (?) GROUP BY productId) latest ON latest.productId = p.productId AND latest.start = p.start`,
+    [productIds]
+  );
+  return new Map(rows.map((row) => [String(row.productId), row]));
+};
+
+// The Solr documents of the products with their current price and attributes,
+// read with one query for each table instead of one for each product
 const toSolrProducts = async (
   conn: PoolConnection,
   products: Product[]
 ): Promise<SolrProduct[]> => {
-  const solrProducts: SolrProduct[] = [];
-  for (const product of products) {
-    const attributes = await getAttriButesToProducts(conn, product);
-    const latestPrice = await getLatestPrice(conn, 'prices', product.id);
-    const latestSalePrice = await getLatestPrice(
-      conn,
-      'salePrices',
-      product.id
-    );
+  const ids = products.map((product) => product.id);
+  const attributeRows = await conn.query<AttributeToProduct[]>(
+    'SELECT * FROM attributeToProducts WHERE productId IN (?)',
+    [ids]
+  );
+  const prices = await getLatestPrices(conn, 'prices', ids);
+  const salePrices = await getLatestPrices(conn, 'salePrices', ids);
 
+  const attributesByProduct = new Map<string, AttributeToProduct[]>();
+  for (const row of attributeRows) {
+    const key = String(row.productId);
+    const list = attributesByProduct.get(key);
+    if (list) list.push(row);
+    else attributesByProduct.set(key, [row]);
+  }
+
+  return products.map((product) => {
+    const key = String(product.id);
+    const latestPrice = prices.get(key);
+    const latestSalePrice = salePrices.get(key);
     let price;
     if (latestPrice && latestSalePrice) {
       price =
@@ -123,17 +147,19 @@ const toSolrProducts = async (
     } else if (latestSalePrice) {
       price = latestSalePrice.price;
     }
-
-    solrProducts.push(getSolrProduct(product, price, attributes));
-  }
-  return solrProducts;
+    return getSolrProduct(product, price, attributesByProduct.get(key) ?? []);
+  });
 };
 
 const indexAll = async (
   conn: PoolConnection,
   { onProgress, isCancelled }: IndexEverythingOptions
 ): Promise<IndexResult> => {
-  const products = await conn.query<Product[]>('SELECT * FROM products');
+  // The products are read a chunk at a time, so the descriptions of every
+  // product are not in memory at once
+  const [{ productCount }] = await conn.query<{ productCount: bigint }[]>(
+    'SELECT COUNT(*) AS productCount FROM products'
+  );
   const categories = await conn.query<Category[]>('SELECT * FROM categories');
   const manufacturers = await conn.query<Manufacturer[]>(
     'SELECT * FROM manufacturers'
@@ -151,13 +177,21 @@ const indexAll = async (
     attributes: 0
   };
   const total =
-    products.length +
+    Number(productCount) +
     categories.length +
     manufacturers.length +
     attributeGroups.length +
     attributes.length;
   let indexed = 0;
-  onProgress?.({ total, indexed });
+  // Products added by a scan while indexing are indexed too, past the total
+  const reportProgress = () =>
+    onProgress?.({ total: Math.max(total, indexed), indexed });
+  const counted = (core: keyof IndexResult, count: number) => {
+    result[core] += count;
+    indexed += count;
+    reportProgress();
+  };
+  reportProgress();
 
   // Indexes the rows of one core in chunks, false when it was cancelled
   const indexCore = async <T>(
@@ -169,18 +203,30 @@ const indexAll = async (
       if (isCancelled?.()) return false;
       const chunk = rows.slice(i, i + SOLR_CHUNK_SIZE);
       await submit(chunk);
-      result[core] += chunk.length;
-      indexed += chunk.length;
-      onProgress?.({ total, indexed });
+      counted(core, chunk.length);
     }
     return true;
   };
 
-  log.info(`Indexing ${products.length} products`);
+  // Indexes the products in chunks by id, false when it was cancelled
+  const indexProductChunks = async (): Promise<boolean> => {
+    let lastId: DbId = 0;
+    for (;;) {
+      if (isCancelled?.()) return false;
+      const chunk: Product[] = await conn.query<Product[]>(
+        'SELECT * FROM products WHERE id > ? ORDER BY id LIMIT ?',
+        [lastId, SOLR_CHUNK_SIZE]
+      );
+      if (chunk.length === 0) return true;
+      await indexProducts(await toSolrProducts(conn, chunk));
+      lastId = chunk[chunk.length - 1].id;
+      counted('products', chunk.length);
+    }
+  };
+
+  log.info(`Indexing ${productCount} products`);
   const completed =
-    (await indexCore('products', products, async (chunk) =>
-      indexProducts(await toSolrProducts(conn, chunk))
-    )) &&
+    (await indexProductChunks()) &&
     (await indexCore('categories', categories, indexCategories)) &&
     (await indexCore('manufacturers', manufacturers, indexManufacturers)) &&
     (await indexCore(
