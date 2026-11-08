@@ -1,0 +1,52 @@
+{
+  "storeId": 42,
+  // Gæludýr.is, headless WooCommerce (Kaktus blocks) with a Next.js front.
+  // There is no JSON-LD, and the price and the buy button are only rendered
+  // in the browser (loading skeletons in the server HTML), but the whole
+  // WooCommerce product is in __NEXT_DATA__.
+  "startUrl": "https://www.gaeludyr.is",
+  "type": "httpcrawler",
+  // The page component of product pages, in __NEXT_DATA__
+  "productPageIdentifier": "\"componentName\":\"ProductDetailsPage\"",
+  // The sitemap index links to product-sitemap.xml … product-sitemapN.xml,
+  // 7937 products on 2026-11-08, all at /verslun/<category>/<product>.
+  // Category pages are /verslun/<category>.
+  "sitemapUrls": ["https://www.gaeludyr.is/sitemap.xml"],
+  "urlWhitelist": ["/verslun/", "/sitemap/product-sitemap"],
+  // Listing filters and paging only repeat the products of the sitemaps
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "main",
+    // The product is the first react-query query (wooProducts, <slug>) of
+    // the dehydrated state, on every page sampled on 2026-11-08
+    "structuredData": {
+      "source": "nextdata",
+      "fields": {
+        "sku": "props.pageProps.dehydratedState.queries.0.state.data.sku",
+        "gtin": "props.pageProps.dehydratedState.queries.0.state.data.barcode",
+        "name": "props.pageProps.dehydratedState.queries.0.state.data.name",
+        // [{ id, name, slug, … }], empty for about half the products
+        "brand": "props.pageProps.dehydratedState.queries.0.state.data.brands",
+        // The image object's title is the file name, so url is read
+        "image": "props.pageProps.dehydratedState.queries.0.state.data.image.url",
+        // Products have either a description or a short description
+        "description": [
+          "props.pageProps.dehydratedState.queries.0.state.data.description",
+          "props.pageProps.dehydratedState.queries.0.state.data.short_description"
+        ],
+        // The current price, the sale price when on sale. The regular price
+        // (regular_price) is only in __NEXT_DATA__ and oldPrice can only be
+        // read from the HTML, so sales are recorded at their price without
+        // the price before. No product was on sale on 2026-11-08.
+        "price": "props.pageProps.dehydratedState.queries.0.state.data.price",
+        // "instock", "outofstock" or "onbackorder"
+        "inStock": "props.pageProps.dehydratedState.queries.0.state.data.stock_status",
+        // The product's categories are unordered, the breadcrumbs are used
+        "categories": false
+      }
+    },
+    // Verslun / <categories> / <product>, the product is a <div>
+    "categories": ".kc-breadcrumbs",
+    "categoryItemLocator": "a.kc-breadcrumb-item:not([href=\"/verslun\"])"
+  }
+}
