@@ -95,7 +95,9 @@ products, manufacturers and prices, the next full crawl fills in the rest. Run
 it only once, on an empty database, and use a copy of the production MongoDB
 since it creates indexes there.
 
-`migrations/` holds data fixes to run by hand.
+`migrations/` holds data fixes and schema changes to run by hand.
+`migrations/2026-11-08-lookup-indexes.sql` adds the indexes of the category and
+attribute lookups a scan makes for each product to an existing database.
 
 ## Environment variables
 

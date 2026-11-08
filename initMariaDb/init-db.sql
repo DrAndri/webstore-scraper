@@ -142,6 +142,7 @@ CREATE TABLE IF NOT EXISTS webstorinator.categories (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     parentId INT UNSIGNED,
     name VARCHAR(127) NOT NULL,
+    INDEX ix_name_parent (name, parentId),
     CONSTRAINT fk_parentCategory FOREIGN KEY (parentId) REFERENCES webstorinator.categories(id) ON DELETE CASCADE
 );
 
@@ -194,6 +195,7 @@ CREATE TABLE IF NOT EXISTS webstorinator.attributes (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     groupId INT UNSIGNED,
     name VARCHAR(127) NOT NULL,
+    INDEX ix_name_group (name, groupId),
     CONSTRAINT fk_attributes_attributeGroup FOREIGN KEY (groupId) REFERENCES webstorinator.attributeGroups(id) ON DELETE CASCADE
 );
 
