@@ -469,16 +469,20 @@ export default class SQLStoreUpdater {
       })
     );
 
+    // The attribute values of the product after the upsert, for its Solr
+    // document
+    let attributeRows: AttributeToProduct[] | undefined;
     if (scrapedProduct.attributes && scrapedProduct.attributes.length > 0) {
       const attributes = scrapedProduct.attributes;
       promises.push(
         this.queryPool(this.attributesPool, async (attributesConn) => {
-          const attributesChanged = await this.upsertAttributes(
+          const upserted = await this.upsertAttributes(
             attributesConn,
             existingProduct,
             attributes
           );
-          return attributesChanged;
+          attributeRows = upserted.rows;
+          return upserted.changed;
         })
       );
     }
@@ -490,12 +494,11 @@ export default class SQLStoreUpdater {
       existingProductResult.result === 'updated' ||
       anyUpdate
     ) {
-      const attributes = await this.queryPool(
-        this.attributesPool,
-        async (attributesConn) => {
-          return await getAttriButesToProducts(attributesConn, existingProduct);
-        }
-      );
+      const attributes =
+        attributeRows ??
+        (await this.queryPool(this.attributesPool, (attributesConn) =>
+          getAttriButesToProducts(attributesConn, existingProduct)
+        ));
       this.solrProducts.add(
         getSolrProduct(
           existingProduct,
@@ -841,11 +844,13 @@ export default class SQLStoreUpdater {
       .then((res) => getFirstDbId(res));
   }
 
+  // Saves the scraped attribute values of the product. Returns whether any
+  // changed and the values the product has now.
   async upsertAttributes(
     conn: PoolConnection,
     product: Product,
     attributes: ProductAttributeGroup[]
-  ): Promise<boolean> {
+  ): Promise<{ changed: boolean; rows: AttributeToProduct[] }> {
     const existingAttributeToProduct = await conn.query<AttributeToProduct[]>(
       'SELECT * FROM attributeToProducts WHERE productId = ?',
       [product.id]
@@ -898,6 +903,8 @@ export default class SQLStoreUpdater {
               groupId: existingAttributeGroupId
             });
           }
+          // The column is text, a value is read back as a string
+          const value = String(attribute.value);
           const existingAttributeToProductEntry =
             existingAttributeToProduct.find(
               (a) => a.attributeId === existingAttributeId
@@ -905,17 +912,21 @@ export default class SQLStoreUpdater {
           if (!existingAttributeToProductEntry) {
             await conn.query(
               'INSERT INTO attributeToProducts (attributeId, productId, value) VALUES (?, ?, ?)',
-              [existingAttributeId, product.id, attribute.value]
+              [existingAttributeId, product.id, value]
             );
+            existingAttributeToProduct.push({
+              attributeId: existingAttributeId,
+              productId: product.id,
+              value
+            });
             attributesChanged = true;
             this.result.newAttributesToProducts++;
-          } else if (
-            existingAttributeToProductEntry.value !== attribute.value
-          ) {
+          } else if (existingAttributeToProductEntry.value !== value) {
             await conn.query(
               'UPDATE attributeToProducts SET value = ? WHERE attributeId = ? AND productId = ?',
-              [attribute.value, existingAttributeId, product.id]
+              [value, existingAttributeId, product.id]
             );
+            existingAttributeToProductEntry.value = value;
             attributesChanged = true;
             this.result.updatedAttributesToProducts++;
           }
@@ -928,6 +939,6 @@ export default class SQLStoreUpdater {
       }
       //TODO: delete attributeToProduct entries that are not present in scraped data anymore
     }
-    return attributesChanged;
+    return { changed: attributesChanged, rows: existingAttributeToProduct };
   }
 }
