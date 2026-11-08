@@ -54,6 +54,17 @@ const getFirstResult = <T>(res: T[]): T | undefined => {
   return res.length > 0 ? res[0] : undefined;
 };
 
+// A field the scrape did not find is undefined in the scraped product and NULL
+// in the database
+const differs = (scraped: unknown, stored: unknown): boolean =>
+  (scraped ?? null) !== (stored ?? null);
+
+// The database returns inStock, a BOOLEAN column, as 0 or 1
+const toProduct = (row: Product): Product => ({
+  ...row,
+  inStock: row.inStock == null ? row.inStock : Boolean(row.inStock)
+});
+
 const getLatestPrice = async (
   conn: PoolConnection,
   table: 'prices' | 'salePrices',
@@ -213,10 +224,12 @@ const indexAll = async (
     let lastId: DbId = 0;
     for (;;) {
       if (isCancelled?.()) return false;
-      const chunk: Product[] = await conn.query<Product[]>(
-        'SELECT * FROM products WHERE id > ? ORDER BY id LIMIT ?',
-        [lastId, SOLR_CHUNK_SIZE]
-      );
+      const chunk: Product[] = (
+        await conn.query<Product[]>(
+          'SELECT * FROM products WHERE id > ? ORDER BY id LIMIT ?',
+          [lastId, SOLR_CHUNK_SIZE]
+        )
+      ).map(toProduct);
       if (chunk.length === 0) return true;
       await indexProducts(await toSolrProducts(conn, chunk));
       lastId = chunk[chunk.length - 1].id;
@@ -554,30 +567,30 @@ export default class SQLStoreUpdater {
     scrapedProduct: ProductSnapshot
   ): Promise<{ product: Product; result?: 'updated' }> {
     const colsToUpdate = [];
-    if (scrapedProduct.title !== existingProduct.name) {
+    if (differs(scrapedProduct.title, existingProduct.name)) {
       colsToUpdate.push({ name: 'name', value: scrapedProduct.title });
       this.result.nameUpdates++;
     }
-    if (scrapedProduct.image !== existingProduct.image) {
+    if (differs(scrapedProduct.image, existingProduct.image)) {
       colsToUpdate.push({ name: 'image', value: scrapedProduct.image });
       this.result.imageUpdates++;
     }
-    if (scrapedProduct.gtin !== existingProduct.ean) {
+    if (differs(scrapedProduct.gtin, existingProduct.ean)) {
       colsToUpdate.push({ name: 'ean', value: scrapedProduct.gtin });
       this.result.gtinUpdates++;
     }
-    if (scrapedProduct.description !== existingProduct.description) {
+    if (differs(scrapedProduct.description, existingProduct.description)) {
       colsToUpdate.push({
         name: 'description',
         value: scrapedProduct.description
       });
       this.result.descriptionUpdates++;
     }
-    if (scrapedProduct.url !== existingProduct.url) {
+    if (differs(scrapedProduct.url, existingProduct.url)) {
       colsToUpdate.push({ name: 'url', value: scrapedProduct.url });
       this.result.urlUpdates++;
     }
-    if (scrapedProduct.inStock !== existingProduct.inStock) {
+    if (differs(scrapedProduct.inStock, existingProduct.inStock)) {
       colsToUpdate.push({ name: 'inStock', value: scrapedProduct.inStock });
       this.result.inStockUpdates++;
     }
@@ -641,7 +654,7 @@ export default class SQLStoreUpdater {
     if (existingProduct) {
       return await this.updateProduct(
         productsConn,
-        existingProduct,
+        toProduct(existingProduct),
         scrapedProduct
       );
     } else {
