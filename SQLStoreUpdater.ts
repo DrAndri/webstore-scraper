@@ -29,7 +29,9 @@ import {
   indexCategories,
   indexManufacturers,
   indexProducts,
-  SolrProduct
+  SOLR_CHUNK_SIZE,
+  SolrProduct,
+  SolrUpdateBuffer
 } from './SolrUtils.js';
 import { logger } from './logger.js';
 
@@ -64,9 +66,6 @@ const getLatestPrice = async (
     )
     .then((res) => getFirstResult(res));
 };
-// Documents sent to Solr in one update
-const SOLR_CHUNK_SIZE = 100;
-
 const getAttriButesToProducts = async (
   conn: PoolConnection,
   product: Product
@@ -225,6 +224,16 @@ export default class SQLStoreUpdater {
   categoriesPool: Pool;
   manufacturersPool: Pool;
   result: StoreUpdateResult;
+  // The documents of the products, categories, manufacturers and attributes
+  // the scan saves, sent to Solr together
+  solrProducts = new SolrUpdateBuffer('products', indexProducts);
+  solrCategories = new SolrUpdateBuffer('categories', indexCategories);
+  solrManufacturers = new SolrUpdateBuffer('manufacturers', indexManufacturers);
+  solrAttributeGroups = new SolrUpdateBuffer(
+    'attribute-groups',
+    indexAttributeGroups
+  );
+  solrAttributes = new SolrUpdateBuffer('attributes', indexAttributes);
 
   constructor(
     storeConfig: StoreConfig,
@@ -266,9 +275,30 @@ export default class SQLStoreUpdater {
     };
   }
 
-  // Ends the pools of this updater, the shared pools stay open. A pool that is
-  // not ended keeps its connections and timers, and so itself, alive forever.
+  // Sends the Solr documents still waiting, rejects when an update fails
+  async flushSolr(): Promise<void> {
+    await Promise.all([
+      this.solrProducts.flush(),
+      this.solrCategories.flush(),
+      this.solrManufacturers.flush(),
+      this.solrAttributeGroups.flush(),
+      this.solrAttributes.flush()
+    ]);
+  }
+
+  // Sends the Solr documents still waiting and ends the pools of this updater,
+  // the shared pools stay open. A pool that is not ended keeps its connections
+  // and timers, and so itself, alive forever. A failed update does not fail
+  // the scan, the database has the products and a reindex sends them again.
   async close(): Promise<void> {
+    try {
+      await this.flushSolr();
+    } catch (e) {
+      log.error(
+        'Sending the last documents of the scan to Solr failed, reindex to send them',
+        e
+      );
+    }
     await Promise.all([
       this.productsPool.end(),
       this.pricePool.end(),
@@ -420,13 +450,13 @@ export default class SQLStoreUpdater {
           return await getAttriButesToProducts(attributesConn, existingProduct);
         }
       );
-      await indexProducts([
+      this.solrProducts.add(
         getSolrProduct(
           existingProduct,
           scrapedProduct.salePrice ?? scrapedProduct.price,
           attributes
         )
-      ]);
+      );
     }
     //Update last changed date if there was a update and it hasn't been updated by product update logic already
     if (anyUpdate && !existingProductResult.result) {
@@ -628,7 +658,7 @@ export default class SQLStoreUpdater {
         'INSERT INTO categories (name) VALUES (?)',
         [categories[0]]
       );
-      await indexCategories([{ id: res.insertId, name: categories[0] }]);
+      this.solrCategories.add({ id: res.insertId, name: categories[0] });
       existingRootId = res.insertId;
     }
 
@@ -645,7 +675,7 @@ export default class SQLStoreUpdater {
           'INSERT INTO categories (name, parentId) VALUES (?, ?)',
           [categories[i], parentId]
         );
-        await indexCategories([{ id: res.insertId, name: categories[i] }]);
+        this.solrCategories.add({ id: res.insertId, name: categories[i] });
         parentId = res.insertId;
       } else {
         parentId = existingCategoryId;
@@ -715,7 +745,7 @@ export default class SQLStoreUpdater {
         'INSERT INTO manufacturers (name) VALUES (?)',
         [manufacturer]
       );
-      await indexManufacturers([{ id: res.insertId, name: manufacturer }]);
+      this.solrManufacturers.add({ id: res.insertId, name: manufacturer });
       existingManufacturerId = res.insertId;
     }
     if (existingManufacturerId !== product.manufacturerId) {
@@ -795,9 +825,10 @@ export default class SQLStoreUpdater {
           );
           existingAttributeGroupId = res.insertId;
           this.result.newAttributeGroups++;
-          await indexAttributeGroups([
-            { id: res.insertId, name: attributeGroup.name }
-          ]);
+          this.solrAttributeGroups.add({
+            id: res.insertId,
+            name: attributeGroup.name
+          });
         }
       }
 
@@ -815,13 +846,11 @@ export default class SQLStoreUpdater {
               existingAttributeGroupId
             );
             this.result.newAttributes++;
-            await indexAttributes([
-              {
-                id: existingAttributeId,
-                name: attribute.name,
-                groupId: existingAttributeGroupId
-              }
-            ]);
+            this.solrAttributes.add({
+              id: existingAttributeId,
+              name: attribute.name,
+              groupId: existingAttributeGroupId
+            });
           }
           const existingAttributeToProductEntry =
             existingAttributeToProduct.find(

@@ -140,3 +140,75 @@ export const indexAttributes = async (
   await submitUpdate('attributes', attributes);
   log.debug(`Indexed ${attributes.length} attributes`);
 };
+
+// Documents sent to Solr in one update
+export const SOLR_CHUNK_SIZE = 100;
+// How long a document waits for more before its update is sent
+const SOLR_FLUSH_INTERVAL_MS = 5000;
+
+// Collects the documents of one core and sends them in updates of up to
+// SOLR_CHUNK_SIZE, when that many are waiting or SOLR_FLUSH_INTERVAL_MS after
+// the first one, instead of one update per document. The documents of a
+// failed update are sent again with the next one.
+export class SolrUpdateBuffer<T> {
+  private docs: T[] = [];
+  private timer?: NodeJS.Timeout;
+  private sending: Promise<void> = Promise.resolve();
+  // A background flush is waiting for the update being sent
+  private flushQueued = false;
+
+  constructor(
+    private readonly core: string,
+    private readonly submit: (docs: T[]) => Promise<void>
+  ) {}
+
+  add(doc: T): void {
+    this.docs.push(doc);
+    if (this.docs.length >= SOLR_CHUNK_SIZE) this.flushInBackground();
+    else if (!this.timer) {
+      this.timer = setTimeout(
+        () => this.flushInBackground(),
+        SOLR_FLUSH_INTERVAL_MS
+      );
+      // A waiting update does not keep the process alive
+      this.timer.unref();
+    }
+  }
+
+  private flushInBackground(): void {
+    if (this.flushQueued) return;
+    this.flushQueued = true;
+    this.flush().catch((e: unknown) =>
+      log.warn(
+        `Updating Solr core ${this.core} failed, ${this.docs.length} documents are sent again with the next update`,
+        e
+      )
+    );
+  }
+
+  // Sends the waiting documents, after the update already being sent.
+  // Rejects when an update fails, its documents stay waiting.
+  flush(): Promise<void> {
+    clearTimeout(this.timer);
+    this.timer = undefined;
+    const flushed = this.sending
+      .catch(() => undefined)
+      .then(async () => {
+        this.flushQueued = false;
+        const docs = this.docs;
+        this.docs = [];
+        for (let i = 0; i < docs.length; i += SOLR_CHUNK_SIZE) {
+          try {
+            await this.submit(docs.slice(i, i + SOLR_CHUNK_SIZE));
+          } catch (e) {
+            // Before the documents added while it was sent, a later version
+            // of a document replaces the earlier one
+            this.docs = [...docs.slice(i), ...this.docs];
+            throw e;
+          }
+        }
+      });
+    this.sending = flushed;
+    return flushed;
+  }
+}

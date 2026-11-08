@@ -58,6 +58,12 @@ database.
 
 ## Solr
 
+A scan sends the products, categories, manufacturers and attributes it saves
+to Solr in updates of up to 100 documents, at the latest 5 seconds after the
+first one waits. A failed update is sent again with the next one. Documents
+still not sent when the scan ends are logged as an error and need a reindex,
+the scan itself does not fail.
+
 The cores and their schemas are defined in `solr-configsets/<core>`:
 
 - `docker-compose.yml` creates a core from each configset that does not have
