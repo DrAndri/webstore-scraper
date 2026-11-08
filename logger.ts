@@ -8,6 +8,7 @@ import {
 } from 'winston';
 import LokiTransport from 'winston-loki';
 import { log as crawleeLog, LogLevel } from 'crawlee';
+import type { Store } from './types/db-types.js';
 
 const { combine, colorize, splat, timestamp, errors, printf } = format;
 
@@ -26,8 +27,6 @@ const lokiSendOptions = {
 };
 
 const LOKI_URL = process.env.LOKI_URL;
-const ENABLE_SCRAPER_LOGGING =
-  process.env.ENABLE_SCRAPER_LOGGING === 'true' ? true : false;
 const LOG_LEVEL = process.env.LOG_LEVEL ?? 'info';
 
 // Metadata that is not part of the line itself is appended to it, e.g. the
@@ -140,8 +139,7 @@ const scanLogger = new Logger({
           json: true,
           level: 'debug',
           interval: 5,
-          ...lokiSendOptions,
-          silent: !ENABLE_SCRAPER_LOGGING
+          ...lokiSendOptions
         })
       : new transports.Console({
           level: 'warn',
@@ -154,21 +152,27 @@ const scanLogger = new Logger({
               // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
               return `${timestamp} [${level}]: [${page}] ${stack ?? message}`;
             })
-          ),
-          silent: !ENABLE_SCRAPER_LOGGING
+          )
         })
   ]
 });
 
+// Stores with logging turned off get this logger, it drops every line
+const silentLogger = new Logger({ silent: true });
+
 // The log of a scan, labelled with the page it is about. jobId is the id of
 // the scrapeJobs row, so the admin interface can show the log of each scan.
+// Pages are only logged when logging is turned on for the store in the admin
+// interface (stores.loggingEnabled).
 // The child shares the transport of scanLogger, it must not be closed.
 export const createLogger = (
   label: string,
-  storeName: string,
+  store: Pick<Store, 'name' | 'loggingEnabled'>,
   jobId: number
 ): Logger =>
-  scanLogger.child({
-    labels: { store: storeName, jobId } satisfies ScanLabels,
-    page: label
-  });
+  store.loggingEnabled
+    ? scanLogger.child({
+        labels: { store: store.name, jobId } satisfies ScanLabels,
+        page: label
+      })
+    : silentLogger;

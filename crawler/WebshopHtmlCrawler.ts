@@ -34,7 +34,7 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
 
       const logger = createLogger(
         request.loadedUrl ?? 'default label',
-        store.name,
+        store,
         this.jobId
       );
       const productLocator = $(selectors.productPage);

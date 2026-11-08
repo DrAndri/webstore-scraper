@@ -49,6 +49,14 @@ and applies changes within 30 seconds. Expressions are evaluated in UTC.
 `migrations/2026-11-07-store-schedules.sql` copies the schedules that applied
 to every store before to each store.
 
+Scans log each page they visit to the scan log only when **Scan log** is on for
+the store on its page in the admin interface (`stores.loggingEnabled`). It is
+off for new stores. A config test is logged when it is on for the store being
+tested. The log goes to Loki when `LOKI_URL` is set, otherwise warnings and
+errors go to the console. Scans read the setting when they start.
+`migrations/2026-11-08-store-logging.sql` adds the column to an existing
+database.
+
 ## Solr
 
 The cores and their schemas are defined in `solr-configsets/<core>`:

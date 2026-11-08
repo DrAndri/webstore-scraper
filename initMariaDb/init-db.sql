@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS webstorinator.stores (
     createdDate DATE DEFAULT CURRENT_DATE,
     lastScanDate DATE,
     scraperEnabled BOOLEAN NOT NULL DEFAULT FALSE,
-    apiEnabled BOOLEAN NOT NULL DEFAULT FALSE
+    apiEnabled BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Scans log every page of the store, turned on in the admin interface
+    loggingEnabled BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (

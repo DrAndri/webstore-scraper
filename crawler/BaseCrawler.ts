@@ -269,7 +269,7 @@ export default abstract class BaseCrawler {
 
   async crawlSite(): Promise<void> {
     const { startUrl, productFeed } = this.store.options;
-    const storeLogger = createLogger('Scan log', this.store.name, this.jobId);
+    const storeLogger = createLogger('Scan log', this.store, this.jobId);
 
     // In list mode only the urls in the request list are scraped
     const startUrls =

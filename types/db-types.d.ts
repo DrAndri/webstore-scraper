@@ -43,6 +43,8 @@ export interface Store {
   lastScanDate: Date;
   scraperEnabled: boolean;
   apiEnabled: boolean;
+  // Log every page of the store's scans to the scan log
+  loggingEnabled: boolean;
 }
 
 export interface Product {

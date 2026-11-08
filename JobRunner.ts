@@ -584,6 +584,14 @@ export default class JobRunner {
     const invalid = validateStoreConfig(options, Number(options?.storeId));
     if (invalid) throw new Error(`Invalid config: ${invalid}`);
 
+    // The test is logged when logging is on for the store, a store that has
+    // not been created yet has it off
+    const [existing] = job.storeId
+      ? await this.pool.query<Pick<Store, 'loggingEnabled'>[]>(
+          'SELECT loggingEnabled FROM stores WHERE id = ?',
+          [job.storeId]
+        )
+      : [];
     const currentDate = new Date();
     const store: StoreConfig = {
       id: job.storeId ?? 0,
@@ -592,6 +600,7 @@ export default class JobRunner {
       lastScanDate: currentDate,
       scraperEnabled: false,
       apiEnabled: false,
+      loggingEnabled: !!existing?.loggingEnabled,
       options,
       safeStoreName: `test-${job.id}`
     };

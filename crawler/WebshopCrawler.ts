@@ -119,7 +119,7 @@ export default class WebshopCrawler extends BaseCrawler {
 
       const logger = createLogger(
         request.loadedUrl ?? 'default label',
-        store.name,
+        store,
         this.jobId
       );
 
