@@ -6,12 +6,6 @@ import { logger } from './logger.js';
 const log = logger.child({ label: 'Scheduler' });
 
 const SYNC_INTERVAL_MS = 30 * 1000;
-// The schedules of a store that has none yet, e.g. a store that was just
-// added. They only run while scraping is enabled for the store.
-const DEFAULT_SCHEDULES: Record<ScheduledMode, string> = {
-  crawler: '0 1 * * 1',
-  list: '0 4 * * *'
-};
 
 interface ScheduleRow {
   storeId: number;
@@ -48,13 +42,6 @@ export default class Scheduler {
   }
 
   async sync() {
-    for (const mode of Object.keys(DEFAULT_SCHEDULES) as ScheduledMode[]) {
-      await this.pool.query(
-        `INSERT IGNORE INTO storeSchedules (storeId, mode, cron, enabled, updatedAt)
-         SELECT id, ?, ?, TRUE, UTC_TIMESTAMP() FROM stores`,
-        [mode, DEFAULT_SCHEDULES[mode]]
-      );
-    }
     const rows = await this.pool.query<ScheduleRow[]>(
       `SELECT ss.storeId, ss.mode, ss.cron, ss.enabled, s.scraperEnabled, ss.lastError
        FROM storeSchedules ss JOIN stores s ON s.id = ss.storeId`

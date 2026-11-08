@@ -43,11 +43,10 @@ instance should run against a database.
 Each store has its own schedule for full crawls and for active products, rows
 in `storeSchedules` edited on the stores page of the admin interface. A
 schedule queues a scan of its store while the schedule and **Scheduled scans**
-of the store are on. The scraper gives a store that has no schedules yet a full
-crawl on Mondays at 01:00 and active products every night at 04:00, turned on,
-and applies changes within 30 seconds. Expressions are evaluated in UTC.
-`migrations/2026-11-07-store-schedules.sql` copies the schedules that applied
-to every store before to each store.
+of the store are on. The admin interface creates the schedules of a store when
+it adds the store, the scraper only reads them and applies changes within 30
+seconds. A store without schedules is not scanned on a schedule. Expressions
+are evaluated in UTC.
 
 Scans log each page they visit to the scan log only when **Scan log** is on for
 the store on its page in the admin interface (`stores.loggingEnabled`). It is

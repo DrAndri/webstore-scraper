@@ -66,9 +66,9 @@ CREATE TABLE IF NOT EXISTS webstorinator.scrapeJobs (
 );
 
 -- The scan schedules of each store, one row per store and mode, edited on the
--- stores page of the admin interface. The scraper creates the rows of a store
--- that has none with the default schedules. A schedule runs while it and
--- stores.scraperEnabled are on. Expressions are evaluated in UTC.
+-- stores page of the admin interface, which creates them when it adds a store.
+-- A schedule runs while it and stores.scraperEnabled are on. Expressions are
+-- evaluated in UTC.
 CREATE TABLE IF NOT EXISTS webstorinator.storeSchedules (
     storeId TINYINT UNSIGNED NOT NULL,
     mode ENUM('crawler', 'list') NOT NULL,
