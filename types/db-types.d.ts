@@ -132,6 +132,19 @@ export interface ProductFeed {
   // Url of the product page of an item, {field} is replaced with that field of
   // the item and {field:5} pads it with zeros to 5 characters
   productUrl: string;
+  // Dot path to the number of pages of a paged feed. The {page} placeholder of
+  // url is replaced with each page number, starting at 1.
+  pageCount?: string;
+  // Reads the feed once per item of another JSON list, e.g. once per category
+  // for a store that only lists products by category. The {field}
+  // placeholders of url are filled with the fields of each item.
+  feedList?: ProductFeedList;
+}
+
+export interface ProductFeedList {
+  url: string;
+  // Dot path to the list of items, unset when the response is the list
+  items?: string;
 }
 
 export interface ProductSanitizers {
