@@ -401,8 +401,16 @@ export default class SQLStoreUpdater {
     );
 
     const existingProduct = existingProductResult.product;
+    // Only a sale price below the price is a sale
+    const salePrice =
+      scrapedProduct.salePrice !== undefined &&
+      scrapedProduct.salePrice < scrapedProduct.price
+        ? scrapedProduct.salePrice
+        : undefined;
 
-    const promises = [];
+    // Each resolves to whether the product changed. A price seen again only
+    // has its end extended, which is not a change.
+    const promises: Promise<boolean>[] = [];
     promises.push(
       this.queryPool(this.pricePool, async (priceConn) => {
         const priceResult = await this.upsertPrice(
@@ -413,29 +421,25 @@ export default class SQLStoreUpdater {
         );
         if (priceResult === 'newPrice') this.result.newPrices++;
         else if (priceResult === 'updatedPrice') this.result.updatedPrices++;
-        return priceResult;
+        return priceResult === 'newPrice';
       })
     );
-    if (
-      scrapedProduct.salePrice !== undefined &&
-      scrapedProduct.salePrice < scrapedProduct.price
-    ) {
-      const salePrice = scrapedProduct.salePrice;
-      promises.push(
-        this.queryPool(this.salePricePool, async (priceConn) => {
-          const salePriceResult = await this.upsertPrice(
-            priceConn,
-            existingProduct.id,
-            salePrice,
-            'salePrices'
-          );
-          if (salePriceResult === 'newPrice') this.result.newSalePrices++;
-          else if (salePriceResult === 'updatedPrice')
-            this.result.updatedSalePrices++;
-          return salePriceResult;
-        })
-      );
-    }
+    promises.push(
+      this.queryPool(this.salePricePool, async (priceConn) => {
+        if (salePrice === undefined)
+          return await this.saleEnded(priceConn, existingProduct.id);
+        const salePriceResult = await this.upsertPrice(
+          priceConn,
+          existingProduct.id,
+          salePrice,
+          'salePrices'
+        );
+        if (salePriceResult === 'newPrice') this.result.newSalePrices++;
+        else if (salePriceResult === 'updatedPrice')
+          this.result.updatedSalePrices++;
+        return salePriceResult === 'newPrice';
+      })
+    );
 
     promises.push(
       this.queryPool(this.categoriesPool, async (categoriesConn) => {
@@ -522,7 +526,7 @@ export default class SQLStoreUpdater {
       this.solrProducts.add(
         getSolrProduct(
           existingProduct,
-          scrapedProduct.salePrice ?? scrapedProduct.price,
+          salePrice ?? scrapedProduct.price,
           attributes
         )
       );
@@ -670,6 +674,13 @@ export default class SQLStoreUpdater {
         result: 'new'
       };
     }
+  }
+
+  // Whether the sale price of the product was seen in the last scan and is gone
+  // in this one, its Solr price is then the price again
+  async saleEnded(conn: PoolConnection, productId: DbId): Promise<boolean> {
+    const lastSale = await getLatestPrice(conn, 'salePrices', productId);
+    return !!lastSale && lastSale.end >= this.storeConfig.lastScanDate;
   }
 
   async upsertPrice(

@@ -58,6 +58,11 @@ database.
 
 ## Solr
 
+A scan sends a product to Solr only when it is new or changed: a field, its
+price, the start or end of a sale, its category, manufacturer or attributes.
+The same changes set its `lastChangeDate`. A price seen again only has its end
+moved to the date of the scan, which is not a change.
+
 A scan sends the products, categories, manufacturers and attributes it saves
 to Solr in updates of up to 100 documents, at the latest 5 seconds after the
 first one waits. A failed update is sent again with the next one. Documents
