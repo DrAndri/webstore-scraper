@@ -106,6 +106,10 @@ Specification tables, `selectors.attributes`:
 - Optional: `attributeGroup` and `attributeGroupName`, for tables split into
   named sections. Without `attributeGroup` the table is one unnamed group.
 - A trailing colon is removed from labels, `Litur:` is `Litur`.
+- Attributes are deduplicated by group and name, ignoring case: groups with
+  the same name (from several tables, or a table shown twice) are merged, and
+  the first value of a repeated attribute name in a group is kept. An empty
+  group name is the same as no group.
 
 ### Other selectors
 

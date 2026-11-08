@@ -181,7 +181,7 @@ export default class PageScraper extends BaseScraper {
       throw new Error('No attribute tables found');
     }
 
-    return attributeGroups.length > 0 ? attributeGroups : undefined;
+    return this.dedupeAttributeGroups(attributeGroups);
   }
 
   async scrapeInStock(productLocator: Locator) {

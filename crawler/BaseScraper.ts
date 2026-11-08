@@ -3,6 +3,7 @@ import {
   ProductSelector,
   ProductSelectors
 } from '../types/db-types.js';
+import { ProductAttributeGroup } from '../types/types.js';
 import { getPath, toText } from './StructuredData.js';
 
 export default abstract class BaseScraper {
@@ -58,6 +59,43 @@ export default abstract class BaseScraper {
   // "Litur:" and "Litur :" are the same attribute as "Litur"
   cleanAttributeName(name: string): string {
     return name.trim().replace(/\s*:+$/, '');
+  }
+
+  // A page can show the same attribute twice, e.g. a table rendered for both
+  // mobile and desktop. The database keeps one value per attribute and
+  // product, and MariaDB compares names case-insensitively, so groups with the
+  // same name are merged and the first value of an attribute name is kept.
+  dedupeAttributeGroups(
+    attributeGroups: ProductAttributeGroup[]
+  ): ProductAttributeGroup[] | undefined {
+    const groups = new Map<
+      string,
+      { group: ProductAttributeGroup; names: Set<string> }
+    >();
+    for (const attributeGroup of attributeGroups) {
+      // An empty group name is no group, like in the database
+      const trimmed = attributeGroup.name?.trim();
+      const groupName = trimmed === '' ? undefined : trimmed;
+      const groupKey = groupName?.toLocaleLowerCase() ?? '';
+      let entry = groups.get(groupKey);
+      if (!entry) {
+        entry = {
+          group: { name: groupName, attributes: [] },
+          names: new Set()
+        };
+        groups.set(groupKey, entry);
+      }
+      for (const attribute of attributeGroup.attributes) {
+        const nameKey = attribute.name.toLocaleLowerCase();
+        if (entry.names.has(nameKey)) continue;
+        entry.names.add(nameKey);
+        entry.group.attributes.push(attribute);
+      }
+    }
+    const deduped = [...groups.values()]
+      .map((entry) => entry.group)
+      .filter((group) => group.attributes.length > 0);
+    return deduped.length > 0 ? deduped : undefined;
   }
 
   isValidCategory(category: string) {

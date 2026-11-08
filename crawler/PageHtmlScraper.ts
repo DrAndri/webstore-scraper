@@ -181,7 +181,7 @@ export default class PageHtmlScraper extends BaseScraper {
       throw new Error('No attribute tables found');
     }
 
-    return attributeGroups.length > 0 ? attributeGroups : undefined;
+    return this.dedupeAttributeGroups(attributeGroups);
   }
 
   hasText($: CheerioAPI, selector: string, text: string) {
