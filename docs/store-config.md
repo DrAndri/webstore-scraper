@@ -22,8 +22,9 @@ required settings (`validateStoreConfig` in
 
 On every page the crawler decides whether it is a product page, and if so reads
 the fields. Fixed for every store ([BaseCrawler.ts](../crawler/BaseCrawler.ts)):
-60 requests a minute, 3 retries, and a shared list of category names to ignore
-(`categoryBanList` in [constants.ts](../crawler/constants.ts)).
+3 retries and a shared list of category names to ignore (`categoryBanList` in
+[constants.ts](../crawler/constants.ts)). Pages are requested at 60 a minute
+unless `maxRequestsPerMinute` is set.
 
 ## Required settings
 
@@ -45,6 +46,12 @@ the fields. Fixed for every store ([BaseCrawler.ts](../crawler/BaseCrawler.ts)):
 | `startUrls`       | More pages to start from, e.g. a listing with a larger page size                                      |
 | `sitemapUrls`     | Sitemaps whose `<loc>` urls are queued                                                                |
 | `productFeed`     | A JSON endpoint listing the products, read before the crawl, see [Product feed](#product-feed)        |
+
+`maxRequestsPerMinute` sets how many pages a minute a scan of the store
+requests, 60 when unset, a whole number from 1 to 600. It is the limit on how
+fast a scan goes: at 60 a store with 20,000 products and its category pages
+takes more than six hours, in `list` mode too. Raise it only for a site that
+handles it, and lower it for a site that answers with 429 or 503.
 
 Links are filtered in this order (`filterAndAddLinksToQueue` in
 [BaseCrawler.ts](../crawler/BaseCrawler.ts)): same host → not a file (`.pdf`,

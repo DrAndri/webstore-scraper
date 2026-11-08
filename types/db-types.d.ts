@@ -119,6 +119,8 @@ export interface WebshopCrawlerOptions {
   // Sitemaps whose <loc> urls are queued when crawling
   sitemapUrls?: string[];
   productFeed?: ProductFeed;
+  // Pages requested a minute, 60 when unset
+  maxRequestsPerMinute?: number;
   scrollPagesToBottom?: boolean;
   menuClicker?: string;
 }

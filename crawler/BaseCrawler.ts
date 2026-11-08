@@ -22,6 +22,9 @@ import {
 } from './constants.js';
 import { fetchProductFeedUrls } from './ProductFeed.js';
 
+// Pages requested a minute when the config does not set maxRequestsPerMinute
+const DEFAULT_MAX_REQUESTS_PER_MINUTE = 60;
+
 export default abstract class BaseCrawler {
   store: StoreConfig;
   // The scrapeJobs row the crawl runs for, labels its log
@@ -248,7 +251,9 @@ export default abstract class BaseCrawler {
       },
       // maxRequestsPerCrawl: 30000,
       maxConcurrency: 50,
-      maxRequestsPerMinute: 60,
+      maxRequestsPerMinute:
+        this.store.options.maxRequestsPerMinute ??
+        DEFAULT_MAX_REQUESTS_PER_MINUTE,
       maxRequestRetries: 3,
       requestHandlerTimeoutSecs: 240,
       navigationTimeoutSecs: 120,
