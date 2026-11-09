@@ -527,6 +527,8 @@ export default class JobRunner {
     entry.crawler = crawler;
     try {
       await crawler.crawlSite();
+      // The products a cancelled scan did not reach are still active
+      if (!entry.cancelled) await storeUpdater.deactivateUnseenProducts();
     } finally {
       // Also when the crawl throws, e.g. on an unreadable product feed
       await requestQueue?.drop();

@@ -67,6 +67,8 @@ export interface StoreUpdateResult {
   updatedCategories: number;
   newManufacturers: number;
   updatedManufacturers: number;
+  // Active products not seen in the scan, marked inactive in Solr
+  deactivatedProducts: number;
 
   nameUpdates: number;
   descriptionUpdates: number;

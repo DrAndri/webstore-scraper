@@ -63,6 +63,14 @@ price, the start or end of a sale, its category, manufacturer or attributes.
 The same changes set its `lastChangeDate`. A price seen again only has its end
 moved to the date of the scan, which is not a change.
 
+The `active` field of a product in Solr is whether it was seen in the last
+scan of its store, the same rule the api uses for a current price: its latest
+price ends on or after the store's `lastScanDate`. A scan sends the products it
+saves as active. After a scan that was not cancelled and did not fail, the
+products that were active and were not seen are sent again as inactive. A
+product seen again gets a new price, which sends it as active. A reindex sets
+`active` from the prices, run one after the schema sync that adds the field.
+
 A scan sends the products, categories, manufacturers and attributes it saves
 to Solr in updates of up to 100 documents, at the latest 5 seconds after the
 first one waits. A failed update is sent again with the next one. Documents

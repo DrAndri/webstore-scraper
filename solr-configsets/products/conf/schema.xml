@@ -89,6 +89,8 @@
   <field name="price" type="pdouble" indexed="true" stored="true"/>
   <field name="firstSeenDate" type="pdate" indexed="true" stored="true"/>
   <field name="lastChangeDate" type="pdate" indexed="true" stored="true"/>
+  <!-- Seen in the last scan of its store, which the scraper keeps up to date -->
+  <field name="active" type="boolean" indexed="true" stored="true"/>
 
   <!-- Dynamic attribute fields -->
   <dynamicField name="attr_*" type="string" indexed="true" stored="true" multiValued="true"/>

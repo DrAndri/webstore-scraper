@@ -126,10 +126,12 @@ const getLatestPrices = async (
 };
 
 // The Solr documents of the products with their current price and attributes,
-// read with one query for each table instead of one for each product
+// read with one query for each table instead of one for each product. active
+// tells from the latest price of a product whether it is active.
 const toSolrProducts = async (
   conn: PoolConnection,
-  products: Product[]
+  products: Product[],
+  active: (product: Product, latestPrice?: ProductPrice) => boolean
 ): Promise<SolrProduct[]> => {
   const ids = products.map((product) => product.id);
   const attributeRows = await conn.query<AttributeToProduct[]>(
@@ -162,7 +164,12 @@ const toSolrProducts = async (
     } else if (latestSalePrice) {
       price = latestSalePrice.price;
     }
-    return getSolrProduct(product, price, attributesByProduct.get(key) ?? []);
+    return getSolrProduct(
+      product,
+      price,
+      attributesByProduct.get(key) ?? [],
+      active(product, latestPrice)
+    );
   });
 };
 
@@ -183,6 +190,18 @@ const indexAll = async (
     'SELECT * FROM attributeGroups'
   );
   const attributes = await conn.query<Attribute[]>('SELECT * FROM attributes');
+  // A product is active when its price was seen in the last scan of its store
+  const lastScanDates = new Map(
+    (
+      await conn.query<{ id: DbId; lastScanDate: Date | null }[]>(
+        'SELECT id, lastScanDate FROM stores'
+      )
+    ).map((store) => [String(store.id), store.lastScanDate])
+  );
+  const isActive = (product: Product, latestPrice?: ProductPrice) => {
+    const lastScanDate = lastScanDates.get(String(product.storeId));
+    return !!latestPrice && !!lastScanDate && latestPrice.end >= lastScanDate;
+  };
 
   const result: IndexResult = {
     products: 0,
@@ -235,7 +254,7 @@ const indexAll = async (
         )
       ).map(toProduct);
       if (chunk.length === 0) return true;
-      await indexProducts(await toSolrProducts(conn, chunk));
+      await indexProducts(await toSolrProducts(conn, chunk, isActive));
       lastId = chunk[chunk.length - 1].id;
       counted('products', chunk.length);
     }
@@ -325,6 +344,7 @@ export default class SQLStoreUpdater {
       updatedCategories: 0,
       newManufacturers: 0,
       updatedManufacturers: 0,
+      deactivatedProducts: 0,
       newAttributeGroups: 0,
       newAttributesToProducts: 0,
       updatedAttributesToProducts: 0,
@@ -336,6 +356,34 @@ export default class SQLStoreUpdater {
       gtinUpdates: 0,
       urlUpdates: 0
     };
+  }
+
+  // Marks the products of the store that were active, their price seen in the
+  // last scan, and are not seen in this one as inactive in Solr. Run after a
+  // complete scan, a product not reached by a cancelled or failed scan is still
+  // active. A product seen again gets a new price, which sends it to Solr as
+  // active.
+  async deactivateUnseenProducts(): Promise<void> {
+    if (!this.storeConfig.lastScanDate) return;
+    await this.queryPool(this.productsPool, async (conn) => {
+      // Prices are extended to the date of each scan they are seen in
+      const unseen = await conn.query<IdLookup[]>(
+        'SELECT p.id FROM products p JOIN prices pr ON pr.productId = p.id WHERE p.storeId = ? GROUP BY p.id HAVING MAX(pr.end) >= ? AND MAX(pr.end) < ?',
+        [this.storeConfig.id, this.storeConfig.lastScanDate, this.currentDate]
+      );
+      for (let i = 0; i < unseen.length; i += SOLR_CHUNK_SIZE) {
+        const ids = unseen.slice(i, i + SOLR_CHUNK_SIZE).map((row) => row.id);
+        const products = (
+          await conn.query<Product[]>(
+            'SELECT * FROM products WHERE id IN (?)',
+            [ids]
+          )
+        ).map(toProduct);
+        for (const doc of await toSolrProducts(conn, products, () => false))
+          this.solrProducts.add(doc);
+      }
+      this.result.deactivatedProducts += unseen.length;
+    });
   }
 
   // Sends the Solr documents still waiting, rejects when an update fails
@@ -527,7 +575,8 @@ export default class SQLStoreUpdater {
         getSolrProduct(
           existingProduct,
           salePrice ?? scrapedProduct.price,
-          attributes
+          attributes,
+          true
         )
       );
     }

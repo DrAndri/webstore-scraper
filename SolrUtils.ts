@@ -26,6 +26,8 @@ export type SolrProduct = Omit<Product, 'firstSeenDate' | 'lastChangeDate'> & {
   lastChangeDate: string;
   // Ids of the attributes below, faceted by the advanced search
   attrIds?: DbId[];
+  // Seen in the last scan of its store
+  active?: boolean;
   [key: `attr_${string}`]: string | undefined;
 };
 
@@ -64,13 +66,15 @@ const submitUpdate = async (
 export const getSolrProduct = (
   product: Product,
   price?: number,
-  attributes?: AttributeToProduct[]
+  attributes?: AttributeToProduct[],
+  active?: boolean
 ): SolrProduct => {
   const solrProduct: SolrProduct = {
     ...product,
     firstSeenDate: product.firstSeenDate.toISOString(),
     lastChangeDate: product.lastChangeDate.toISOString()
   };
+  if (active !== undefined) solrProduct.active = active;
   if (price !== undefined) {
     solrProduct.price = price;
   }
