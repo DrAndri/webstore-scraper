@@ -16,7 +16,7 @@
     "@types/node": "^26.6.6",
     "@types/sanitize-html": "^2.16.2",
     "crawlee": "^3.18.2",
-    "dotenv": "^18.0.9",
+    "dotenv": "^18.0.10",
     "jsonc-parser": "3.3.1",
     "mariadb": "3.5.5",
     "mongodb": "^7.8.0",
@@ -34,7 +34,7 @@
     "globals": "^17.14.0",
     "prettier": "^3.9.10",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.1"
+    "typescript-eslint": "^8.72.2"
   },
   "repository": "https://github.com/DrAndri/webstore-scraper.git"
 }
