@@ -81,14 +81,17 @@ export default class WebshopHtmlCrawler extends BaseCrawler {
       await this.filterAndAddLinksToQueue(links);
     };
 
-    const crawler = new CheerioCrawler({
-      ...configuration,
-      requestHandler: requestHandler,
-      failedRequestHandler: ({ request, log }) => {
-        log.info(`Request ${request.url} failed too many times.`);
-        this.pageListener?.onRequestFailed(request.errorMessages);
-      }
-    });
+    const crawler = new CheerioCrawler(
+      {
+        ...configuration,
+        requestHandler: requestHandler,
+        failedRequestHandler: ({ request, log }) => {
+          log.info(`Request ${request.url} failed too many times.`);
+          this.pageListener?.onRequestFailed(request.errorMessages);
+        }
+      },
+      this.crawleeConfig
+    );
     return crawler;
   }
 }

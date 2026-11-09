@@ -1,6 +1,5 @@
 import { hostname } from 'node:os';
 import { createPool, Pool, UpsertResult } from 'mariadb';
-import { MemoryStorage, RequestList, RequestQueue } from 'crawlee';
 import {
   ProductScrapeErrors,
   ProductSnapshot,
@@ -462,25 +461,12 @@ export default class JobRunner {
     store: StoreConfig,
     jobId: number,
     updateProductInDb: (product: ProductSnapshot) => Promise<void>,
-    requestQueue?: RequestQueue,
-    requestList?: RequestList
+    urlList?: string[]
   ): BaseCrawler {
     if (store.options.type === 'crawler')
-      return new WebshopCrawler(
-        store,
-        jobId,
-        updateProductInDb,
-        requestQueue,
-        requestList
-      );
+      return new WebshopCrawler(store, jobId, updateProductInDb, urlList);
     if (store.options.type === 'httpcrawler')
-      return new WebshopHtmlCrawler(
-        store,
-        jobId,
-        updateProductInDb,
-        requestQueue,
-        requestList
-      );
+      return new WebshopHtmlCrawler(store, jobId, updateProductInDb, urlList);
     throw new Error('Type not supported for store ' + store.name);
   }
 
@@ -505,24 +491,11 @@ export default class JobRunner {
       this.categoriesPool,
       this.manufacturersPool
     );
-    const memoryStorage = new MemoryStorage({
-      persistStorage: false,
-      writeMetadata: false
-    });
-    const requestQueue = urlList
-      ? undefined
-      : await RequestQueue.open(safeStoreName, {
-          storageClient: memoryStorage
-        });
-    const requestList = urlList
-      ? await RequestList.open(safeStoreName, urlList)
-      : undefined;
     const crawler = this.createCrawler(
       storeConfig,
       entry.job.id,
       (scrapedProduct) => storeUpdater.updateProductInDb(scrapedProduct),
-      requestQueue,
-      requestList
+      urlList
     );
     entry.crawler = crawler;
     try {
@@ -531,8 +504,6 @@ export default class JobRunner {
       if (!entry.cancelled) await storeUpdater.deactivateUnseenProducts();
     } finally {
       // Also when the crawl throws, e.g. on an unreadable product feed
-      await requestQueue?.drop();
-      await memoryStorage.teardown();
       await storeUpdater.close();
     }
     // Products not reached by a cancelled scan would look inactive
@@ -607,14 +578,9 @@ export default class JobRunner {
       safeStoreName: `test-${job.id}`
     };
     const testResult: TestResult = {};
-    const requestList = await RequestList.open(null, [job.testUrl]);
-    const crawler = this.createCrawler(
-      store,
-      job.id,
-      () => Promise.resolve(),
-      undefined,
-      requestList
-    );
+    const crawler = this.createCrawler(store, job.id, () => Promise.resolve(), [
+      job.testUrl
+    ]);
     crawler.pageListener = {
       onProductScraped: ({ product, errors }) => {
         testResult.isProductPage = true;

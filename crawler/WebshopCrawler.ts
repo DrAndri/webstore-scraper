@@ -285,65 +285,63 @@ export default class WebshopCrawler extends BaseCrawler {
       });
     };
 
-    // const config = Configuration.getGlobalConfig();
+    const crawler = new PlaywrightCrawler(
+      {
+        ...configuration,
+        failedRequestHandler: ({ request, log }) => {
+          log.info(`Request ${request.url} failed too many times.`);
+          this.pageListener?.onRequestFailed(request.errorMessages);
+        },
+        requestHandler: requestHandler,
+        headless: true,
+        browserPoolOptions: {
+          maxOpenPagesPerBrowser: 10,
+          retireBrowserAfterPageCount: 100,
+          retireInactiveBrowserAfterSecs: 10,
+          closeInactiveBrowserAfterSecs: 1000,
+          useFingerprints: false,
+          fingerprintOptions: {
+            useFingerprintCache: false
+          }
+        },
+        launchContext: {
+          //userDataDir: '/dev/shm/chrome-user-' + new Date().getTime(),
+          launchOptions: {
+            headless: true,
+            args: [
+              '--no-sandbox',
+              '--disable-setuid-sandbox',
+              // '--disable-dev-shm-usage',
+              '--disable-accelerated-2d-canvas',
+              '--disable-gpu',
+              '--no-pings',
+              '--no-zygote',
+              '--disable-application-cache',
+              '--disable-offline-load-stale-cache',
+              '--disable-gpu-shader-disk-cache',
+              '--disable-web-security',
+              '--disable-translate',
+              '--disable-session-crashed-bubble',
+              '--no-first-run',
+              // '--single-process',
+              '--noerrdialogs',
+              '--disk-cache-dir=/dev/shm/chrome-cache-' + new Date().getTime(),
+              // Additional RAM-friendly options
+              '--disable-software-rasterizer',
+              '--disable-extensions',
+              '--disable-background-networking',
+              '--disable-sync',
 
-    // config.set('persistStorage', 'false');
-    // config.set('storageDir', '/dev/shm');
-
-    const crawler = new PlaywrightCrawler({
-      ...configuration,
-      failedRequestHandler: ({ request, log }) => {
-        log.info(`Request ${request.url} failed too many times.`);
-        this.pageListener?.onRequestFailed(request.errorMessages);
+              // Minimize disk I/O
+              '--disable-logging',
+              '--log-level=3'
+            ]
+          }
+        },
+        preNavigationHooks: [myHook]
       },
-      requestHandler: requestHandler,
-      headless: true,
-      browserPoolOptions: {
-        maxOpenPagesPerBrowser: 10,
-        retireBrowserAfterPageCount: 100,
-        retireInactiveBrowserAfterSecs: 10,
-        closeInactiveBrowserAfterSecs: 1000,
-        useFingerprints: false,
-        fingerprintOptions: {
-          useFingerprintCache: false
-        }
-      },
-      launchContext: {
-        //userDataDir: '/dev/shm/chrome-user-' + new Date().getTime(),
-        launchOptions: {
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            // '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-            '--no-pings',
-            '--no-zygote',
-            '--disable-application-cache',
-            '--disable-offline-load-stale-cache',
-            '--disable-gpu-shader-disk-cache',
-            '--disable-web-security',
-            '--disable-translate',
-            '--disable-session-crashed-bubble',
-            '--no-first-run',
-            // '--single-process',
-            '--noerrdialogs',
-            '--disk-cache-dir=/dev/shm/chrome-cache-' + new Date().getTime(),
-            // Additional RAM-friendly options
-            '--disable-software-rasterizer',
-            '--disable-extensions',
-            '--disable-background-networking',
-            '--disable-sync',
-
-            // Minimize disk I/O
-            '--disable-logging',
-            '--log-level=3'
-          ]
-        }
-      },
-      preNavigationHooks: [myHook]
-    });
+      this.crawleeConfig
+    );
 
     return crawler;
   }

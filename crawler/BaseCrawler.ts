@@ -1,11 +1,11 @@
 import {
   CheerioCrawler,
   CheerioCrawlerOptions,
+  Configuration,
   Log,
+  MemoryStorage,
   PlaywrightCrawler,
-  PlaywrightCrawlerOptions,
-  RequestList,
-  RequestQueue
+  PlaywrightCrawlerOptions
 } from 'crawlee';
 import {
   PageListener,
@@ -38,13 +38,21 @@ export default abstract class BaseCrawler {
   pageListener?: PageListener;
   // Skus of the products handled in this crawl
   scrapedSkus = new Set<string>();
+  // The urls a list scan or a test scrapes, nothing else is crawled
+  urlList?: string[];
+  // Each crawl has its own crawlee storage and configuration, so its request
+  // queue, key-value stores and events are never shared with another crawl.
+  // Crawlee caches storages by name in a configuration, and opens a default
+  // queue in it when a crawler has none, the global one is shared by every
+  // crawler in the process.
+  storage: MemoryStorage;
+  crawleeConfig: Configuration;
 
   constructor(
     store: StoreConfig,
     jobId: number,
     updateProductInDb: (scrapedProduct: ProductSnapshot) => Promise<void>,
-    requestQueue?: RequestQueue,
-    requestList?: RequestList
+    urlList?: string[]
   ) {
     this.store = store;
     this.jobId = jobId;
@@ -61,12 +69,19 @@ export default abstract class BaseCrawler {
       inStockError: 0,
       categoriesError: 0
     };
-    this.crawler = this.setupCrawler(
-      this.getConfiguration(requestQueue, requestList)
-    );
+    this.urlList = urlList;
+    this.mode = urlList !== undefined ? 'list' : 'crawler';
+    this.storage = new MemoryStorage({
+      persistStorage: false,
+      writeMetadata: false
+    });
+    this.crawleeConfig = new Configuration({
+      storageClient: this.storage,
+      persistStorage: false
+    });
+    this.crawler = this.setupCrawler(this.getConfiguration());
     this.hostname = new URL(this.store.options.startUrl).hostname;
     this.hostnameIncludesWww = this.hostname.startsWith('www.');
-    this.mode = requestList !== undefined ? 'list' : 'crawler';
   }
 
   async handleProductScrapeResult(
@@ -136,14 +151,10 @@ export default abstract class BaseCrawler {
     this.pageListener?.onNotProductPage();
   }
 
-  // Requests not handled yet, in the queue or the list, including the ones in
-  // progress. Crawlee's in-memory estimate, the same as RequestManagerTandem's.
+  // Requests in the queue not handled yet, including the ones in progress.
+  // Crawlee's in-memory estimate.
   get pendingRequests(): number {
-    const { requestQueue, requestList } = this.crawler;
-    return (
-      (requestQueue?.getPendingCount() ?? 0) +
-      (requestList ? requestList.length() - requestList.handledCount() : 0)
-    );
+    return this.crawler.requestQueue?.getPendingCount() ?? 0;
   }
 
   // Finishes the requests in progress and skips the rest
@@ -227,20 +238,12 @@ export default abstract class BaseCrawler {
     return result;
   }
 
-  getConfiguration(
-    requestQueue?: RequestQueue,
-    requestList?: RequestList
-  ): CheerioCrawlerOptions | PlaywrightCrawlerOptions {
+  // The crawler opens its request queue in crawleeConfig, the crawl's own
+  // storage, the first time urls are added to it
+  getConfiguration(): CheerioCrawlerOptions | PlaywrightCrawlerOptions {
     const crawlLog = new Log({ prefix: this.store.name });
 
-    // const config = Configuration.getGlobalConfig();
-
-    // config.set('persistStorage', 'false');
-    // config.set('storageDir', '/dev/shm');
-
     const configuration: CheerioCrawlerOptions | PlaywrightCrawlerOptions = {
-      requestList: requestList,
-      requestQueue: requestQueue,
       statisticsOptions: {
         logIntervalSecs: 600 // 10 minutes
       },
@@ -273,19 +276,28 @@ export default abstract class BaseCrawler {
   }
 
   async crawlSite(): Promise<void> {
-    const { startUrl, productFeed } = this.store.options;
     const storeLogger = createLogger('Scan log', this.store, this.jobId);
+    try {
+      await this.crawler.run(await this.getStartUrls(storeLogger));
+    } finally {
+      // Also when the crawl throws, e.g. on an unreadable product feed
+      await this.crawler.requestQueue?.drop();
+      await this.storage.teardown();
+    }
+    this.logResult(storeLogger);
+  }
 
-    // In list mode only the urls in the request list are scraped
-    const startUrls =
-      this.mode === 'crawler'
-        ? [
-            startUrl,
-            ...(this.store.options.startUrls ?? []),
-            ...(this.store.options.sitemapUrls ?? [])
-          ]
-        : [];
-    if (this.mode === 'crawler' && productFeed) {
+  async getStartUrls(storeLogger: Logger): Promise<string[]> {
+    // In list mode only the urls in the list are scraped
+    if (this.urlList !== undefined) return [...this.urlList];
+
+    const { startUrl, productFeed } = this.store.options;
+    const startUrls = [
+      startUrl,
+      ...(this.store.options.startUrls ?? []),
+      ...(this.store.options.sitemapUrls ?? [])
+    ];
+    if (productFeed) {
       try {
         const feedUrls = await fetchProductFeedUrls(productFeed, startUrl);
         storeLogger.log(
@@ -299,8 +311,10 @@ export default abstract class BaseCrawler {
         throw e;
       }
     }
-    await this.crawler.run(startUrls);
+    return startUrls;
+  }
 
+  logResult(storeLogger: Logger) {
     storeLogger.log('info', `Crawl of store ${this.store.name} completed.`);
     storeLogger.log('info', `Total requests: ${this.result.totalRequests}`);
     storeLogger.log('info', `Total processed: ${this.result.totalProcessed}`);
@@ -318,8 +332,6 @@ export default abstract class BaseCrawler {
       'info',
       `Categories errors: ${this.result.categoriesError}`
     );
-
-    return;
   }
   abstract setupCrawler(
     configuration: CheerioCrawlerOptions | PlaywrightCrawlerOptions
