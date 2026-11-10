@@ -48,7 +48,9 @@ export const toText = (value: unknown): string | undefined => {
   if (Array.isArray(value)) return toText(value[0]);
   if (typeof value === 'string') return value.trim() || undefined;
   if (typeof value === 'number') return String(value);
-  if (isObject(value)) return toText(value.name ?? value.title ?? value.url);
+  // An empty name is skipped, e.g. an ImageObject with "name": "" and a url
+  if (isObject(value))
+    return toText(value.name) ?? toText(value.title) ?? toText(value.url);
   return undefined;
 };
 
