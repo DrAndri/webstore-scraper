@@ -123,11 +123,14 @@ CREATE TABLE IF NOT EXISTS webstorinator.configReloads (
 );
 
 -- Settings of the scraper edited in the admin interface, one row with id 1.
--- The job runner reads them every 5 seconds.
+-- The job runner reads concurrency every 5 seconds, the scheduler reads
+-- schedulesEnabled every 30 seconds.
 CREATE TABLE IF NOT EXISTS webstorinator.scraperSettings (
     id TINYINT UNSIGNED PRIMARY KEY,
     -- Stores scanned at a time
     concurrency TINYINT UNSIGNED NOT NULL DEFAULT 5,
+    -- Off stops every schedule of every store, scans started by hand still run
+    schedulesEnabled BOOLEAN NOT NULL DEFAULT TRUE,
     updatedAt DATETIME,
     updatedBy VARCHAR(255)
 );

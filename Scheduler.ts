@@ -19,12 +19,14 @@ interface ScheduleRow {
 const taskKey = (storeId: number, mode: ScheduledMode) => `${storeId}:${mode}`;
 
 // Runs the schedules of each store in storeSchedules, which are edited in the
-// admin interface. A schedule runs while it and scraping for the store are
-// enabled.
+// admin interface. A schedule runs while it, scraping for the store and
+// schedulesEnabled of scraperSettings are on.
 export default class Scheduler {
   pool: Pool;
   trigger: (storeId: number, mode: ScheduledMode) => Promise<void>;
   tasks = new Map<string, { cron: string; task: ScheduledTask }>();
+  // Unknown until the first sync
+  schedulesEnabled: boolean | undefined;
 
   constructor(
     pool: Pool,
@@ -42,6 +44,20 @@ export default class Scheduler {
   }
 
   async sync() {
+    // Fails when the scheduler switch migration has not been run. The row is
+    // created by the job runner when it starts.
+    const [settings] = await this.pool.query<
+      { schedulesEnabled: number | boolean }[]
+    >('SELECT schedulesEnabled FROM scraperSettings WHERE id = 1');
+    const schedulesEnabled = !settings || !!settings.schedulesEnabled;
+    if (schedulesEnabled !== this.schedulesEnabled)
+      log.info(
+        schedulesEnabled
+          ? 'Scheduled scans are on'
+          : 'Scheduled scans are off for every store'
+      );
+    this.schedulesEnabled = schedulesEnabled;
+
     const rows = await this.pool.query<ScheduleRow[]>(
       `SELECT ss.storeId, ss.mode, ss.cron, ss.enabled, s.scraperEnabled, ss.lastError
        FROM storeSchedules ss JOIN stores s ON s.id = ss.storeId`
@@ -66,7 +82,10 @@ export default class Scheduler {
       }
 
       const wanted =
-        row.enabled && row.scraperEnabled && validation.valid
+        schedulesEnabled &&
+        row.enabled &&
+        row.scraperEnabled &&
+        validation.valid
           ? row.cron
           : undefined;
       const current = this.tasks.get(key);

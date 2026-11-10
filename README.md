@@ -32,7 +32,7 @@ interface queue jobs, and the job runner in the scraper picks them up:
 - `test` scrapes one url with a draft config and saves nothing, for the config
   tester in the admin interface.
 
-The number of stores scanned at a time is set under Schedules in the admin
+The number of stores scanned at a time is set under Settings in the admin
 interface and kept in `scraperSettings`, 5 by default. The job runner reads it
 every 5 seconds, when it is lowered the running scans finish and new ones wait.
 A store is never scanned twice at once. Running jobs report their progress every 5
@@ -42,11 +42,15 @@ instance should run against a database.
 
 Each store has its own schedule for full crawls and for active products, rows
 in `storeSchedules` edited on the stores page of the admin interface. A
-schedule queues a scan of its store while the schedule and **Scheduled scans**
-of the store are on. The admin interface creates the schedules of a store when
-it adds the store, the scraper only reads them and applies changes within 30
-seconds. A store without schedules is not scanned on a schedule. Expressions
-are evaluated in UTC.
+schedule queues a scan of its store while the schedule, **Scheduled scans**
+of the store and **Scheduler** under Settings (`scraperSettings.schedulesEnabled`)
+are on. Turning the scheduler off stops the schedules of every store, scans
+started by hand still run and queued scans are not cancelled. The admin
+interface creates the schedules of a store when it adds the store, the scraper
+only reads them and applies changes within 30 seconds. A store without
+schedules is not scanned on a schedule. Expressions are evaluated in UTC.
+`migrations/2026-11-10-scheduler-switch.sql` adds the scheduler switch to an
+existing database.
 
 Scans log each page they visit to the scan log only when **Scan log** is on for
 the store on its page in the admin interface (`stores.loggingEnabled`). It is
