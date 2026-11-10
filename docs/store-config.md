@@ -68,6 +68,13 @@ Links are filtered in this order (`filterAndAddLinksToQueue` in
 sitemap urls and feed urls themselves are not filtered, the links found on them
 are.
 
+Look at the query parameters on the product links of a listing. A parameter
+naming the listing (Jysk's `?PathId=<category>`) queues each product once per
+listing it is in. It can also change the page: Jysk shows the breadcrumb of
+the listing the link came from, so a product found under a sale listing got the
+sale category. Strip such parameters with `keepQueryParams`, but keep any that
+pagination needs.
+
 ## Reading the fields
 
 Each field comes from structured data first, if it is set up and has a value,

@@ -15,6 +15,12 @@
     "/default.aspx",
     "/POSTLISTI"
   ],
+  // Product links carry ?PathId=<category>, so a product was queued once per
+  // listing it is in, and the breadcrumb followed the listing (a product found
+  // under Tilboðsvörur got that category). Without it the breadcrumb is the
+  // product's own category. The /?PageId= links are categories the sitemap
+  // lists by path.
+  "keepQueryParams": [],
   "selectors": {
     "productPage": "#main",
     // offers[0] is the current price. The availability is "in stock" or "out
