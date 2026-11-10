@@ -1,0 +1,79 @@
+{
+  "storeId": 82,
+  // Hrím, Faktor (TanStack Start/React front on api.hrim.is). Product pages
+  // are server rendered, but the listings (/shop, /shop?category=…) load
+  // their products in the browser and add more as the page is scrolled, so
+  // a browser is needed to find the products. No JSON-LD.
+  "startUrl": "https://hrim.is",
+  "type": "crawler",
+  // The product panel; listings and the home page only have its CSS
+  // (.product-hero-panel{…}), not the attribute
+  "productPageIdentifier": "class=\"product-hero-panel\"",
+  // /sitemap.xml is a frozen copy from 2024-01-03: 2159 products, many of
+  // them since removed (their pages answer 500), and none added since, so
+  // it is not used. "Allar vörur" (/shop) said 2525 products on 2026-11-09
+  // but its infinite scroll stops after about 620. The ten categories (from
+  // the shop's filter, 19–524 products each) scroll to the end, and product
+  // breadcrumbs link them too.
+  "startUrls": [
+    "https://hrim.is/shop",
+    "https://hrim.is/shop?category=heimilid",
+    "https://hrim.is/shop?category=kerti-og-ilmur",
+    "https://hrim.is/shop?category=eldhus",
+    "https://hrim.is/shop?category=skartgripir",
+    "https://hrim.is/shop?category=toskur",
+    "https://hrim.is/shop?category=fatnadur",
+    "https://hrim.is/shop?category=fylgihlutir",
+    "https://hrim.is/shop?category=hudvorur",
+    "https://hrim.is/shop?category=barnid",
+    "https://hrim.is/shop?category=gjafakort-og-kort"
+  ],
+  "scrollPagesToBottom": true,
+  // Gift sets (/bundle/) are left out. Brand and gift filters
+  // (/shop?brand=…, ?gjof=…) become /shop, the categories cover them.
+  "urlWhitelist": ["/product/", "/shop"],
+  "keepQueryParams": ["category"],
+  "selectors": {
+    // Holds the breadcrumbs, the product, its description and specs
+    "productPage": ".min-height-container",
+    "name": ".product-hero-panel h1",
+    // There is no product number on the page, the slug is used
+    // (/product/carolinembg-glove-caramel)
+    "sku": {
+      "source": "url",
+      "delimiter": "/",
+      "index": "last"
+    },
+    // <p class="product-hero-price">8.183 kr.<span
+    // class="product-hero-price-before">11.690 kr.</span></p>
+    // (/product/carolinembg-glove-caramel on 2026-11-09), the price is the
+    // element's own text. Products with options (sizes) show the selected
+    // one, the first available.
+    "listPrice": ".product-hero-price",
+    "oldPrice": ".product-hero-price-before",
+    // <div class="product-hero-pretitle"><b>Markberg</b></div>
+    "brand": ".product-hero-pretitle b",
+    "image": ".product-gallery-main img",
+    // "Um vöruna", in Icelandic. "Lýsing" (.product-details-body) is often
+    // the supplier's English text.
+    "description": ".product-description-body",
+    // "Setja í körfu" when the selected option can be bought, otherwise
+    // "Uppselt" or "Veldu útfærslu". The label above it says "Til á lager",
+    // "Aðeins 2 eftir á lager" or "Uppselt".
+    "inStock": "[data-testid=\"product-add-to-cart\"]",
+    "inStockText": "Setja í körfu",
+    // Forsíða / Vefverslun / <category> / <product>, only the category
+    // links to /shop?category=…
+    "categories": "nav.crums-container",
+    "categoryItemLocator": "a.crums-link[href*=\"category=\"]",
+    // "Um hlutinn" or "Efni og umhirða": <dl class="product-specs-table">
+    // <div class="product-specs-row"><dt class="product-specs-label">Efni
+    // </dt><dd class="product-specs-value">Munnblásið gler</dd></div></dl>
+    "attributes": {
+      "attributesTable": "dl.product-specs-table",
+      "attribute": ".product-specs-row",
+      "attributeLabel": "dt.product-specs-label",
+      "attributeValue": "dd.product-specs-value"
+    }
+  }
+}

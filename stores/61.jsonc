@@ -1,0 +1,49 @@
+{
+  "storeId": 61,
+  // Fitness Sport, Shopify with the Focal theme, server rendered: the price
+  // and the compare-at price of the selected variant are in the HTML. Product
+  // JSON-LD without a SKU.
+  "startUrl": "https://fitnesssport.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed every product, 300
+  // on 2026-11-09. Collections link to /collections/<c>/products/<handle>,
+  // left out by the whitelist so each product has one url.
+  "sitemapUrls": ["https://fitnesssport.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <div class="product product--thumbnails-bottom">, the media and the
+    // product info, not the sticky add to cart bar above it
+    "productPage": "div.product",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // Most variants have no SKU (1035 of 1039 on 2026-11-09), the JSON-LD
+        // "sku" is null, so the Shopify product id is used: "productID"
+        "sku": "productID",
+        // The JSON-LD offers are every variant, the first one may be sold
+        // out while the page shows the first available one. The CSS price
+        // and stock describe the same variant as the old price.
+        "price": false,
+        "inStock": false,
+        // An ImageObject with "name": "", which would be read instead of
+        // its url
+        "image": "image.url",
+        // The Shopify product type, "Prótein", "Kreatín", "Aukahlutir", …
+        // (empty on 24 of 300). The breadcrumbs are Heim › <product>.
+        "categories": "category"
+      }
+    },
+    // <span class="price price--highlight price--large"><span
+    // class="visually-hidden">Söluverð</span>14,990 kr</span><span
+    // class="price price--compare"><span class="visually-hidden">Venjulegt
+    // verð</span>16,990 kr</span>
+    "listPrice": ".product-meta .price-list .price:not(.price--compare)",
+    "oldPrice": ".product-meta .price-list .price--compare",
+    // "Bæta í körfu", "Uppselt" when every variant is sold out
+    "inStock": ".product-form__add-button",
+    "inStockText": "Bæta í körfu"
+  }
+}

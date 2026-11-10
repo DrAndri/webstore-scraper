@@ -1,0 +1,57 @@
+{
+  "storeId": 75,
+  // Dorma, WooCommerce with the Woodmart theme and Elementor, server
+  // rendered, with Yoast's Product and BreadcrumbList JSON-LD. Pages are
+  // cached by LiteSpeed for a day, so a sale that starts on schedule shows
+  // on the product page (and in its JSON-LD) only when the cached copy
+  // expires.
+  "startUrl": "https://dorma.is",
+  "type": "httpcrawler",
+  // Category listings (/voruflokkur/…) and /allar-vorur/ have no Product
+  // JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemap index links to product-sitemap.xml … product-sitemap3.xml,
+  // 2056 products on 2026-11-09, all at /vara/<product>/. All are simple
+  // products, each size or color is a product of its own.
+  "sitemapUrls": ["https://dorma.is/sitemap_index.xml"],
+  "urlWhitelist": ["/product-sitemap", "/vara/"],
+  // Add to cart links (?add-to-cart=) and the like
+  "keepQueryParams": [],
+  "selectors": {
+    // <div id="product-393945" class="single-product-page entry-content
+    // product type-product …">
+    "productPage": "div.single-product-page",
+    // The WooCommerce SKU (the post id when it has none). The price is the
+    // current one: on a sale offers.priceSpecification is [{ price: "792" },
+    // { price: "990", priceType: "…/ListPrice" }]. The JSON-LD image is a
+    // reference to an ImageObject elsewhere in the graph, so the CSS
+    // selector is used. The description is the short description, often
+    // empty.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    "name": "h1.product_title",
+    // <p class="price"><del aria-hidden="true"><span class="woocommerce-
+    // Price-amount amount"><bdi>990 kr.</bdi></span></del> <span class=
+    // "screen-reader-text">Fyrra verð var: 990 kr..</span><ins …><span
+    // class="woocommerce-Price-amount amount"><bdi>792 kr.</bdi></span>
+    // </ins>…</p>
+    "oldPrice": "p.price del .amount",
+    "listPrice": "p.price .amount:not(del .amount)",
+    "image": ".woocommerce-product-gallery__image img",
+    "description": ".woocommerce-product-details__short-description",
+    // <div class="wd-product-brands"><a href="https://dorma.is/vorumerki/
+    // gasper/">…Gasper</a></div>, only some products have a brand
+    "brand": ".wd-single-brands .wd-product-brands a",
+    "attributes": {
+      // <table class="woocommerce-product-attributes shop_attributes"><tr
+      // …><th …><span class="wd-attr-name">Litur</span></th><td …>Grænn
+      // </td></tr>…
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr",
+      "attributeLabel": "th",
+      "attributeValue": "td"
+    }
+  }
+}

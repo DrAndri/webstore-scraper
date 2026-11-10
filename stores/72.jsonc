@@ -1,0 +1,51 @@
+{
+  "storeId": 72,
+  // Rafkaup, WooCommerce with the Flatsome theme, server rendered.
+  // WooCommerce's Product and BreadcrumbList JSON-LD and Yoast's graph.
+  "startUrl": "https://rafkaup.is",
+  "type": "httpcrawler",
+  // Category and home pages have no Product JSON-LD. Neither have the 13
+  // special order lamps ("…-serpontun", WooCommerce external products with
+  // no price and a "Fá verðtilboð" button), they are not read.
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The Yoast sitemap index links to product-sitemap.xml …
+  // product-sitemap3.xml, 2745 products on 2026-11-09 (the Store API has
+  // 2745 too, all simple), at /vara/<product>/. Categories are
+  // /voruflokkur/…, not needed.
+  "sitemapUrls": ["https://rafkaup.is/sitemap_index.xml"],
+  "urlWhitelist": ["/vara/", "/product-sitemap"],
+  // Wishlist and add-to-cart links only repeat the product
+  "keepQueryParams": [],
+  "selectors": {
+    // The gallery and the summary with the breadcrumbs. The related
+    // products (each with a price) are in div.product-footer beside it.
+    "productPage": "div.product-main",
+    // The JSON-LD sku is the store's SKU ("NLU9540250"), set on every
+    // product with a price, no duplicates (2026-11-09). The price is the
+    // current one, the sale price on a sale.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The page's title is read, as WooCommerce's JSON-LD name can be
+        // HTML escaped twice
+        "name": false,
+        // The JSON-LD has two BreadcrumbLists, Yoast's (Heim › vefverslun ›
+        // <product>) comes first, so the breadcrumbs are read from the page
+        "categories": false
+      }
+    },
+    "name": ".product-info h1.product-title",
+    // <p class="price product-page-price price-on-sale"><del><span
+    // class="woocommerce-Price-amount amount"><bdi>24.950 kr.</bdi></span>
+    // </del> … <ins>…17.465 kr.…</ins> <small class="woocommerce-price-suffix">
+    // .-</small></p>
+    "oldPrice": ".product-info p.price del .amount",
+    "listPrice": ".product-info p.price .amount:not(del .amount)",
+    // <nav class="woocommerce-breadcrumb …"><a>Heim</a> / <a>Innilýsing</a>
+    // / <a>Veggljós</a></nav>, at the top of the summary, without the
+    // product
+    "categories": ".product-info nav.woocommerce-breadcrumb",
+    "categoryItemLocator": "a"
+    // No description or brand, the product pages have neither
+  }
+}

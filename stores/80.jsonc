@@ -1,0 +1,52 @@
+{
+  "storeId": 80,
+  // Modern, WooCommerce with a theme of its own ("modern"), server rendered,
+  // with WooCommerce's Product and BreadcrumbList JSON-LD.
+  "startUrl": "https://modern.is",
+  "type": "httpcrawler",
+  // Category listings (/product-category/…), /shop/ and brand pages have no
+  // Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // WordPress core sitemaps, wp-sitemap-posts-product-1.xml and -2.xml list
+  // 2177 products on 2026-11-09, at /shop/<category path>/<product>/. 1606
+  // of them are variable products, mostly furniture whose variations are
+  // configurations and add-ons.
+  "sitemapUrls": ["https://modern.is/wp-sitemap.xml"],
+  "urlWhitelist": ["/wp-sitemap-posts-product", "/shop/"],
+  // The paged /shop/ listing only repeats the products of the sitemap
+  "urlBlacklist": ["/shop/page/"],
+  // Add to cart links (?add-to-cart=) and the like
+  "keepQueryParams": [],
+  "selectors": {
+    // The breadcrumbs are outside the product <div>, so the whole <main>
+    "productPage": "main",
+    // The WooCommerce SKU (the parent SKU of a variable product), name,
+    // image, brand, description (often empty) and availability. The price
+    // is read from the HTML: the AggregateOffer lowPrice of a variable
+    // product is often 0 or -100, from add-on variations such as
+    // "- uppfærsla í cross fót 0kr.". The JSON-LD breadcrumbs include
+    // "Shop", the CSS breadcrumbs are used instead.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "price": false }
+    },
+    // A simple product: <p class="product-price price"><ins><del aria-hidden
+    // ="true"><span class="woocommerce-Price-amount amount"><bdi>23.900kr.
+    // </bdi></span></del> … <ins aria-hidden="true"><span class="woocommerce-
+    // Price-amount amount"><bdi>16.730kr.</bdi></span></ins>…</ins></p>.
+    // A variable product has no product price but a list of its variations,
+    // <div class="product-options"><div class="options-box"><div class=
+    // "inner-box"><div class="options-row"><div class="js-trigger-option"
+    // data-sku="kff-arvalbsp1">sled base / low back / áklæði PG1</div><span>
+    // <span class="woocommerce-Price-amount amount">…189.900kr.…, the first
+    // one (the base configuration) is used. A variation on sale shows only
+    // its sale price there, its regular price is only in the variations
+    // JSON of the form, so a sale of a variable product is recorded without
+    // the old price.
+    "listPrice": ":is(p.product-price .amount:not(del .amount), .product-options .options-row:first-child .amount)",
+    "oldPrice": "p.product-price del .amount",
+    // Forsíða / Shop / <categories> / <product>, all of them links
+    "categories": ".breadcrumbs",
+    "categoryItemLocator": "a[href*=\"/product-category/\"]"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "storeId": 55,
+  // 66°Norður, Shopify with the Broadcast theme, server rendered, with Product
+  // JSON-LD. 66north.is redirects to 66north.com, an international store whose
+  // root redirects visitors from Iceland to the Icelandic market at /is-is
+  // (Shopify.currency {"active":"ISK"}). /is-is/ is used throughout so the
+  // prices are always in ISK; robots.txt disallows /is/ and /en-is/, not
+  // /is-is/.
+  "startUrl": "https://66north.com/is-is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to the product sitemaps of every market and
+  // language (/sitemap_products_N.xml, /is/…, /is-is/…, /en-is/…) with
+  // ?from=<id>&to=<id> bounds that change as products are added. The two
+  // /is-is/ ones listed 1336 products on 2026-11-09, each color a product of
+  // its own. Collections link to /is-is/collections/<c>/products/<handle>,
+  // left out by the whitelist so each product has one url.
+  "sitemapUrls": ["https://66north.com/sitemap.xml"],
+  "urlWhitelist": ["/is-is/sitemap_products", "/is-is/products/"],
+  "selectors": {
+    // <div class="product__wrapper product__wrapper--grid-2">
+    "productPage": ".product__wrapper",
+    // The JSON-LD has name, brand, image and description. Its sku is the one
+    // of the first variant in stock, and the first offer (price,
+    // availability) is the first variant, often sold out while other sizes
+    // are not, so these are read from the page instead. The GTIN is only in
+    // the offers, the one of the first variant (size) is used.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "price": false,
+        "inStock": false,
+        "gtin": "offers.gtin13"
+      }
+    },
+    // The variant SKUs differ by size (W11284-910-104), the Shopify product id
+    // is used, from the theme's product JSON
+    // (<script type="application/json" data-product-json>)
+    "sku": {
+      "source": "json",
+      "selector": "script[data-product-json]",
+      "path": "id"
+    },
+    // <div class="product__price"><span data-product-price
+    // class="product__price--sale">18,830 kr</span> ... <s
+    // class="product__price--strike" data-compare-price>26,900 kr</s></div>,
+    // of the first variant in stock. All variants of a product had the same
+    // price on 2026-11-09 (315 products on sale).
+    "listPrice": ".product__price [data-product-price]",
+    "oldPrice": ".product__price [data-compare-price]",
+    // <button id="AddToCart"><span data-add-to-cart-text>Bæta í körfu</span>,
+    // "Uppselt" when every variant is sold out
+    "inStock": "#AddToCart [data-add-to-cart-text]",
+    "inStockText": "Bæta í körfu"
+    // No categories, the breadcrumbs are Heim › <product>
+  }
+}

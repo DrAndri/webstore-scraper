@@ -1,0 +1,72 @@
+{
+  "storeId": 66,
+  // Vesturröst, WooCommerce with the Flatsome theme, server rendered.
+  // WooCommerce's Product and BreadcrumbList JSON-LD and Yoast's graph.
+  "startUrl": "https://www.vesturrost.is",
+  "type": "httpcrawler",
+  // The shop, category and home pages have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The Yoast sitemap index links to product-sitemap.xml …
+  // product-sitemap3.xml, 2273 products on 2026-11-09 (the Store API has
+  // 2273 too), all at /vara/<product>/. Categories are /flokkur/…, the shop
+  // /vefverslun/, neither is needed.
+  "sitemapUrls": ["https://www.vesturrost.is/sitemap_index.xml"],
+  "urlWhitelist": ["/vara/", "/product-sitemap"],
+  // Variation, wishlist and add-to-cart links only repeat the product
+  "keepQueryParams": [],
+  "selectors": {
+    // Only product pages have this body class. The breadcrumbs are in the
+    // page title above the product, so the whole body is searched and the
+    // other selectors are kept to the summary (.product-info): the related
+    // products below have prices of their own.
+    "productPage": "body.single-product",
+    // 850 of 2273 products have no SKU and two SKUs are used twice
+    // (2026-11-09), so the WooCommerce post id is used:
+    // <div id="product-62538" class="product type-product …">
+    "sku": {
+      "source": "attribute",
+      "selector": ".shop-container > div[id^=\"product-\"]",
+      "attribute": "id"
+    },
+    // The JSON-LD price is the current one, the sale price on a sale, and
+    // the lowest one of a variable product with a price range
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // Not used, see sku
+        "sku": false,
+        // The page's own HTML is read, the JSON-LD description is plain
+        // text and the JSON-LD escapes "&" twice ("Vesturr&amp;ouml;st")
+        "name": false,
+        "description": false,
+        // The JSON-LD has two BreadcrumbLists, Yoast's (Heim › Vefverslun ›
+        // <product>) comes first, so the breadcrumbs are read from the page
+        "categories": false
+      }
+    },
+    "name": ".product-info h1.product-title",
+    // <p class="price product-page-price price-on-sale"><del><span
+    // class="woocommerce-Price-amount amount"><bdi>25.900kr.</bdi></span>
+    // </del> … <ins>…18.130kr.…</ins></p>. A variable product on sale with
+    // a price range shows <del>low – high</del><ins>low – high</ins>, the
+    // first amount is the lowest regular price.
+    "oldPrice": ".product-info p.price del .amount",
+    "listPrice": ".product-info p.price .amount:not(del .amount)",
+    // The Lýsing tab
+    "description": ".woocommerce-Tabs-panel--description",
+    // <nav class="woocommerce-breadcrumb …"><a>Heim</a> / <a>Skotveiði</a>
+    // / <a>Fylgihlutir</a></nav>, without the product
+    "categories": "nav.woocommerce-breadcrumb",
+    "categoryItemLocator": "a"
+    // The brand is in the JSON-LD only when the product has a
+    // product_brand ("Shimano"), many have none
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "product-",
+        "replace": ""
+      }
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "storeId": 81,
+  // DÚKA, headless WooCommerce (wp.duka.is) with a Next.js app router front,
+  // server rendered, with Product JSON-LD twice: a Yoast style @graph
+  // (read, it comes first) and a short Product block after it.
+  "startUrl": "https://duka.is",
+  "type": "httpcrawler",
+  // Listings (/vefverslun/, /voruflokkur/…, /vorumerki/…) have no Product
+  // JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // One sitemap with the pages, 170 categories, 62 brands and 2883
+  // products on 2026-11-09 at /vara/<product>/
+  "sitemapUrls": ["https://duka.is/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "keepQueryParams": [],
+  "selectors": {
+    // <main id="main"><section class="mx-auto grid max-w-shell …"> holds
+    // the gallery, the breadcrumbs and the product, the next section the
+    // related products
+    "productPage": "main#main > section:has(h1)",
+    // The WooCommerce SKU (the parent SKU of a variable product, 996-264
+    // for the colors of a blanket), the name with the brand ("Alrún -
+    // Waveform Ullarteppi"), image, description and availability. The
+    // price is offers.price or, for a variable product, the AggregateOffer
+    // lowPrice. The graph's category is all the product's categories
+    // joined with " > ", not a path, so the breadcrumbs are read from the
+    // HTML.
+    "structuredData": {
+      "source": "jsonld"
+    },
+    // <span class="flex items-baseline gap-2"><span translate="no" class=
+    // "font-display …">20.900 kr.</span><span …>m/vsk</span></span>. No
+    // product was on sale on 2026-11-09 (/vefverslun/?tilbod=1 was empty),
+    // so the sale markup could not be seen. The product cards strike the
+    // regular price through (<span class="… line-through …">) next to the
+    // price, this assumes the product page does the same inside the price
+    // block. Sold out colors are also struck through (<span class=
+    // "line-through">Green</span>), outside the price block.
+    "oldPrice": "span.items-baseline .line-through",
+    "listPrice": "span.items-baseline > span[translate=\"no\"]",
+    // <a class="…" href="/vorumerki/alrun/"><span>Frá</span><span class=
+    // "font-semibold …">Alrún</span></a>
+    "brand": "a[href^=\"/vorumerki/\"] span.font-semibold",
+    // <nav aria-label="Brauðmolar">…<a href="/">Forsíða</a>…<a href=
+    // "/voruflokkur/textilvorur/">Lífsstíls- &amp; Textílvörur</a>…<a href=
+    // "/voruflokkur/textilvorur/teppi/">Teppi</a></nav>, without the product
+    "categories": "nav[aria-label=\"Brauðmolar\"]",
+    "categoryItemLocator": "a"
+    // No attributes: the Upplýsingar tab is one <dl> of <dt>/<dd> pairs
+    // without a row element
+  }
+}

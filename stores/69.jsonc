@@ -1,0 +1,81 @@
+{
+  "storeId": 69,
+  // Tengi, WooCommerce with the Avada theme (Elementor menus), server
+  // rendered. WooCommerce's Product and BreadcrumbList JSON-LD and Yoast's
+  // graph.
+  "startUrl": "https://www.tengi.is",
+  "type": "httpcrawler",
+  // The shop and home pages have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The Yoast sitemap index links to product-sitemap.xml …
+  // product-sitemap7.xml, 6637 products on 2026-11-09 (6642 in the Store
+  // API) at /vorur/<categories>/<product>/. Category pages are
+  // /voruflokkur/…, the shop is /vorur/ with 222 pages of
+  // /vorur/page/<n>/, none are needed.
+  "sitemapUrls": ["https://www.tengi.is/sitemap_index.xml"],
+  "urlWhitelist": ["/vorur/", "/product-sitemap"],
+  "urlBlacklist": ["/vorur/page/"],
+  // Variation, wishlist and add-to-cart links only repeat the product
+  "keepQueryParams": [],
+  "selectors": {
+    // Only product pages have this body class. The related products below
+    // the summary have prices of their own, the price selectors are kept to
+    // the summary (.summary-container).
+    "productPage": "body.single-product",
+    // Every product has a SKU, but two bundles (Vola chrome and stainless
+    // steel) share 21540016 (2026-11-09), so the WooCommerce post id is
+    // used: <div id="product-28459" class="product type-product …">
+    "sku": {
+      "source": "attribute",
+      "selector": "div[id^=\"product-\"].type-product",
+      "attribute": "id"
+    },
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // Not used, see sku
+        "sku": false,
+        // The JSON-LD price of a bundle is without VAT (301034 for
+        // 373.282 kr.), the page's price is read instead
+        "price": false,
+        // The JSON-LD escapes HTML twice ("Speglask&amp;#225;pur"), the
+        // page is read instead
+        "name": false,
+        "description": false,
+        // The JSON-LD has two BreadcrumbLists, Yoast's (Home › Vefverslun
+        // › <product>) comes first. The page shows no breadcrumbs, and the
+        // product meta lists the categories alphabetically, not as a path,
+        // so there are no categories.
+        "categories": false
+      }
+    },
+    "name": ".summary-container h1.product_title",
+    // <p class="price"><del><span class="woocommerce-Price-amount amount">
+    // <bdi>133.337 kr.</bdi></span></del> … <ins>…66.669 kr.…</ins> <small
+    // class="woocommerce-price-suffix">( Þitt verð með VSK )</small></p>.
+    // A variable product shows a range, "24.811 kr. – 25.819 kr.", the first
+    // amount (the lowest) is read.
+    "oldPrice": ".summary-container p.price del .amount",
+    "listPrice": ".summary-container p.price .amount:not(del .amount)",
+    // The Lýsing tab, with its title and the brand's logo
+    "description": ".after_single_product_summary .tabs-wrapper-column .post-content",
+    // The Frekari upplýsingar tab (Lengd, Breidd, Framleiðandi, …), missing
+    // on many products. <td><p>900 mm</p>\n</td>, the <p> is read so the
+    // value has no line break. No <tbody> in the selectors, htmlparser2
+    // does not add it.
+    "attributes": {
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr",
+      "attributeLabel": "th",
+      "attributeValue": "td p"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "product-",
+        "replace": ""
+      }
+    ]
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "storeId": 65,
+  // Veiðihornið, WooCommerce with the Flatsome theme, server rendered.
+  // WooCommerce's Product JSON-LD and Yoast's graph.
+  "startUrl": "https://veidihornid.is",
+  "type": "httpcrawler",
+  // The shop, category and home pages have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The WordPress sitemap index links to wp-sitemap-posts-product-1…2.xml,
+  // 2821 products on 2026-11-09 (the Store API has 2821 too), all at
+  // /product/<product>/. Categories are /product-category/…, brands
+  // /brand/… and the shop /vefverslun/, none are needed.
+  "sitemapUrls": ["https://veidihornid.is/wp-sitemap.xml"],
+  "urlWhitelist": ["/product/", "/wp-sitemap-posts-product-"],
+  // Variation, wishlist and add-to-cart links only repeat the product
+  "keepQueryParams": [],
+  "selectors": {
+    // The gallery and the summary. The tabs and the related products (each
+    // with a <p class="price">) are in div.product-footer beside it.
+    "productPage": "div.product-main",
+    // The JSON-LD sku is the store's SKU ("A259-XL-161"), the same for
+    // every variant. 43 of 2821 products have none (bundles, gift cards),
+    // WooCommerce then puts the post id there (46948). The price is the
+    // current one, the sale price on a sale.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The JSON-LD name and description are HTML escaped twice,
+        // "C&amp;amp;R", the page is read instead
+        "name": false,
+        "description": false
+      }
+    },
+    "name": "h1.product-title",
+    // <p class="price product-page-price price-on-sale"><del><span
+    // class="woocommerce-Price-amount amount"><bdi>14.895 kr.</bdi></span>
+    // </del> … <ins>…10.426 kr.…</ins></p>, the same for a variable product
+    // with one price for every size. Bundles show the sum of their parts
+    // as the old price.
+    "oldPrice": ".product-info p.price del .amount",
+    "listPrice": ".product-info p.price .amount:not(del .amount)",
+    // The store's own text, the Upplýsingar frá framleiðanda tab below is
+    // the manufacturer's (often in English)
+    "description": ".product-short-description"
+    // No categories: the breadcrumbs are Home › Vefverslun › <product> and
+    // the categories are only in class names and hidden inputs
+  }
+}

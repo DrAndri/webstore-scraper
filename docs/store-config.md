@@ -51,7 +51,16 @@ unless `maxRequestsPerMinute` is set.
 requests, 60 when unset, a whole number from 1 to 600. It is the limit on how
 fast a scan goes: at 60 a store with 20,000 products and its category pages
 takes more than six hours, in `list` mode too. Raise it only for a site that
-handles it, and lower it for a site that answers with 429 or 503.
+handles it, and lower it for a site that answers with 429 or 503 or whose
+robots.txt has a `Crawl-delay` (a delay of 3 s is 20 a minute).
+
+Before relying on a sitemap, check that it is current: a sitemap can be a copy
+frozen years ago, without the new products and with removed ones. Sitemap urls
+on another host than `startUrl` are dropped like any other link, so when a site
+answers on two domains, use the one its sitemap lists. An infinite scroll
+listing (`scrollPagesToBottom`) can stop loading before its end, so compare the
+count reached with the count the site shows, and add smaller listings
+(categories) to `startUrls`.
 
 Links are filtered in this order (`filterAndAddLinksToQueue` in
 [BaseCrawler.ts](../crawler/BaseCrawler.ts)): same host → not a file (`.pdf`,
@@ -69,8 +78,8 @@ then from the CSS selector. Code: [PageHtmlScraper.ts](../crawler/PageHtmlScrape
 | Field       | CSS selector                                               | Notes                                                                                                                                                                                                                                                                                                                                         |
 | ----------- | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | SKU         | `sku`                                                      | **Required**, the product fails without it. A selector, or an object with `source`: `url` (split the url by `delimiter`, take part `index`: a number, `first` or `last`), `attribute` (read `attribute` of `selector`, e.g. `data-productid`), `json` (read dot `path` from the JSON text of `selector`, which is searched in the whole page) |
-| Price       | `listPrice`                                                | **Required**, the product fails without it. All digits are joined: `1.299 kr.` → 1299, so decimals would break it                                                                                                                                                                                                                             |
-| Old price   | `oldPrice`                                                 | Always CSS. When found it becomes the list price, and `listPrice` the sale price                                                                                                                                                                                                                                                              |
+| Price       | `listPrice`                                                | **Required**, the product fails without it, and so does a price of 0. See [Reading prices](#reading-prices)                                                                                                                                                                                                                                   |
+| Old price   | `oldPrice`                                                 | Always CSS. When found it becomes the list price, and `listPrice` the sale price. With `httpcrawler`, when only the old price is found it is saved as the price                                                                                                                                                                               |
 | Name        | `name`                                                     |                                                                                                                                                                                                                                                                                                                                               |
 | Brand       | `brand`                                                    |                                                                                                                                                                                                                                                                                                                                               |
 | Image       | `image` + `imageAttribute`                                 | Reads `src` unless `imageAttribute` is set, e.g. `data-src` for lazy loaded images                                                                                                                                                                                                                                                            |
@@ -82,6 +91,24 @@ then from the CSS selector. Code: [PageHtmlScraper.ts](../crawler/PageHtmlScrape
 
 A failing field other than SKU or price is logged and counted, and the product
 is saved without it.
+
+### Reading prices
+
+The two crawler types read a price element differently:
+
+- `httpcrawler` joins every digit in the element's text, its children
+  included: `1.299 kr.` → 1299. Decimals break it, and so does anything else
+  inside the element, a unit (`3.488 <span>kr. / m2</span>` → 34882), a nested
+  old price, or both ends of a range (`6.999 – 17.999 kr.`). Select the
+  element holding only the price, e.g. the first `.amount` of a WooCommerce
+  range. JSON-LD prices are read as numbers and are not affected.
+- `crawler` reads the element's own text when it has digits, so
+  `<div>29.750 kr<del>42.500 kr</del></div>` gives 29750, and takes the low
+  end of a range (`34.998 - 41.997`).
+
+A product whose price is on request (0 kr, or no price block) fails with
+"Price not found". When such pages lack something every priced page has, use
+that as `productPageIdentifier` so they count as pages without a product.
 
 ### Structured data
 
@@ -103,6 +130,25 @@ is saved without it.
 - `categorySplitter`: splits a categories string, e.g. `"Snyrtivara|Förðun"`.
 
 Structured data is read from the whole page, not only `productPage`.
+
+- A structured value wins over the CSS selector, the SKU too: a `sku`
+  selector is ignored while the JSON-LD has a `sku`. Set `fields.sku: false`
+  (or any other field) to use the CSS selector instead.
+- The first `Product` and the first `BreadcrumbList` in the page are used. On
+  WordPress the SEO plugin's list (Yoast, All in One SEO) usually comes first
+  and is only Home › Shop › product, so `"breadcrumbs"` gives no categories
+  there. Read the page's own breadcrumbs with CSS instead.
+- Check the JSON-LD against the page, it is often wrong: availability always
+  `BackOrder` or `OutOfStock`, a brand that is an option id, a price without
+  VAT, a `lowPrice` of 0 or below, names and descriptions HTML escaped twice
+  (`C&amp;amp;R`), an `image` that is only an `{"@id"}` reference (the field is
+  then empty and the CSS `image` is used). Turn such fields off with `false`.
+- `offers` can be a list of every variant (Shopify), and the defaults read the
+  first one, which may be sold out while others are not.
+- Shopify writes a product with variants as a `ProductGroup` with the variants
+  in `hasVariant` and no `sku`, `offers` or `image` of its own. Paths that
+  work: `sku: ["sku", "productGroupID"]`, `image: ["image", "hasVariant.image"]`,
+  `inStock: ["offers.availability", "hasVariant.offers.availability"]`.
 
 ### Attributes
 
@@ -186,7 +232,9 @@ Not checked anywhere, the field is just empty:
 - **`categories` alone does nothing:** it needs `categoryItemLocator` or
   `categorySplitter`. `categoryItemLocator` wins when both are set.
 - **`inStock`:** `httpcrawler` needs `inStockText` too. With `crawler`,
-  `inStock` alone means in stock when the element exists.
+  `inStock` alone means in stock when the element exists. With `httpcrawler`
+  a selector that matches nothing is an inStock error, not out of stock, so
+  pick an element sold out pages have too (the form, not the cart button).
 - **`imageAttribute`** only matters with `image`.
 - **The whitelist must cover the way to the products**, not only product
   pages: category and listing paths, and sitemap paths when a sitemap index
@@ -197,8 +245,29 @@ Not checked anywhere, the field is just empty:
 
 - CSS selectors are searched inside `productPage`. A price outside it is not
   found. Structured data and the `json` SKU selector read the whole page.
+- With `httpcrawler` the selector is appended to `productPage`, so in a list
+  `a, b` only `a` is searched inside it and `b` in the whole page. Write
+  `:is(a, b)`. The `categories` selector with `categorySplitter` is searched in
+  the whole page, and the parts are not trimmed, so put the spaces in the
+  splitter (`" › "`).
 - `httpcrawler` parses with htmlparser2, which does not add the implicit
-  `<tbody>` a browser does. Do not use `tbody` in selectors.
+  `<tbody>` a browser does. Do not use `tbody` in selectors. It also parses
+  the content of `<template>` as ordinary elements, so selectors match copies
+  kept there (e.g. a quick buy form).
+- `httpcrawler` does not trim attribute values, `<td><p>900 mm</p>\n</td>` is
+  saved with the line break. Select the inner element, `td p`.
+- `crawler` blocks images, stylesheets and fonts. Lazy galleries (Next.js
+  `<Image>`) then keep a placeholder `src`: read `data-*` attributes or
+  `meta[property="og:image"]` with `imageAttribute: "content"` and
+  `productPage: "html"`. A price that first shows a loading skeleton must
+  exclude it (`:not(:has([data-slot="skeleton"]))`), reading waits only for
+  the element.
+- With `crawler`, `name`, `brand`, `sku` and `image` wait up to 30 seconds for
+  an element that is missing, so a selector missing on many pages slows the
+  scan. `description` and `oldPrice` do not wait.
+- `structuredData` is ignored by `crawler`, but a `sku` with `source: "json"`
+  pointed at `script[type="application/ld+json"]` (`path` e.g. `sku` or
+  `@graph.0.sku`) still reads the JSON-LD SKU.
 - `httpcrawler` matches `productPageIdentifier` in the raw response or in the
   serialized HTML. The serialized HTML escapes non-ASCII (`æ` → `&#xe6;`), so an
   Icelandic identifier only matches the raw response.
@@ -206,4 +275,30 @@ Not checked anywhere, the field is just empty:
   deciding a page is not a product page.
 - Next.js and other JavaScript storefronts often render no product links in
   the HTML. Look at the network requests of a listing page; an API there can be
-  read with `productFeed`.
+  read with `productFeed`. The feed is read with GET and fixed headers, so a
+  POST API or one that needs a header (Magento's `Store`) cannot be used.
+- Next.js app router pages are streamed: the content is in
+  `<div hidden id="S:n">` blocks after `<main>`, which holds a loading
+  skeleton. `httpcrawler` reads them, but `productPage` must be `body` (or an
+  element inside the blocks), not `main`.
+- The prefix whitelist and blacklist cannot skip urls that only extend a
+  product url (`/<product>/<variantId>`), nor pick products at the site root.
+
+## Platform notes
+
+- **Shopify:** follow `/sitemap.xml` with the whitelist
+  `["/sitemap_products", "/products/"]`, which leaves out the
+  `/collections/<c>/products/` copies and other languages' sitemaps. Variant
+  SKUs are often missing, repeated or per size, so the product id is the SKU
+  (from JSON-LD `productID`, `input[name="product-id"]` or the theme's product
+  JSON with the `json` source). Many themes render the price on the server,
+  some (Sportís, Farmers Market) add the compare-at price with a script and
+  need `crawler`. The store's root can be a foreign market: check
+  `Shopify.currency` in the source, the ISK store can be a subfolder
+  (`/is-is/`) or another host. Shopify answers too many requests with
+  `429 local_rate_limited`.
+- **WooCommerce:** the Product JSON-LD puts the post id in `sku` when a product
+  has none, so SKUs can be mixed; the post id from `div.product[id]` is a
+  steady alternative. A variable product sold out in every size, and an
+  external product, have no Product JSON-LD. A page cache (LiteSpeed) can show
+  a sale later than the Store API (`/wp-json/wc/store/v1/products?on_sale=true`).

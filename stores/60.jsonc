@@ -1,0 +1,61 @@
+{
+  "storeId": 60,
+  // Markið, Shopify with the Warehouse theme, server rendered, with JSON-LD
+  // from Shopify's structured_data: a Product for a product with one variant,
+  // a ProductGroup with hasVariant (no sku, price or offers of its own) for
+  // the others. Prices in ISK.
+  "startUrl": "https://markid.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed 891 products on
+  // 2026-11-09. Collections link to /collections/<c>/products/<handle>,
+  // left out by the whitelist so each product has one url.
+  "sitemapUrls": ["https://markid.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  // The gift card (/products/gjafabref-marksins-1), 5.000 to 100.000 kr
+  "urlBlacklist": ["/products/gjafabref"],
+  "selectors": {
+    // <product-rerender id="product-info-15441994809533-template--…__main">.
+    // The quick buy copy of the product, in a <template> after it, has
+    // id="quick-buy-modal-content".
+    "productPage": "product-rerender[id^=\"product-info-\"]",
+    // The JSON-LD has name and brand, and the image, of the first variant
+    // for a ProductGroup. The sku, price and availability are read from the
+    // page, the same for both shapes. The description there is plain text,
+    // the page's is HTML.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "price": false,
+        "inStock": false,
+        "description": false,
+        "image": ["image", "hasVariant.image"]
+      }
+    },
+    // The variant SKUs are not unique, 23 are repeated and 25 empty, so the
+    // Shopify product id is used, from the product form:
+    // <input type="hidden" name="product-id" value="15441994809533">
+    "sku": {
+      "source": "attribute",
+      "selector": "input[name=\"product-id\"]",
+      "attribute": "value"
+    },
+    // <div class="price-list"><span class="price price--highlight"><span
+    // class="visually-hidden">Söluverð</span>23,996 kr</span><span
+    // class="price price--compare"><span class="visually-hidden">Venjulegt
+    // verð</span>29,995 kr</span></div>, <span class="price"> when not on
+    // sale, of the first variant in stock (216 products on sale on
+    // 2026-11-09)
+    "listPrice": ".price-list .price:not(.price--compare)",
+    "oldPrice": ".price-list .price--compare",
+    "description": ".product-block-list__item--description .rte",
+    // <button class="product-form__add-button">Bæta í körfu</button>,
+    // "Uppselt" when every variant is sold out
+    "inStock": ".product-form__add-button",
+    "inStockText": "Bæta í körfu"
+    // No categories, the breadcrumbs are Heim › <product>
+  }
+}

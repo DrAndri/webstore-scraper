@@ -1,0 +1,56 @@
+{
+  "storeId": 78,
+  // Vogue fyrir heimilið, Shopify with the Enterprise theme, server
+  // rendered: the price and the compare-at price of the selected variant are
+  // in the HTML. Product JSON-LD with the SKU, a ProductGroup for products
+  // with variants.
+  "startUrl": "https://vogue.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_N.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. The 5 sitemaps listed every
+  // product, 4863 on 2026-11-09. The /en/ sitemaps list the same products in
+  // English and are left out by the whitelist, as are the collection urls
+  // /collections/<c>/products/<handle>, so each product has one url.
+  "sitemapUrls": ["https://vogue.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <div class="product-info product-info--sticky"
+    // id="product-info-template--…__main">, the info beside the images. The
+    // quick add template after it repeats the price and button.
+    "productPage": "div.product-info",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // Single variant products (all but 2 of the first 750 on 2026-11-09)
+        // are a Product with "sku": "KAYO-005148". Products with variants
+        // are a ProductGroup with the variants in "hasVariant", a SKU each,
+        // and the Shopify product id in "productGroupID", which is used.
+        "sku": ["sku", "productGroupID"],
+        "image": ["image", "hasVariant.image"],
+        // A ProductGroup has no offers. The CSS price describes the same
+        // variant as the old price.
+        "price": false,
+        // Shopify's standard product category, in English: "Bath Salts &
+        // Soaks", "Mattress Protectors". The breadcrumbs are Heim ›
+        // <product>.
+        "categories": "category"
+      }
+    },
+    // <div class="price price--on-sale"><span class="price__current"><span
+    // class="visually-hidden js-label">Útsöluverð</span><span
+    // class="js-value">894 kr</span></span><span class="price__was"><span
+    // class="visually-hidden js-label">Venjulegt verð</span><span
+    // class="js-value">1.490 kr</span></span></div>. Not on sale, the
+    // .price__was spans are empty.
+    "listPrice": ".product-info__price .price__current .js-value",
+    "oldPrice": ".product-info__price .price__was .js-value",
+    // For a ProductGroup, a Product has the JSON-LD availability:
+    // <div class="product-info__add-button"><button type="submit"
+    // name="add">Bæta í körfu</button></div>. No product of the first 750
+    // was sold out on 2026-11-09.
+    "inStock": ".product-info__add-button button",
+    "inStockText": "Bæta í körfu"
+  }
+}

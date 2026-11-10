@@ -1,0 +1,59 @@
+{
+  "storeId": 54,
+  // Rekstrarvörur (RV), a Next.js (app router) storefront on a Magento
+  // backend. The server HTML has the product and a Product JSON-LD, but the
+  // prices and stock are only rendered in the browser (from /api/gql), so a
+  // browser is needed to read the old price of a sale.
+  "startUrl": "https://rv.is",
+  "type": "crawler",
+  // Product JSON-LD, only on product pages
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemap index (sitemap.xml) links to products-sitemap.xml, 3988
+  // products on 2026-11-09 at /vara/<slug>, so that one is read directly.
+  // Products link related products at /vara/<slug> too.
+  "sitemapUrls": ["https://rv.is/products-sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "keepQueryParams": [],
+  "selectors": {
+    // The whole page: the og:image is in <head> and the breadcrumbs are
+    // outside the product grid. The other selectors start from the grid,
+    // <div class="grid grid-cols-2 mb-20 …">, as the related products below
+    // it are built the same way.
+    "productPage": "html",
+    // <p class="font-bold text-[1.25rem] … mb-8">Frida teskeið, 12stk</p>,
+    // there is no h1
+    "name": "div.grid-cols-2.mb-20 p.mb-8",
+    // e.g. "3631032500" or "958-3", the number shown above the name
+    "sku": {
+      "source": "json",
+      "selector": "script[type=\"application/ld+json\"]",
+      "path": "sku"
+    },
+    // One radio button per unit, the first one (Eining, 1 ein.) is checked:
+    // <label …><button role="radio" data-state="checked" …>…<div
+    // class="flex flex-wrap items-center justify-end gap-x-2"><p class="…
+    // line-through">1.536 kr.</p><p class="font-bold …">614 kr.</p></div>
+    // …</label>. A box (Kassi, 10 ein.) has a quantity discount shown the
+    // same way, it is not read. The price is a loading skeleton, <span
+    // data-slot="skeleton">, until the prices have loaded.
+    "listPrice": "div.grid-cols-2.mb-20 [role=\"radiogroup\"] label:has([data-state=\"checked\"]) .justify-end > p:not(.line-through):not(:has([data-slot=\"skeleton\"]))",
+    "oldPrice": "div.grid-cols-2.mb-20 [role=\"radiogroup\"] label:has([data-state=\"checked\"]) .justify-end > p.line-through",
+    // The gallery images are replaced by a placeholder when images are
+    // blocked, the og:image is the first one
+    "image": "meta[property=\"og:image\"]",
+    "imageAttribute": "content",
+    // The "Lýsing" accordion, open by default
+    "description": "div.grid-cols-2.mb-20 [data-slot=\"accordion-item\"]:has(button:text-is(\"Lýsing\")) [data-slot=\"accordion-content\"]",
+    // "Til í vefverslun" / "Til í verslun", sold out: "Uppselt í vefverslun"
+    "inStock": "div.grid-cols-2.mb-20 div.mt-8 p",
+    "inStockText": "Til í vefverslun",
+    // <nav aria-label="breadcrumb"><ol><li><a href="/flokkur/bor-buna-ur">
+    // Borðbúnaður</a></li>…
+    "categories": "nav[aria-label=\"breadcrumb\"]",
+    "categoryItemLocator": "a"
+    // No brand: the page shows it as a logo (the JSON-LD has it, but the
+    // Playwright scraper reads no structured data). No attributes: the
+    // "Vöruupplýsingar" accordion is closed and holds "Stærð: 0,002 m3"
+    // lines without separate labels and values.
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "storeId": 57,
+  // Herragarðurinn, Shopify with the Symmetry theme, server rendered, with
+  // Product JSON-LD. Prices in ISK.
+  "startUrl": "https://herragardurinn.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_N.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. The three listed every
+  // product, 2174 on 2026-11-09. Collections link to
+  // /collections/<c>/products/<handle>, left out by the whitelist so each
+  // product has one url.
+  "sitemapUrls": ["https://herragardurinn.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <div class="product-detail quickbuy-content spaced-row">
+    "productPage": ".product-detail",
+    // The JSON-LD has name, brand, image and description. Its sku is the one
+    // of the first variant in stock, and the first offer (price,
+    // availability) is the first variant, marked InStock even when it is
+    // sold out, so these are read from the page instead. No GTINs.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "sku": false, "price": false, "inStock": false }
+    },
+    // The variant SKUs differ by size (BRU100-18-WHITE_LSF-002), the Shopify
+    // product id is used: <div class="product-form sticky-content-container"
+    // data-product-id="8835687186668">
+    "sku": {
+      "source": "attribute",
+      "selector": ".product-form[data-product-id]",
+      "attribute": "data-product-id"
+    },
+    // <div class="price-area"><div class="price h4-style on-sale"><span
+    // class="current-price theme-money">10,188 kr</span><span
+    // class="was-price theme-money">16,980 kr</span></div></div>, of the
+    // first variant in stock. All variants of a product had the same price
+    // on 2026-11-09 (155 products on sale).
+    "listPrice": ".price-area .current-price",
+    "oldPrice": ".price-area .was-price",
+    // The purchase form has <button type="submit">Setja í körfu</button>, or
+    // <div class="product-unavailable">Uppselt</div> when every variant is
+    // sold out
+    "inStock": ".product-purchase-form",
+    "inStockText": "Setja í körfu"
+    // No categories, there are no breadcrumbs
+  }
+}

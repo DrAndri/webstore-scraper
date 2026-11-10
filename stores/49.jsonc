@@ -1,0 +1,134 @@
+{
+  "storeId": 49,
+  // Jói Útherji, a server rendered Next.js (app router) storefront on a
+  // Magento backend, with Product and BreadcrumbList JSON-LD. Each color is
+  // a product of its own, the sizes are options of it.
+  "startUrl": "https://joiutherji.is",
+  "type": "httpcrawler",
+  // Listings only have BreadcrumbList and CollectionPage JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // No sitemap or robots.txt. Products are at /product/<name>?sku=<sku>,
+  // the slug is made from the name and is shared by many products
+  // (/product/nike-bolur-barna?sku=DR1343-010, ?sku=HJ3716-010, …), so the
+  // sku parameter is kept. Categories are /<category>/<subcategory>, linked
+  // from the menu on every page. A subcategory lists the products in stock,
+  // 32 a page: its page buttons are JavaScript, only ?page=N reaches the
+  // other pages, and a page past the last one is empty. The top level
+  // categories (/skor) only show a few products of each subcategory.
+  "urlWhitelist": [
+    "/product/",
+    "/aukahlutir-og-bunadur",
+    "/boltar",
+    "/endurheimt",
+    "/fatnadur",
+    "/lands-og-felagslid",
+    "/markmenn",
+    "/nyjar-vorur",
+    "/outlet",
+    "/skor",
+    "/third-kit"
+  ],
+  "keepQueryParams": ["sku"],
+  // About 1060 products in stock on 2026-11-09. The subcategories with more
+  // than 32 products then, with room to grow: /skor/takkaskor 309 (10
+  // pages), /lands-og-felagslid/felagslid 262 (9), /skor/nike 165 (6),
+  // /nyjar-vorur/nyjar-vorur 158 (5), /outlet/takkaskor 154 (5),
+  // /skor/krakkaskor 137 (5), /skor/adidas 115 (4), /skor/gervigrasskor 110
+  // (4), /skor/puma 87 (3), /outlet/fatnadur 61, /fatnadur/buxur 59,
+  // /fatnadur/peysur 49, /fatnadur/stuttbuxur 43, /lands-og-felagslid/landslid
+  // 40, /fatnadur/bolir 38 (2 each), and /markmenn/hanskar 31 and
+  // /boltar/fotboltar 27. Most products are in more than one of them.
+  "startUrls": [
+    "https://joiutherji.is/fatnadur/bolir?page=2",
+    "https://joiutherji.is/fatnadur/bolir?page=3",
+    "https://joiutherji.is/fatnadur/buxur?page=2",
+    "https://joiutherji.is/fatnadur/buxur?page=3",
+    "https://joiutherji.is/fatnadur/peysur?page=2",
+    "https://joiutherji.is/fatnadur/peysur?page=3",
+    "https://joiutherji.is/fatnadur/stuttbuxur?page=2",
+    "https://joiutherji.is/fatnadur/stuttbuxur?page=3",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=2",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=3",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=4",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=5",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=6",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=7",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=8",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=9",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=10",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=11",
+    "https://joiutherji.is/lands-og-felagslid/felagslid?page=12",
+    "https://joiutherji.is/lands-og-felagslid/landslid?page=2",
+    "https://joiutherji.is/lands-og-felagslid/landslid?page=3",
+    "https://joiutherji.is/markmenn/hanskar?page=2",
+    "https://joiutherji.is/boltar/fotboltar?page=2",
+    "https://joiutherji.is/nyjar-vorur/nyjar-vorur?page=2",
+    "https://joiutherji.is/nyjar-vorur/nyjar-vorur?page=3",
+    "https://joiutherji.is/nyjar-vorur/nyjar-vorur?page=4",
+    "https://joiutherji.is/nyjar-vorur/nyjar-vorur?page=5",
+    "https://joiutherji.is/nyjar-vorur/nyjar-vorur?page=6",
+    "https://joiutherji.is/nyjar-vorur/nyjar-vorur?page=7",
+    "https://joiutherji.is/outlet/fatnadur?page=2",
+    "https://joiutherji.is/outlet/fatnadur?page=3",
+    "https://joiutherji.is/outlet/takkaskor?page=2",
+    "https://joiutherji.is/outlet/takkaskor?page=3",
+    "https://joiutherji.is/outlet/takkaskor?page=4",
+    "https://joiutherji.is/outlet/takkaskor?page=5",
+    "https://joiutherji.is/outlet/takkaskor?page=6",
+    "https://joiutherji.is/outlet/takkaskor?page=7",
+    "https://joiutherji.is/skor/adidas?page=2",
+    "https://joiutherji.is/skor/adidas?page=3",
+    "https://joiutherji.is/skor/adidas?page=4",
+    "https://joiutherji.is/skor/adidas?page=5",
+    "https://joiutherji.is/skor/adidas?page=6",
+    "https://joiutherji.is/skor/gervigrasskor?page=2",
+    "https://joiutherji.is/skor/gervigrasskor?page=3",
+    "https://joiutherji.is/skor/gervigrasskor?page=4",
+    "https://joiutherji.is/skor/gervigrasskor?page=5",
+    "https://joiutherji.is/skor/gervigrasskor?page=6",
+    "https://joiutherji.is/skor/krakkaskor?page=2",
+    "https://joiutherji.is/skor/krakkaskor?page=3",
+    "https://joiutherji.is/skor/krakkaskor?page=4",
+    "https://joiutherji.is/skor/krakkaskor?page=5",
+    "https://joiutherji.is/skor/krakkaskor?page=6",
+    "https://joiutherji.is/skor/krakkaskor?page=7",
+    "https://joiutherji.is/skor/nike?page=2",
+    "https://joiutherji.is/skor/nike?page=3",
+    "https://joiutherji.is/skor/nike?page=4",
+    "https://joiutherji.is/skor/nike?page=5",
+    "https://joiutherji.is/skor/nike?page=6",
+    "https://joiutherji.is/skor/nike?page=7",
+    "https://joiutherji.is/skor/nike?page=8",
+    "https://joiutherji.is/skor/puma?page=2",
+    "https://joiutherji.is/skor/puma?page=3",
+    "https://joiutherji.is/skor/puma?page=4",
+    "https://joiutherji.is/skor/puma?page=5",
+    "https://joiutherji.is/skor/takkaskor?page=2",
+    "https://joiutherji.is/skor/takkaskor?page=3",
+    "https://joiutherji.is/skor/takkaskor?page=4",
+    "https://joiutherji.is/skor/takkaskor?page=5",
+    "https://joiutherji.is/skor/takkaskor?page=6",
+    "https://joiutherji.is/skor/takkaskor?page=7",
+    "https://joiutherji.is/skor/takkaskor?page=8",
+    "https://joiutherji.is/skor/takkaskor?page=9",
+    "https://joiutherji.is/skor/takkaskor?page=10",
+    "https://joiutherji.is/skor/takkaskor?page=11",
+    "https://joiutherji.is/skor/takkaskor?page=12",
+    "https://joiutherji.is/skor/takkaskor?page=13",
+    "https://joiutherji.is/skor/takkaskor?page=14"
+  ],
+  "selectors": {
+    "productPage": "main",
+    // The JSON-LD has sku (e.g. "KB1466"), name, image, description,
+    // price (the sale price when on sale) and availability, no brand or GTIN
+    "structuredData": {
+      "source": "jsonld",
+      // Forsíða › lands- og félagslið › félagslið › liverpool › <product>
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // <h2 class="… text-blood">6.495 ISK</h2><span class="… line-through
+    // decoration-2">12.990 ISK</span><span …>-50%</span>, beside the h1.
+    // The related products below have their own struck through prices.
+    "oldPrice": "div:has(> h1) ~ div > span.line-through"
+  }
+}

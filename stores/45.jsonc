@@ -1,0 +1,60 @@
+{
+  "storeId": 45,
+  // Tónastöðin, Umbraco with the Ekom store plugin, server rendered. No
+  // JSON-LD and no sitemap (/sitemap.xml and /robots.txt answer 404).
+  "startUrl": "https://www.tonastodin.is",
+  "type": "httpcrawler",
+  // The price and stock line of a product page, listings use
+  // .product-card__price-row
+  "productPageIdentifier": "class=\"product__price-wrap\"",
+  // Products are at /<category path>/<product>/ under four trees, whose
+  // brand filters counted about 8600 products on 2026-11-09: /hljodfaeri/
+  // (1445), /hljod/ (896), /fylgihlutir/ (3398) and /notur/ (sheet music,
+  // 2828). Listings show 30 a page (?p=2 …), the pager links five pages at
+  // a time.
+  "startUrls": [
+    "https://www.tonastodin.is/hljodfaeri/",
+    "https://www.tonastodin.is/hljod/",
+    "https://www.tonastodin.is/fylgihlutir/",
+    "https://www.tonastodin.is/notur/"
+  ],
+  "urlWhitelist": ["/hljodfaeri/", "/hljod/", "/fylgihlutir/", "/notur/"],
+  // Paging; the brand filter, sorting and search are dropped
+  "keepQueryParams": ["p"],
+  "selectors": {
+    "productPage": "article.product",
+    "name": "h1.product__title",
+    // <p>Vörunúmer: RO-CE-5</p>, the first paragraph of .product__content.
+    // Products have no variants.
+    "sku": ".product__content > p",
+    // <span class="product__price text--red">22.900 kr</span>. The theme's
+    // CSS strikes through a .product__price--discount; no product was on
+    // sale on 2026-11-09 (none of 900 checked in listings), so the old
+    // price selector is untested.
+    "listPrice": ".product__price-wrap .product__price:not(.product__price--discount)",
+    "oldPrice": ".product__price-wrap .product__price--discount",
+    // A relative path, /media/2e3kcxjh/boss-ce-5-chorus-ensemble-ro-ce-5.png
+    // ?width=1600; src is a 625x400 padded webp
+    "image": ".product__image-wrap img",
+    "imageAttribute": "data-image",
+    "description": ".product__description",
+    // <span class="product__stock pill pill--small pill--green">Á lager
+    // </span> or "Ekki á lager" (lower case á, so it does not match).
+    // Sold out products have no "Bæta við körfu" form.
+    "inStock": ".product__stock",
+    "inStockText": "Á lager",
+    // Only the product's own category is on the page, in the "back" link
+    // (<span class="back-button__text">Modulation</span>), shown twice for
+    // mobile and desktop. No brand either, the brand is only a logo.
+    "categories": "a.back-button.product__hidden-mobile",
+    "categoryItemLocator": ".back-button__text"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer: ",
+        "replace": ""
+      }
+    ]
+  }
+}

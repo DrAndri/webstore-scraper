@@ -1,0 +1,62 @@
+{
+  "storeId": 77,
+  // Epal, Shopify with a customized Broadcast theme, server rendered: the
+  // price and the compare-at price of the selected variant are in the HTML.
+  // Product JSON-LD with the SKU and GTIN, a ProductGroup for products with
+  // variants, and BreadcrumbList JSON-LD with the categories.
+  "startUrl": "https://www.epal.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_N.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. The 11 sitemaps listed every
+  // product, 10809 on 2026-11-09, about three hours at 60 pages a minute.
+  // The /en/ sitemaps list the same products in English and are left out by
+  // the whitelist, as are the collection urls
+  // /collections/<c>/products/<handle>, so each product has one url.
+  "sitemapUrls": ["https://www.epal.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <div class="product__content">, the info beside the images
+    "productPage": ".product__content",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // Single variant products (247 of the first 250 on 2026-11-09) are
+        // a Product with "sku": "STM-P120301". Products with variants are a
+        // ProductGroup with the variants in "hasVariant", a SKU each, and
+        // the Shopify product id in "productGroupID", which is used.
+        "sku": ["sku", "productGroupID"],
+        "image": ["image", "hasVariant.image"],
+        // A ProductGroup has no offers. The CSS price describes the same
+        // variant as the old price.
+        "price": false,
+        // The button says "Bæta í körfu", "Sækja í verslun" (in the shop
+        // only, still in stock) or "Ekki til á lager", so the JSON-LD
+        // availability is used, the first variant's for a ProductGroup
+        "inStock": ["offers.availability", "hasVariant.offers.availability"],
+        // Heim › Herbergi › Þvottahús › Hnökra og gufutæki › <product>, some
+        // products have a brand collection instead: Heim › Ferm Living ›
+        // <product>
+        "categories": "breadcrumbs"
+      }
+    },
+    // <div class="price__regular"><span class="price-item
+    // price-item--regular">4.600 kr</span></div><div class="price__sale">
+    // <span class="price-item price-item--sale">4.600 kr</span><span><s
+    // class="price-item price-item--regular">9.200 kr</s></span></div>.
+    // .price__regular has the current price, on sale or not, and there is no
+    // .price__sale when the variant is not on sale.
+    "listPrice": "[id^=\"Price-\"] .price__regular .price-item--regular",
+    "oldPrice": "[id^=\"Price-\"] .price__sale s.price-item--regular",
+    // The "Stærð og efni" accordion of some products: <table
+    // class="epal-spec"><tr><td>Stærð</td><td>67x67x93 mm</td></tr>
+    // <tr><td>Litur</td><td>Grænn</td></tr></table>, no <tbody>
+    "attributes": {
+      "attributesTable": "table.epal-spec",
+      "attribute": "tr",
+      "attributeLabel": "td:first-child",
+      "attributeValue": "td:nth-child(2)"
+    }
+  }
+}

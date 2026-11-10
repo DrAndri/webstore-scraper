@@ -1,0 +1,54 @@
+{
+  "storeId": 62,
+  // Afreksvörur.is, Shopify with the Dawn theme in English, server rendered:
+  // the price and the compare-at price of the selected variant are in the
+  // HTML. Product JSON-LD without a SKU. A small shop, lactate meters and
+  // test strips.
+  "startUrl": "https://afreksvorur.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed every product, 5 on
+  // 2026-11-09. Collections link to /collections/<c>/products/<handle>, left
+  // out by the whitelist so each product has one url.
+  "sitemapUrls": ["https://afreksvorur.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <product-info id="MainProduct-template--…__main" data-product-id="…">,
+    // the media and the product info
+    "productPage": "product-info[id^=\"MainProduct-\"]",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The JSON-LD offers are every variant, the first one may be sold
+        // out while the page shows the first available one. The CSS price
+        // and stock describe the same variant as the old price.
+        "price": false,
+        "inStock": false,
+        // Every product has the vendor "My Store", Shopify's placeholder
+        "brand": false
+      }
+    },
+    // The variants have no SKU, the Shopify product id is used, from the
+    // add to cart form: <input type="hidden" name="product-id"
+    // value="8783177679094" />
+    "sku": {
+      "source": "attribute",
+      "selector": "input[name=\"product-id\"]",
+      "attribute": "value"
+    },
+    // Dawn's price block: <div class="price__sale"><s class="price-item
+    // price-item--regular">compare-at price</s><span class="price-item
+    // price-item--sale price-item--last">10,545 ISK</span></div>. The <s>
+    // is empty when the variant is not on sale. No product was on sale on
+    // 2026-11-09.
+    "listPrice": ".price__sale .price-item--sale",
+    "oldPrice": ".price__sale s.price-item--regular",
+    // "Add to cart", "Sold out" when the variant is sold out
+    "inStock": ".product-form__submit",
+    "inStockText": "Add to cart"
+    // No categories, the products have no product type and there are no
+    // breadcrumbs
+  }
+}

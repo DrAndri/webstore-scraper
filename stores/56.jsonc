@@ -1,0 +1,51 @@
+{
+  "storeId": 56,
+  // Farmers Market, Shopify with the Canopy theme, no JSON-LD, only
+  // microdata. farmersmarket.is is the international store in EUR
+  // (farmers-market-utlond), whose script sends visitors from Iceland to
+  // is.farmersmarket.is, a store of its own in ISK (farmers-market-iceland).
+  // A browser is needed for sale prices: the server HTML has only the current
+  // price, the theme's script adds the old price beside it.
+  "startUrl": "https://is.farmersmarket.is",
+  "type": "crawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed every product, 181
+  // on 2026-11-09. Collections link to /collections/<c>/products/<handle>,
+  // left out by the whitelist so each product has one url.
+  "sitemapUrls": ["https://is.farmersmarket.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  // The gift card, 4.000 to 60.000 kr
+  "urlBlacklist": ["/products/gjafabref"],
+  "selectors": {
+    // <div class="container" itemscope itemtype="http://schema.org/Product">
+    "productPage": "[itemtype=\"http://schema.org/Product\"]",
+    "name": "h1.product-title",
+    // The variant SKUs are not unique, 288 of 1043 are repeated and 51 empty,
+    // so the Shopify product id is used. The product form
+    // (data-product-id) is left out when the product is sold out, the
+    // reviews element of the theme is always there:
+    // <div id="shopify-product-reviews" data-id="8014970650850">
+    "sku": {
+      "source": "attribute",
+      "selector": "#shopify-product-reviews",
+      "attribute": "data-id"
+    },
+    // The server renders <div id="price" class="product-price">29,750 kr
+    // </div>, the script turns it into <div id="price" class="product-price
+    // on-sale"><del>42,500 kr</del> 29,750 kr</div>, of the selected (first
+    // available) variant. The price is the element's own text.
+    "listPrice": "#price",
+    "oldPrice": "#price del",
+    // Protocol relative, //is.farmersmarket.is/cdn/shop/...
+    "image": "img.main-img",
+    "description": "[itemprop=\"description\"]",
+    // <button name="add" id="add">Bæta í körfu</button>, the product form is
+    // left out when every variant is sold out
+    "inStock": "#add",
+    "inStockText": "Bæta í körfu"
+    // No categories, the breadcrumbs are Forsíða / <product>, and no brand,
+    // the vendor is only in scripts
+  }
+}

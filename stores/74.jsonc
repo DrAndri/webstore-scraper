@@ -1,0 +1,66 @@
+{
+  "storeId": 74,
+  // Pfaff, nopCommerce with the Prisma theme, server rendered. Product pages
+  // have Product and BreadcrumbList JSON-LD, the old price of a sale is only
+  // in the HTML.
+  "startUrl": "https://pfaff.is",
+  "type": "httpcrawler",
+  // Category, manufacturer and home pages have only a BreadcrumbList
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // One sitemap with the home and system pages, about 190 categories, the
+  // manufacturers and about 2100 products on 2026-11-09. Products,
+  // categories, manufacturers and topics all have top level slugs
+  // (/athena, /ljos, /redo), so there is no whitelist, only the system
+  // pages are left out.
+  "sitemapUrls": ["https://pfaff.is/sitemap.xml"],
+  "urlBlacklist": [
+    "/login",
+    "/register",
+    "/cart",
+    "/wishlist",
+    "/customer",
+    "/order",
+    "/search",
+    "/compareproducts",
+    "/news",
+    "/blog",
+    "/boards",
+    "/newproducts",
+    "/recentlyviewedproducts",
+    "/manufacturer/all",
+    "/privacyinfo"
+  ],
+  // Categories of more than one page link ?pagenumber=2, sorting, page size
+  // and spec filters are dropped
+  "keepQueryParams": ["pagenumber"],
+  "selectors": {
+    // Holds the product and its spec table, the "also purchased" products
+    // are after it
+    "productPage": "#product-details-form",
+    // The JSON-LD has the SKU (copies of a product, slugs ending in -afrit,
+    // have SKUs of their own), the current price, brand, the 600px image,
+    // availability ("InStock", "OutOfStock" for "Uppselt") and the short
+    // description; a few products also have a longer .full-description,
+    // which is not used. "Hringja fyrir verð" (call for price) products have
+    // no price and fail.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // <div class="old-product-price"><label>Eldra verð:</label>
+    // <span>59.900 kr</span></div>, beside <div class="product-price">
+    // <span id="price-value-10971"> 30.000 kr </span> (/athena on
+    // 2026-11-09). Products have no variants, colors are products of their
+    // own.
+    "oldPrice": ".old-product-price span",
+    // <div class="product-specs-box"> … <table class="data-table"><tr>
+    // <td class="spec-name">Wött<td class="spec-value">50W</table>, the
+    // rows and cells are not closed. On some products only.
+    "attributes": {
+      "attributesTable": ".product-specs-box table.data-table",
+      "attribute": "tr",
+      "attributeLabel": "td.spec-name",
+      "attributeValue": "td.spec-value"
+    }
+  }
+}
