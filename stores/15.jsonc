@@ -1,0 +1,46 @@
+{
+  "storeId": 15,
+  "startUrl": "https://www.bauhaus.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlBlacklist": [
+    "/afgreidslutimar",
+    "/fyrirtaekjasvid-bauhaus",
+    "/fs",
+    "/thjonusta",
+    "/kataloger",
+    "/skila-og-skipta",
+    "/vefverslun",
+    "/sitereview",
+    "/gjafakort",
+    "/verdoryggi",
+    "/hafdu-samband",
+    "/her-er-BAUHAUS",
+    "/upplysingar",
+    "/postlisti",
+    "/skilmalar",
+    "/atvinna-i-bauhaus",
+    "/gildin-okkar",
+    "/jafnlaunastefna",
+    "/leikjaskilyrdi",
+    "/um-okkur",
+    "/umhverfisstefna",
+    "/gagnavernd",
+    "/bauhaus-styrkveitingar",
+    "/cookie-policy"
+  ],
+  "selectors": {
+    // #main-content is empty in the server rendered html
+    "productPage": "body",
+    // Products used to be keyed by the barcode (Strikamerki), which is the gtin
+    "structuredData": { "source": "jsonld", "fields": { "sku": "gtin" } },
+    "categories": "ul[data-testid=\"breadcrumbs\"]",
+    "categoryItemLocator": "li",
+    "attributes": {
+      "attributesTable": "table.table-auto",
+      "attribute": "tr",
+      "attributeLabel": "td:nth-child(1)",
+      "attributeValue": "td:nth-child(2)"
+    }
+  }
+}

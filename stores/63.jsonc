@@ -1,0 +1,50 @@
+{
+  "storeId": 63,
+  // Altis, WooCommerce with the XStore theme and its single product builder,
+  // server rendered. WooCommerce's Product and BreadcrumbList JSON-LD.
+  "startUrl": "https://altis.is",
+  "type": "httpcrawler",
+  // Listings and the home page have no Product JSON-LD. A variable product
+  // that is sold out in every size has none either and no price, it is not
+  // read (it can not be saved without a price anyway).
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The WordPress sitemap index links to wp-sitemap-posts-product-1…3.xml,
+  // 4337 products on 2026-11-09, all at /vara/<product>/
+  "sitemapUrls": ["https://altis.is/wp-sitemap.xml"],
+  "urlWhitelist": ["/vara/", "/wp-sitemap-posts-product-"],
+  // Variation, wishlist and add-to-cart links only repeat the product
+  "keepQueryParams": [],
+  "selectors": {
+    // <div id="product-1388411" class="single-product-builder … product …">,
+    // it also holds the related products and the previous/next product
+    // links, each with a <p class="price"> of its own
+    "productPage": "div.single-product-builder",
+    // The JSON-LD sku is the store's SKU, "ua 6000399-425" (brand prefix,
+    // style and color), the same for every size of a variable product and
+    // set on all 2772 products of the Store API on 2026-11-09, no
+    // duplicates. The price is the current one, the sale price on a sale.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // Heim / <categories> / <product>
+        "categories": "breadcrumbs",
+        // The page's title is read, as WooCommerce's JSON-LD name can be
+        // HTML escaped twice ("C&amp;amp;R" on another WooCommerce store)
+        "name": false,
+        // The JSON-LD description is the short description as plain text,
+        // the HTML one is read instead
+        "description": false
+      }
+    },
+    // The summary price is the <p class="price"> after the title:
+    // <del><span class="woocommerce-Price-amount amount"><bdi>7.990 kr.
+    // </bdi></span></del> … <ins>…4.794 kr.…</ins>. Variable products with
+    // one price for every size show it the same way, those with a price
+    // range show the range without <del> and a lowPrice in JSON-LD.
+    "oldPrice": "h1.product_title ~ p.price del .amount",
+    "listPrice": "h1.product_title ~ p.price .amount:not(del .amount)",
+    "name": "h1.product_title",
+    // Often missing, the store shows no long description
+    "description": ".woocommerce-product-details__short-description"
+  }
+}

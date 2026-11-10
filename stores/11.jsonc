@@ -1,0 +1,24 @@
+{
+  "storeId": 11,
+  "startUrl": "https://kronan.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlWhitelist": ["/vara", "/voruurval"],
+  // The category pages load their products from the backend with JavaScript,
+  // 48 at a time. The top level categories include the products of their
+  // subcategories.
+  "productFeed": {
+    "feedList": { "url": "https://backend.kronan.is/api/store-categories/" },
+    "url": "https://backend.kronan.is/api/store-categories/{slug}/details/?page={page}",
+    "pageCount": "pageCount",
+    "items": "products",
+    "productUrl": "/vara/{slug}"
+  },
+  "selectors": {
+    "productPage": "main",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "category" }
+    }
+  }
+}

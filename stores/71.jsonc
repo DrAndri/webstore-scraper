@@ -1,0 +1,39 @@
+{
+  "storeId": 71,
+  // Fönix, headless WooCommerce (admin.fonix.is) with a Next.js app router
+  // front. Server rendered: the product is streamed in the HTML response in
+  // a <div hidden id="S:1"> (React moves it into <main> in the browser),
+  // with Product and BreadcrumbList JSON-LD.
+  "startUrl": "https://www.fonix.is",
+  "type": "httpcrawler",
+  // Listings (/vorur, /flokkur/…) and brand pages have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // One sitemap with the pages, 209 categories, 38 brands and 1045 products
+  // on 2026-11-09 at /vara/<product>
+  "sitemapUrls": ["https://www.fonix.is/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "keepQueryParams": [],
+  "selectors": {
+    // The breadcrumbs, the JSON-LD and the product share a wrapper, <div
+    // class="max-w-screen-xl mx-auto px-4 py-10"><script type="application/
+    // ld+json">…</script>…<nav aria-label="Brauðmolar" class="mb-6">…
+    "productPage": "div.max-w-screen-xl:has(> nav[aria-label=\"Brauðmolar\"])",
+    // The WooCommerce SKU, name, brand, image, description, current price
+    // and availability. Breadcrumbs: Forsíða / <categories> / <product>.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // <div class="flex items-baseline gap-3"><span class="text-3xl
+    // font-black text-gray-900">1.457 kr.</span></div>. On a sale the
+    // product component adds <span class="text-lg text-gray-400
+    // line-through">regular price</span> (from the site's JavaScript, the
+    // related products use <p class="… line-through …">). Variable products
+    // show "Frá <lowest price>" without an old price. No product was on sale
+    // on 2026-11-09 (/vorur?on_sale=1 was empty).
+    "oldPrice": "div.items-baseline > span.line-through",
+    "listPrice": "div.items-baseline > span.font-black"
+    // No attributes: the Tæknilýsing list is <li><strong>Gerð:</strong>
+    // value</li>, the value is a bare text node
+  }
+}

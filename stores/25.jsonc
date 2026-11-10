@@ -1,0 +1,35 @@
+{
+  "storeId": 25,
+  // Apótekarinn, formerly Lyf og heilsa, lyfogheilsa.is redirects here
+  "startUrl": "https://www.apotekarinn.is",
+  "type": "httpcrawler",
+  // Next.js site without structured data. The class names are CSS modules
+  // (ProductActions-module-scss-module__E4pkeq__productActions__price), the
+  // selectors match the readable part.
+  "productPageIdentifier": "__productActions__price",
+  // The sitemap lists every product
+  "sitemapUrls": ["https://www.apotekarinn.is/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "selectors": {
+    // The whole page, so the image can be read from <head>
+    "productPage": "html:has(#main [class*=\"__productActions__price\"])",
+    "name": "#main h1",
+    // /vara/neilmed-pediamist-isotonic-spray-75ml-22767
+    "sku": { "source": "url", "delimiter": "-", "index": "last" },
+    "oldPrice": "#main [class*=\"__productActions__price\"] [class*=\"__price__previous\"]",
+    "listPrice": "#main [class*=\"__productActions__price\"] [class*=\"__price__current\"]",
+    "brand": "#main [class*=\"__product__kicker\"]",
+    // The gallery images are relative /_next/image urls
+    "image": "meta[property=\"og:image\"]",
+    "imageAttribute": "content",
+    "description": "#main [class*=\"__product__description\"]",
+    // The product actions are rendered without the stock first, the copy
+    // with the stock is streamed in a hidden div. Sold out products get an
+    // out of stock notice after the price instead of the add to cart button.
+    "inStock": "div[hidden] [class*=\"__productActions__price\"] + *",
+    "inStockText": "Bæta í körfu",
+    // Heim / <categories> / <product>
+    "categories": "#main [class*=\"__breadcrumbs__list\"]",
+    "categoryItemLocator": "a"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "storeId": 47,
+  // Húsasmiðjan (with Blómaval), an Umbraco site, server rendered. No JSON-LD
+  // and no product data in scripts, every field is read from the HTML. Stock
+  // per store, the sold out sticker and the count picker are loaded later from
+  // /webapi/catalog/product/<sku>/partial/..., they are not in the HTML.
+  // The site answers on www.husa.is and www.husasmidjan.is (same pages, no
+  // redirect). The sitemap only lists www.husasmidjan.is urls, and only links
+  // on the startUrl host are followed, so that host is used.
+  "startUrl": "https://www.husasmidjan.is",
+  "type": "httpcrawler",
+  // <span class="vnr">Vörunúmer: </span><span class="main-sku">5040785</span>,
+  // only on product pages
+  "productPageIdentifier": "class=\"main-sku\"",
+  // Category pages load their products with JavaScript, the sitemap is the
+  // only list of products. One 11 MB urlset with every url twice, 28,342
+  // unique urls on 2026-11-09: about 1,500 categories, about 20,300 products
+  // in the main store and 6,480 under /blomaval/, of which about 2,400 are
+  // the main store's products again (same SKU, e.g.
+  // /blomaval/heimilis-og-rekstrarvorur/busahold/.../skeid-stor-stal/), the
+  // rest (flowers, plants, gifts, pots) are only there. Products sit under
+  // their category path, /<category>/<sub>/[<sub>/]<product>/, so the
+  // categories in the sitemap cannot be told apart from products by path.
+  // Left out: /upplysingar/ and landing pages, /ahaldaleiga/ (tool rental,
+  // priced per day), /fullbuin-hus/ (prefab house options), Blómaval's
+  // service pages.
+  "sitemapUrls": ["https://www.husasmidjan.is/sitemap.xml"],
+  "urlWhitelist": [
+    "/arstidarvorur/",
+    "/blomaval/",
+    "/byggingarefni-vorur/",
+    "/eldhus-og-badherbergi/",
+    "/fatnadur-og-oryggisvara/",
+    "/festingar-og-jarnavorur/",
+    "/gluggar-og-hurdir/",
+    "/golfefni/",
+    "/heimilis-og-rekstrarvorur/",
+    "/heimilistaeki/",
+    "/ljos-og-rafmagn/",
+    "/malning/",
+    "/ofnar-og-lagnaefni/",
+    "/outlet/",
+    "/verkfaeri/"
+  ],
+  "urlBlacklist": ["/blomaval/thjonusta/", "/blomaval/afgreidslutimi/"],
+  // Links like /arstidarvorur/jolavorur/jolaljos-og-seriur/? from the menu
+  "keepQueryParams": [],
+  // About 26,800 pages in a full crawl, close to 8 hours at the default 60 a
+  // minute. Pages answer in about 0.4 s behind Azure Front Door.
+  "maxRequestsPerMinute": 120,
+  "selectors": {
+    // <section class="content" id="content" role="main">, holds the
+    // breadcrumbs and the product section
+    "productPage": "#content",
+    // The title and SKU are shown twice, for mobile and for desktop
+    "sku": ".title-section-mobile .main-sku",
+    "name": ".title-section-desktop h2",
+    // <span class="product-brand">DeWalt</span>, empty for many products
+    "brand": ".title-section-desktop .product-brand",
+    // <div class="price discount" data-price="5990,0000000000000000">
+    // <div class="current-price"><div class="main-price"><span
+    // class="price-wrapper">1.198 <span class="unit">kr.</span></span></div>
+    // </div><div class="old-price">5.990 <span class="unit">kr.</span></div>
+    // <div class="save-price">Sparaðu 4.792 ...</div></div>.
+    // The unit is inside the price element and every digit of the text is
+    // read, so "3.488 kr. / m2" would be 34882. Prices per m2 or m3
+    // (flooring, tiles, boards) are left out of both selectors with :not()
+    // (an old price alone would become the price) and those products fail
+    // with "Price not found" instead of being saved at ten times their price,
+    // e.g. /golfefni/parket/hardparket/hardparket-10-mm-eik-lady-1286x214-mm-
+    // ac6/ (3.488 kr. / m2, was 4.989) on 2026-11-09. The sale products tested
+    // were /outlet/hljoddempandi-mynd-api-heyrir-ekki-lgratt/ (1.198, was
+    // 5.990) and the DeWalt DCH273N borhamar (51.900, was 68.890).
+    "listPrice": ".price-box .main-price .price-wrapper:not(:has(.unit:contains(\"m2\"), .unit:contains(\"m3\")))",
+    "oldPrice": ".price-box .old-price:not(:has(.unit:contains(\"m2\"), .unit:contains(\"m3\")))",
+    // Relative, /media/4pvlpx1o/kwb-4430xx.jpg?height=590&width=590&...
+    "image": "img.product-imgmain",
+    // The short description beside the price, often only the name again.
+    // Some products also have a long "Nánari upplýsingar" tab
+    // (#tab-1 .tabs-details) with the specifications as free text lists.
+    "description": ".price-box .product-description",
+    // <a class="btn ... AddToCart cart-btn main">Setja í körfu</a>, or
+    // <a class="btn ... cart-btn na-msg">Ekki til á vef</a> for products only
+    // sold in the stores
+    "inStock": ".buying-extras",
+    "inStockText": "Setja í körfu",
+    // Forsíða / Verkfæri / Handverkfæri / Snittverkfæri / <product>, the last
+    // one is an <li class="active"> without a link
+    "categories": ".breadcrumbs.product-detail ol",
+    "categoryItemLocator": "li a"
+  }
+}

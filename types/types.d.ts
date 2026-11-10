@@ -1,45 +1,131 @@
-import { type WithId, type InsertManyResult } from 'mongodb';
-import { StoreConfig } from './db-types.js';
+export interface ProductScrapeResult {
+  product: ProductSnapshot;
+  errors: ProductScrapeErrors;
+}
 
-export interface GoogleMerchantFeed {
-  rss: {
-    channel: {
-      item: GoogleMerchantProduct[];
-    };
-  };
+export interface ProductScrapeErrors {
+  description: unknown;
+  attributes: unknown;
+  image: unknown;
+  brand: unknown;
+  name: unknown;
+  inStock: unknown;
+  categories: unknown;
+}
+
+export interface ScrapeResult {
+  totalRequests: number;
+  totalProcessed: number;
+  totalErrored: number;
+  descriptionError: number;
+  attributeError: number;
+  imageError: number;
+  brandError: number;
+  nameError: number;
+  inStockError: number;
+  categoriesError: number;
 }
 
 export interface ProductSnapshot {
   sku: string;
   price: number;
-  title: string;
+  title?: string;
   brand?: string;
   gtin?: string;
-  sale_price?: number;
+  salePrice?: number;
+  image?: string;
+  description?: string;
+  inStock?: boolean;
+  attributes?: ProductAttributeGroup[];
+  url?: string;
+  categories?: string[];
 }
 
-export interface GoogleMerchantProduct {
-  'g:id': string;
-  'g:price': number;
-  'g:title': string;
-  'g:brand'?: string;
-  'g:gtin'?: string;
-  'g:sale_price'?: number;
+export interface ProductAttributeGroup {
+  name?: string;
+  attributes: ProductAttribute[];
 }
-enum StoreType {
-  scraper = 'scraper',
-  feed = 'feed'
+
+export interface ProductAttribute {
+  name: string;
+  value: string | number | boolean;
 }
 
 export interface StoreUpdateResult {
-  productMetadataUpsert: UpsertManyResult | undefined;
-  newPrices: InsertManyResult | undefined;
-  priceUpdate: UpsertManyResult | undefined;
-  store: WithId<StoreConfig>;
+  newProducts: number;
+  updatedProducts: number;
+  newPrices: number;
+  updatedPrices: number;
+  newSalePrices: number;
+  updatedSalePrices: number;
+  newAttributes: number;
+  newAttributeGroups: number;
+  newAttributesToProducts: number;
+  updatedAttributesToProducts: number;
+  deletedAttributesToProducts: number;
+  newCategories: number;
+  updatedCategories: number;
+  newManufacturers: number;
+  updatedManufacturers: number;
+  // Active products not seen in the scan, marked inactive in Solr
+  deactivatedProducts: number;
+
+  nameUpdates: number;
+  descriptionUpdates: number;
+  imageUpdates: number;
+  inStockUpdates: number;
+  gtinUpdates: number;
+  urlUpdates: number;
 }
 
 export interface UpsertManyResult {
   matchedCount: number;
   modifiedCount: number;
   upsertedCount: number;
+}
+
+export interface CacheItem {
+  status: number;
+  headers: Record<string, string>;
+  body: Buffer;
+  expires: number;
+}
+
+export type CacheItems = Record<string, CacheItem>;
+
+export type ScrapeJobMode = 'crawler' | 'list' | 'test' | 'index' | 'schema';
+export type ScrapeJobSource = 'cron' | 'manual' | 'startup';
+export type ScheduledMode = Exclude<ScrapeJobMode, 'test' | 'index' | 'schema'>;
+
+// The options column of a job
+export interface ScrapeJobOptions {
+  // schema: queue a reindex when the sync changed a schema
+  reindex?: boolean;
+}
+
+export interface ScrapeJob {
+  id: number;
+  storeId: number | null;
+  mode: ScrapeJobMode;
+  source: ScrapeJobSource;
+  requestedBy: string | null;
+  testUrl: string | null;
+  testConfig: string | object | null;
+  options: string | ScrapeJobOptions | null;
+}
+
+// Result of a test job, scraping a single url without writing to the database
+export interface TestResult {
+  isProductPage?: boolean;
+  product?: ProductSnapshot;
+  fieldErrors?: Partial<Record<keyof ProductScrapeErrors, string>>;
+  error?: string;
+}
+
+// Lets a test job see what the crawler did with a page
+export interface PageListener {
+  onProductScraped(result: ProductScrapeResult): void;
+  onProductError(error: unknown): void;
+  onNotProductPage(): void;
+  onRequestFailed(errorMessages: string[]): void;
 }

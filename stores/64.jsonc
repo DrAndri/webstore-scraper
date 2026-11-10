@@ -1,0 +1,54 @@
+{
+  "storeId": 64,
+  // Hreysti, headless WooCommerce (wp.hreysti.is) with a Next.js App Router
+  // front, server rendered (React Server Components, no __NEXT_DATA__).
+  // Product and BreadcrumbList JSON-LD, without a sku.
+  "startUrl": "https://hreysti.is",
+  "type": "httpcrawler",
+  // Category (/category/<c>), brand (/brand/<b>) and the /products listing
+  // have CollectionPage/ItemList JSON-LD, no Product
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // One sitemap with the pages, 72 categories, 72 brands and every product,
+  // 888 on 2026-11-09 at /products/<slug> (the Store API has 888 too)
+  "sitemapUrls": ["https://hreysti.is/sitemap.xml"],
+  "urlWhitelist": ["/products/"],
+  "keepQueryParams": [],
+  "selectors": {
+    // The page streams in: a loading skeleton <div class="product-detail">
+    // and then the rendered one, both in the server HTML. Only the second
+    // has the title and prices.
+    "productPage": "div.product-detail",
+    // 368 of 888 products have no WooCommerce SKU (most variable ones) and
+    // the post id is only in the RSC payload, so the slug is used for every
+    // product: https://hreysti.is/products/sbd-hybrid-lyftingabelti
+    "sku": {
+      "source": "url",
+      "delimiter": "/",
+      "index": "last"
+    },
+    // The JSON-LD price is the current one, the lowest of a variable
+    // product. The page shows a range there, "6.999 kr. – 17.999 kr.",
+    // which can not be read as one price.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The JSON-LD has the SKU only when the product has one, it is not
+        // used so every product has the same kind of SKU
+        "sku": false,
+        // Forsíða / <category> / <product>
+        "categories": "breadcrumbs",
+        // The JSON-LD description is the short description as plain text,
+        // the Vörulýsing tab is read instead
+        "description": false
+      }
+    },
+    // <span class="text-[length:var(--pdp-price-was,1.25rem)] text-gray-400
+    // line-through">599.999 kr.</span><span class="text-[length:var(
+    // --pdp-price,1.5rem)] font-extrabold …">479.999 kr.</span>. A variable
+    // product on sale with a price range shows one old price, the lowest
+    // regular price ("7.799 kr." beside "3.899 kr. – 9.149 kr.").
+    "oldPrice": "span[class*=\"var(--pdp-price-was,\"]",
+    "description": ".product-description"
+    // The Eigindi tab (attributes) is rendered in the browser only
+  }
+}

@@ -1,26 +1,58 @@
 services:
-  price-scraper:
-    container_name: price-scraper
+  webstore-scraper:
+    container_name: webstore-scraper
     build:
       dockerfile: Dockerfile
     environment:
+      SOLR_URL: ${SOLR_URL}
       MONGODB_URI: ${MONGODB_URI}
-      RUN_STARTUP_UPDATE: ${RUN_STARTUP_UPDATE}
-      RUN_MIGRATION: ${RUN_MIGRATION}
+      MARIADB_HOST: ${MARIADB_HOST}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_SCRAPER_USER: ${MARIADB_SCRAPER_USER}
+      MARIADB_SCRAPER_PASSWORD: ${MARIADB_SCRAPER_PASSWORD}
+      RUN_MONGO_TO_SQL_MIGRATION: ${RUN_MONGO_TO_SQL_MIGRATION}
+      LOKI_URL: ${LOKI_URL}
+      CRAWLEE_MEMORY_MBYTES: ${CRAWLEE_MEMORY_MBYTES}
+      CRAWLEE_PERSIST_STORAGE: ${CRAWLEE_PERSIST_STORAGE}
+      PLAYWRIGHT_BROWSERS_PATH: ${PLAYWRIGHT_BROWSERS_PATH}
+      # Store configs are read from GitHub when set, otherwise from stores/ in the image
+      GITHUB_CONFIG_REPO: ${GITHUB_CONFIG_REPO}
+      GITHUB_CONFIG_BRANCH: ${GITHUB_CONFIG_BRANCH}
+      GITHUB_TOKEN: ${GITHUB_SCRAPER_TOKEN}
 
-  price-api:
-    container_name: price-api
+  webstore-api:
+    container_name: webstore-api
     build:
-      context: ../google-shopping-history
+      context: ../webstore-api
       dockerfile: Dockerfile
     environment:
-      MONGODB_URI: ${MONGODB_URI}
+      MARIADB_HOST: ${MARIADB_HOST}
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_API_USER}
+      MARIADB_PASSWORD: ${MARIADB_API_PASSWORD}
+      MARIADB_ADMIN_USER: ${MARIADB_ADMIN_USER}
+      MARIADB_ADMIN_PASSWORD: ${MARIADB_ADMIN_PASSWORD}
+      SOLR_URL: ${SOLR_URL}
+      API_TOKEN_SECRET: ${API_TOKEN_SECRET}
+      # Sign in with Google (next-auth)
+      AUTH_URL: ${AUTH_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST}
+      AUTH_GOOGLE_ID: ${AUTH_GOOGLE_ID}
+      AUTH_GOOGLE_SECRET: ${AUTH_GOOGLE_SECRET}
+      GITHUB_CONFIG_REPO: ${GITHUB_CONFIG_REPO}
+      GITHUB_CONFIG_BRANCH: ${GITHUB_CONFIG_BRANCH}
+      GITHUB_TOKEN: ${GITHUB_ADMIN_TOKEN}
+      # The logs in the admin interface
+      LOKI_URL: ${LOKI_URL}
     ports:
       - 3000:3000
 
   mongo:
-    image: mongo
+    image: mongo:7
     restart: always
+    volumes:
+      - ./mongodb:/data/db
     environment:
       MONGO_INITDB_ROOT_USERNAME: andri
       MONGO_INITDB_ROOT_PASSWORD: MongoMasterMikael
@@ -34,3 +66,52 @@ services:
       ME_CONFIG_MONGODB_ADMINUSERNAME: andri
       ME_CONFIG_MONGODB_ADMINPASSWORD: MongoAdminMatti
       ME_CONFIG_MONGODB_URL: ${MONGODB_URI}
+
+  mongo-migrate:
+    image: mongo:7
+    restart: always
+    volumes:
+      - ./mongodb-prod-05.04.2026/mongodb:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: andri
+      MONGO_INITDB_ROOT_PASSWORD: MongoMasterMikael
+
+  mariadb:
+    image: mariadb:latest
+    container_name: mariadb
+    restart: always
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      MARIADB_AUTO_UPGRADE: true
+    ports:
+      - '3306:3306'
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./initMariaDb:/docker-entrypoint-initdb.d # Optional: Run .sql scripts on startup
+  solr:
+    image: solr:latest
+    container_name: webstorinator-solr
+    ports:
+      - '8983:8983'
+    volumes:
+      - ./solr:/var/solr
+      - ./solr-configsets:/configsets:ro
+    # Creates a core from each configset that does not have one yet. The
+    # scraper keeps the schemas of existing cores in sync with the configsets.
+    # Solr 10 starts in SolrCloud mode unless told otherwise, these are
+    # standalone cores so it runs in user managed mode.
+    command:
+      - bash
+      - '-c'
+      - 'for dir in /configsets/*/; do precreate-core "$$(basename "$$dir")" "$$dir"; done; exec solr-foreground --user-managed'
+    environment:
+      - SOLR_HEAP=4g
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O - http://localhost:8983/solr/admin/cores?action=STATUS || exit 1'
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10

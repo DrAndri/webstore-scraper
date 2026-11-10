@@ -1,0 +1,47 @@
+{
+  "storeId": 37,
+  // WooCommerce with a Breakdance theme, server rendered. No Product JSON-LD,
+  // only a BreadcrumbList.
+  "startUrl": "https://macland.is",
+  "type": "httpcrawler",
+  // The product meta block of the product page template
+  "productPageIdentifier": "bde-wooproductmeta",
+  // The sitemap lists every product, 134 on 2026-11-07
+  "sitemapUrls": ["https://macland.is/product-sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "selectors": {
+    "productPage": ".bde-productbuilder",
+    // Variable products often have no SKU, the page then shows "Á ekki við"
+    // (18 of 134 on 2026-11-07), so the WooCommerce post id is used instead
+    "sku": {
+      "source": "attribute",
+      "selector": "div.product",
+      "attribute": "id"
+    },
+    "name": "h1.product_title",
+    // Variable products show the lowest price, "Verð frá 359.990 kr.". No
+    // product was on sale on 2026-11-07, these follow WooCommerce's
+    // <del>/<ins> sale markup.
+    "oldPrice": ".bde-wooproductprice del .amount",
+    "listPrice": ".bde-wooproductprice .amount:not(del .amount)",
+    "image": ".woocommerce-product-gallery__image img",
+    "description": ".bde-wooproductdescription",
+    // Every product is on backorder in WooCommerce. The store's own stock
+    // label says "Á lager", "Sérpöntun" (built to order, 3–4 weeks),
+    // "Forpöntun", "Biðpöntun" or nothing when sold out, only "Á lager" is
+    // counted as in stock
+    "inStock": ".product_meta",
+    "inStockText": "Á lager",
+    // Forsíða / <categories> / <product>
+    "categories": "nav.macland-breadcrumb",
+    "categoryItemLocator": "a"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "product-",
+        "replace": ""
+      }
+    ]
+  }
+}

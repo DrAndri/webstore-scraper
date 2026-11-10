@@ -1,0 +1,51 @@
+{
+  "storeId": 52,
+  // Bóksala stúdenta, WooCommerce with the Flatsome theme, server rendered,
+  // with WooCommerce's Product and BreadcrumbList JSON-LD.
+  "startUrl": "https://www.boksala.is",
+  "type": "httpcrawler",
+  // Category listings (/product-category/…) have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // WordPress core sitemaps. The index, /wp-sitemap.xml, times out with a
+  // 503 after 60 seconds, so the product sitemaps are listed one by one:
+  // 2000 products each, sorted by id, 16471 products on 2026-11-09 at
+  // /product/<product>/ (pages 1–9). Page 10 answers 404 until there are
+  // more than 18,000 products, a 404 page is just a page without links.
+  "sitemapUrls": [
+    "https://www.boksala.is/wp-sitemap-posts-product-1.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-2.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-3.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-4.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-5.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-6.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-7.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-8.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-9.xml",
+    "https://www.boksala.is/wp-sitemap-posts-product-10.xml"
+  ],
+  "urlWhitelist": ["/product/"],
+  // Add to cart links (?add-to-cart=) and the like
+  "keepQueryParams": [],
+  "selectors": {
+    // <div id="product-1926811" class="product type-product …">
+    "productPage": "div.product",
+    // The SKU is the ISBN or EAN (the post id for the few variable products,
+    // the HÍ sweaters, which have none), name, image, description and
+    // availability. offers.price is the current price. Breadcrumbs: Heim /
+    // <categories> / <product>.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // <p class="price product-page-price price-on-sale"> <del aria-hidden=
+    // "true"><span class="woocommerce-Price-amount amount"><bdi>7.495 kr.
+    // </bdi></span></del> … <ins aria-hidden="true"><span class="woocommerce-
+    // Price-amount amount"><bdi>6.371 kr.</bdi></span></ins>…</p>
+    "oldPrice": "p.product-page-price del .amount",
+    "listPrice": "p.product-page-price .amount:not(del .amount)",
+    "name": "h1.product-title"
+    // No attributes: the book facts are <li>Höfundur: <span>Leifur
+    // Reynisson</span></li>, the label is a bare text node that no selector
+    // can pick out. No brand either, the publisher is a code (BOKAUTGAF3).
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "storeId": 85,
+  // Nýja Vínbúðin, WooCommerce with the Betheme theme, server rendered, with
+  // Rank Math's Product JSON-LD. There are no breadcrumbs.
+  "startUrl": "https://nyjavinbudin.is",
+  "type": "httpcrawler",
+  // Category listings (/voruflokkur/…) and /verslun/ have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // Rank Math's sitemap index links to product-sitemap1.xml …
+  // product-sitemap4.xml, 440 products on 2026-11-09 at /vara/<product>/
+  // (the sitemaps repeat some of them). About 90 are sold out and hidden
+  // from the listings, but their pages are there.
+  "sitemapUrls": ["https://nyjavinbudin.is/sitemap_index.xml"],
+  "urlWhitelist": ["/product-sitemap", "/vara/"],
+  // Add to cart links (?add-to-cart=) and the like
+  "keepQueryParams": [],
+  "selectors": {
+    // <div id="product-159091" class="style-wide tabs share-simple product
+    // type-product …"> holds the product, its parent <main class=
+    // "sections_group"> is used so that its id can be read
+    "productPage": "main.sections_group",
+    // 10 of 351 listed products have no SKU (among them gift bundles and
+    // four Bordeaux wines), so the WooCommerce post id is used for all
+    "sku": {
+      "source": "attribute",
+      "selector": "div.product[id^=\"product-\"]",
+      "attribute": "id"
+    },
+    // The image, the current price (offers.price), the availability and the
+    // category path, "category": "Vín &gt; Rauðvín" (escaped like that in
+    // the JSON). The JSON-LD name has " | Nýja Vínbúðin" appended and the
+    // description is the SEO text ("Kauptu … hjá Nýju Vínbúðinni"), so
+    // both are read from the HTML. No brand anywhere.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": false,
+        "name": false,
+        "description": false,
+        "categories": "category"
+      },
+      "categorySplitter": " &gt; "
+    },
+    "name": "h1.product_title",
+    // <p class="price"><del aria-hidden="true"><span class="woocommerce-
+    // Price-amount amount"><bdi>4.999kr.</bdi></span></del> <span class=
+    // "screen-reader-text">Fyrra verð: 4.999kr..</span><ins aria-hidden=
+    // "true"><span class="woocommerce-Price-amount amount"><bdi>3.999kr.
+    // </bdi></span></ins>…</p>, related products use <span class="price">
+    "oldPrice": "p.price del .amount",
+    "listPrice": "p.price .amount:not(del .amount)",
+    "description": ".woocommerce-product-details__short-description",
+    "attributes": {
+      // <table class="woocommerce-product-attributes shop_attributes"><tr
+      // …><th …>Upprunaland</th><td …><p>Spánn</p>\n</td></tr>…, values
+      // are not trimmed, so the <p> is read when there is one. The weight
+      // row has none, <td …>1,5 kg</td>.
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr",
+      "attributeLabel": "th",
+      "attributeValue": ":is(td p, td:not(:has(p)))"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "product-",
+        "replace": ""
+      }
+    ]
+  }
+}

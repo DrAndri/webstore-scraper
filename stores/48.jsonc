@@ -1,0 +1,67 @@
+{
+  "storeId": 48,
+  // Örninn, a Next.js (app router) storefront on Saleor. The pages are server
+  // rendered but streamed: the product is in a <div hidden id="S:n"> block
+  // that a script moves into <main>, which holds a loading skeleton. There is
+  // no JSON-LD and no __NEXT_DATA__.
+  "startUrl": "https://orninn.is",
+  "type": "httpcrawler",
+  // Only product pages have a /products/ og:url
+  "productPageIdentifier": "property=\"og:url\" content=\"https://orninn.is/products/",
+  // One sitemap with every page in Icelandic and English, 2177 products on
+  // 2026-11-09 at /products/<slug> (and /en/products/<slug>, left out by the
+  // whitelist). robots.txt disallows /api/, the listings need no crawling.
+  "sitemapUrls": ["https://orninn.is/sitemap.xml"],
+  "urlWhitelist": ["/products/"],
+  "keepQueryParams": [],
+  "selectors": {
+    // The streamed block is outside <main>
+    "productPage": "body",
+    "name": "h1",
+    // The page shows the variant SKUs with ? for the parts that differ
+    // ("SKU: 0100637224/?/?", "SKU: 0100643091/?/PINK"), which changes with
+    // the variants in stock. The Saleor product id is only in the flight data
+    // scripts, so the slug is used: /products/marlin-6 → marlin-6
+    "sku": { "source": "url", "delimiter": "/", "index": "last" },
+    // <p class="mt-1 flex items-baseline …"><span …>−50%</span><span
+    // class="… line-through …">15.990 kr.</span><span
+    // class="text-[#d5261f]">7.995 kr.</span></p>, a regular price is a
+    // single <span class="text-ink">159.990 kr.</span>
+    "listPrice": "p.items-baseline > span:last-child",
+    "oldPrice": "p.items-baseline > span.line-through",
+    // "Vörumerki: <a href="/brands/trek">TREK</a>", the gallery has a brand
+    // logo link too, without text
+    "brand": "p a[href^=\"/brands/\"]",
+    // The first gallery image, <img data-nimg="fill" src="https://saleor.
+    // orninn.is/media/thumbnails/products/…_thumbnail_1024.jpg">, the brand
+    // logo in it is data-nimg="1"
+    "image": "div.cursor-zoom-in > img[data-nimg=\"fill\"]",
+    // The page only has the start of the description, cut at about 300
+    // characters with "…" and a "Lesa meira" button, the rest is in the
+    // flight data
+    "description": "div:has(> h1) ~ div.mt-5 > p",
+    // The cart button reads "Uppselt" when every variant is sold out, else
+    // "Setja í körfu", or "Veldu lit" / "Veldu stærð" before a variant is
+    // chosen. In stock when the product column holding a cart button that
+    // is not "Uppselt" has the "SKU: …" line; the h1 only makes the selector
+    // match on sold out pages, so they come out as not in stock.
+    "inStock": "div:has(> div > button.btn-cta:not(:contains(\"Uppselt\"))) p, h1",
+    "inStockText": "SKU:",
+    // <nav aria-label="Brauðmoli"><a href="/categories/hjol-reidhjol">
+    // Reiðhjól</a> › … › <span>Marlin 6 …</span></nav>
+    "categories": "nav[aria-label=\"Brauðmoli\"]",
+    "categoryItemLocator": "a",
+    // "Tækniupplýsingar", accordions named Frameset, Wheels, … with
+    // <div><div class="mb-1.5 … font-bold">Frame</div><div class="…
+    // text-ink-muted">Alpha Silver Aluminium, …</div></div> rows, in the
+    // HTML while collapsed. Other products have a single unnamed group.
+    "attributes": {
+      "attributesTable": "div:has(> div.border-b > div[id^=\"spec-panel-\"])",
+      "attributeGroup": "div.border-b",
+      "attributeGroupName": "button > span:first-child",
+      "attribute": "div[id^=\"spec-panel-\"] div.flex-col > div",
+      "attributeLabel": "div.font-bold",
+      "attributeValue": "div.text-ink-muted"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "storeId": 46,
+  // Hljóð-X (rin.is redirects to its web shop, /netverslun-hljodx/),
+  // WooCommerce with the Flatsome theme, server rendered, with WooCommerce's
+  // Product JSON-LD.
+  "startUrl": "https://hljodx.is",
+  "type": "httpcrawler",
+  // Category listings (/product-category/…) and /verslun/ have no Product
+  // JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // Yoast's sitemap index links to product-sitemap.xml, 676 products on
+  // 2026-11-09 at /product/<product>/. 98 of them are out of stock and
+  // hidden from the listings, but their pages are there.
+  "sitemapUrls": ["https://hljodx.is/sitemap_index.xml"],
+  "urlWhitelist": ["/product-sitemap", "/product/"],
+  // Add to cart links (?add-to-cart=) and the like
+  "keepQueryParams": [],
+  "selectors": {
+    // <div id="product-5307" class="product type-product …">
+    "productPage": "div.product",
+    // The WooCommerce SKU (every product has one but a variable product
+    // without variations or price), name, image, description (the short
+    // description) and availability. offers.price is the current price.
+    // The page has two BreadcrumbLists, Yoast's first (Home / Verslun /
+    // <product>), so the breadcrumbs are read from the HTML.
+    "structuredData": {
+      "source": "jsonld"
+    },
+    // <p class="price product-page-price price-on-sale"> <del aria-hidden=
+    // "true"><span class="woocommerce-Price-amount amount"><bdi>19.900 kr.
+    // </bdi></span></del> … <ins aria-hidden="true"><span class="woocommerce-
+    // Price-amount amount"><bdi>13.930 kr.</bdi></span></ins>…</p>
+    "oldPrice": "p.product-page-price del .amount",
+    "listPrice": "p.product-page-price .amount:not(del .amount)",
+    "name": "h1.product-title",
+    // <nav class="woocommerce-breadcrumb breadcrumbs uppercase"><a …>Heim</a>
+    // <span class="divider">/</span> <a href="…/product-category/
+    // fylgihlutir-hljodfaera/">Fylgihlutir hljóðfæra</a> … <a …>Pickup</a>
+    // </nav>, without the product
+    "categories": ".woocommerce-breadcrumb",
+    "categoryItemLocator": "a"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "storeId": 44,
+  // Hljóðfærahúsið, Moya CMS store (Stefna), server rendered. No JSON-LD.
+  "startUrl": "https://www.hljodfaerahusid.is",
+  "type": "httpcrawler",
+  // robots.txt asks for "Crawl-delay: 5", 12 pages a minute. With about
+  // 8100 products and 420 listing pages a full scan takes about 12 hours.
+  "maxRequestsPerMinute": 12,
+  // Only product pages have this og:type, listings have "article"
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap lists the 88 categories, no products. The listings of the
+  // 63 lowest categories held 8143 products on 2026-11-09, 20 a page
+  // (?page=2 …). A product's url is under the category it was found in
+  // (/is/<category path>/<product>, /is/utsala/<product> for sales).
+  "sitemapUrls": ["https://www.hljodfaerahusid.is/sitemap.xml"],
+  "urlWhitelist": [
+    "/is/hljodfaeri",
+    "/is/upptokubunadur",
+    "/is/svidsbunadur",
+    "/is/hljomtaeki",
+    "/is/utsala"
+  ],
+  // Paging, the sort order is dropped
+  "keepQueryParams": ["page"],
+  "selectors": {
+    // Holds the breadcrumbs too
+    "productPage": "#page",
+    "name": "#storeProductView h1.title",
+    // <div class="storeReference"><span class="label">VNR.:</span>
+    // <span class="value reference">2545MBB146226I</span></div>
+    "sku": "#storeProductView .storeReference .reference",
+    // <div class="storePrice price1"> … <div class="priceDiff hasDiscount">
+    // <span class="price"><span class="n">179.995</span> … </span>
+    // <span class="overwritten"><span class="title">Verð</span>
+    // <span class="price"><span class="n">359.990</span> … (on
+    // /is/utsala/markbass-f1-navigator-4-blk-sprucempl on 2026-11-09). The
+    // price is shown twice, .price2 below the quantity.
+    "listPrice": "#storeProductView .storePrice.price1 .priceDiff > .price .n",
+    "oldPrice": "#storeProductView .storePrice.price1 .overwritten .price .n",
+    // <div class="vendor"><span class="label">Framleiðandi</span>
+    // <span class="value">Mark Bass</span></div>
+    "brand": "#storeProductView .vendor .value",
+    // A relative path, /static/store/images/original/product_25846.jpg
+    "image": "#storeProductView .coverImage img",
+    // The short description beside the price. The longer "Nánari lýsing"
+    // (.fullDesc) is often the maker's text with images.
+    "description": "#storeProductView .introDesc",
+    // "Setja í körfu" when in stock. Sold out products show
+    // <span class="outofstock">Uppselt</span> and a "Senda fyrirspurn"
+    // (inquiry) link instead, the .controls block is then empty.
+    "inStock": "#storeProductView .buyBox .controls",
+    "inStockText": "Setja í körfu",
+    // Forsíða / <categories> / <product>. Sale pages show Tilboð and a
+    // store category (/is/moya/store/index/ssdb) instead, both left out.
+    "categories": "#breadcrumbs",
+    "categoryItemLocator": "a:not(.first):not(.last):not([href=\"/is/utsala\"]):not([href*=\"/moya/\"])"
+  }
+}

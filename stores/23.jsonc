@@ -1,0 +1,56 @@
+{
+  "storeId": 23,
+  // JYSK, formerly Rúmfatalagerinn
+  "startUrl": "https://jysk.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemap lists the categories, a category page lists all its products
+  "sitemapUrls": ["https://jysk.is/sitemap.xml"],
+  "urlBlacklist": [
+    "/vefverslun",
+    "/extensions",
+    "/lisa",
+    "/rl",
+    "/cdn-cgi",
+    "/default.aspx",
+    "/POSTLISTI"
+  ],
+  // Product links carry ?PathId=<category>, so a product was queued once per
+  // listing it is in, and the breadcrumb followed the listing (a product found
+  // under Tilboðsvörur got that category). Without it the breadcrumb is the
+  // product's own category. The /?PageId= links are categories the sitemap
+  // lists by path.
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "#main",
+    // offers[0] is the current price. The availability is "in stock" or "out
+    // of stock", which does not read as in stock, the brand is always
+    // "rúmfatalagerinn" and the description is "<name> á frábæru verði."
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        "sku": "productID",
+        "brand": false,
+        "description": false,
+        "inStock": false
+      }
+    },
+    "oldPrice": ".product-price__offer-price",
+    "brand": ".property-item:contains(\"FRAMLEIÐANDI\") .property-item-value",
+    "description": ".product-description-text-container",
+    // The button is empty and disabled when it is sold out in the web store
+    "inStock": ".add-to-cart-container",
+    "inStockText": "Bæta í körfu",
+    "categories": ".jysk-breadcrumbs",
+    "categoryItemLocator": "a",
+    "attributes": {
+      "attributesTable": ".product-detailed-info .accordion-content",
+      // Upplýsingar and Þvottaupplýsingar, the group titles are siblings of
+      // the groups
+      "attributeGroup": ".properties",
+      "attribute": ".property-item",
+      "attributeLabel": ".property-item-title",
+      "attributeValue": ".property-item-value"
+    }
+  }
+}

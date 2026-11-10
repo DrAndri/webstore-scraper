@@ -1,0 +1,82 @@
+{
+  "storeId": 83,
+  // Byggt og búið, a server rendered Next.js (pages router) storefront by
+  // Roanuz on a Magento backend (the same platform as A4), with Product
+  // JSON-LD. Products with variants (colors, sizes) are configurable
+  // products with one page.
+  "startUrl": "https://byggtogbuid.is",
+  "type": "httpcrawler",
+  // Listings have no JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemaps (/sitemaps/products.xml, categories.xml) were empty on
+  // 2026-11-09, so the crawl goes through the categories, linked from the
+  // menu and from their parent categories. Products and the top level
+  // categories are both /<url key>.html, subcategories are
+  // /<category>/<subcategory>.html. The categories held about 9100
+  // products then. A category page only has its 48 newest products in the
+  // HTML: the page buttons load the rest with JavaScript from a GraphQL
+  // backend on another host that needs a Store header, which a product feed
+  // cannot send, and ?page=N is ignored. Product pages link no other
+  // products. 47 categories had more than 48 products (up to 267), so
+  // roughly a third of the products are not reached, mostly older ones in
+  // the large categories (tableware, kitchen tools, Christmas lights).
+  // Brand pages (/brand/<brand>) and search load their products with
+  // JavaScript too.
+  "urlBlacklist": [
+    "/customer/",
+    "/minar/",
+    "/cart",
+    "/checkout",
+    "/catalogsearch/",
+    "/gjafalisti",
+    "/brand"
+  ],
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "main",
+    // The JSON-LD has sku (the parent's of a configurable product, e.g.
+    // "KER-HNOTUBRJOTUR-7-7"), name, images and the price, the sale price
+    // when on sale.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // {"@type":"Brand","name":"982"}, an option id. The page shows the
+        // brand only as a logo, so there is no brand.
+        "brand": false,
+        // Often empty, the HTML description is used
+        "description": false,
+        // "OutOfStock" also for products that can be bought
+        "inStock": false
+      }
+    },
+    // The price block is rendered twice (mobile and desktop):
+    // <div class="section-price">…<div class="price-head-wrapper
+    // product-sale"><span class="discount …">- 70%</span><span
+    // class="regular-price …"><strike>5.695 kr</strike></span></div><div
+    // class="product-price"><h4 …>1.709 kr</h4>…</div></div>
+    "oldPrice": "div.section-price .regular-price",
+    "description": "section.detail-desc div.rz-magento-html",
+    // In stock: a "Setja í körfu" button. Sold out: "Fáðu tölvupóst þegar
+    // varan er komin aftur á lager. Varan er því miður ekki til. …"
+    "inStock": "div.section-action",
+    "inStockText": "Setja í körfu",
+    // <div class="page-breadcrumb"><ul><li><a href="/eldhus.html"><p>
+    // Eldhús</p></a></li>…<li><label>Tefal Panna 28cm Excellence</label>
+    // </li></ul></div>
+    "categories": "div.page-breadcrumb",
+    "categoryItemLocator": "li a",
+    // "Nánari tæknilýsing", groups (Eiginleikar, Stærðir, Annað) of
+    // <div class="product-spec-container"><div
+    // class="product-spec-label"><p class="product-spec-label …">Efni</p>
+    // </div><div class="product-spec-content"><p class="product-spec-value
+    // …">Ál</p></div></div>
+    "attributes": {
+      "attributesTable": "section.detail-spec",
+      "attributeGroup": "div:has(> div.product-spec-group)",
+      "attributeGroupName": "div.product-spec-group-label",
+      "attribute": "div.product-spec-container",
+      "attributeLabel": "p.product-spec-label",
+      "attributeValue": "p.product-spec-value"
+    }
+  }
+}

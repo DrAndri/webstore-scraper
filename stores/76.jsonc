@@ -1,0 +1,54 @@
+{
+  "storeId": 76,
+  // Betra Bak, WooCommerce with the Woodmart theme and Elementor (like
+  // Dorma, the same owner), server rendered, with a Product JSON-LD of its
+  // own and Yoast's BreadcrumbList. Pages are cached by LiteSpeed, so a sale
+  // that starts on schedule shows on the product page (and in its JSON-LD)
+  // only when the cached copy expires.
+  "startUrl": "https://betrabak.is",
+  "type": "httpcrawler",
+  // Category listings (/voruflokkur/…) and /allar-vorur/ have no Product
+  // JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // The sitemap index links to product-sitemap.xml and product-sitemap2.xml,
+  // 1025 products on 2026-11-09, all at /vara/<product>/. 65 of them are
+  // variable products (sizes).
+  "sitemapUrls": ["https://betrabak.is/sitemap_index.xml"],
+  "urlWhitelist": ["/product-sitemap", "/vara/"],
+  // Add to cart links (?add-to-cart=) and the like
+  "keepQueryParams": [],
+  "selectors": {
+    // <div id="product-177771" class="single-product-page entry-content
+    // product type-product …">
+    "productPage": "div.single-product-page",
+    // The WooCommerce SKU (variable products have a parent SKU, BB-0059),
+    // name, image, brand, description and availability. offers.price is the
+    // current price; variable products have an AggregateOffer whose
+    // lowPrice is the lowest current price.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // <p class="price"><del aria-hidden="true"><span class="woocommerce-
+    // Price-amount amount"><bdi>13.900 kr.</bdi></span></del> <span class=
+    // "screen-reader-text">Fyrra verð var: 13.900 kr..</span><ins …><span
+    // class="woocommerce-Price-amount amount"><bdi>11.120 kr.</bdi></span>
+    // </ins>…</p>. A variable product on sale shows <del>14.900 kr. –
+    // 23.900 kr.</del><ins>11.920 kr. – 19.120 kr.</ins>, the first amount
+    // is the lowest regular price, which goes with the JSON-LD lowPrice when
+    // every size has the same discount.
+    "oldPrice": "p.price del .amount",
+    "listPrice": "p.price .amount:not(del .amount)",
+    "name": "h1.product_title",
+    "image": ".woocommerce-product-gallery__image img",
+    "description": ".woocommerce-product-details__short-description",
+    "attributes": {
+      // <table class="woocommerce-product-attributes shop_attributes"><tr
+      // …><th …>Litur</th><td …>Hvítur</td></tr>…
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr",
+      "attributeLabel": "th",
+      "attributeValue": "td"
+    }
+  }
+}

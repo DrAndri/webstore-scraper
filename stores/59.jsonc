@@ -1,0 +1,41 @@
+{
+  "storeId": 59,
+  // Sportís, Shopify with a Pixel Union theme. The prices are rendered by the
+  // theme's script, the server HTML has the current price only in JSON-LD and
+  // in scripts, so a browser is needed to read the old price of a sale.
+  "startUrl": "https://sportis.is",
+  "type": "crawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_N.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. Collections link to
+  // /collections/<c>/products/<handle>, left out by the whitelist so each
+  // product has one url.
+  "sitemapUrls": ["https://sportis.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <div class="product-<product id> has-padding-top">
+    "productPage": "div[class^=\"product-\"].has-padding-top",
+    "name": "h1.product-title",
+    // The variant SKUs differ by size and color, the Shopify product id is
+    // used, from the theme's product JSON (a script outside the product)
+    "sku": {
+      "source": "json",
+      "selector": "#WH-ProductJson-product-template",
+      "path": "id"
+    },
+    // <span class="price price--sale"><span class="money">11,893 kr</span>
+    // </span><span class="compare-at-price"><span class="money">16,990 kr
+    // </span></span>, of the selected (first available) variant
+    "listPrice": ".product-block--price .price .money",
+    "oldPrice": ".product-block--price .compare-at-price .money",
+    "brand": ".product-block--vendor p.vendor",
+    // Lazy loaded, protocol relative //sportis.is/cdn/shop/...
+    "image": ".product-gallery__main img[data-zoom-src]",
+    "imageAttribute": "data-zoom-src",
+    "description": ".product-block--description .description",
+    "inStock": "button.button--add-to-cart",
+    "inStockText": "Bæta í körfu"
+    // No categories, the breadcrumbs are Heim › All › <product>
+  }
+}

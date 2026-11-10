@@ -1,0 +1,40 @@
+{
+  "storeId": 43,
+  // Dýraríkið, a server rendered Astro site on a WordPress backend, with
+  // Product and BreadcrumbList JSON-LD. Each variant is a product of its own.
+  "startUrl": "https://dyrarikid.is",
+  "type": "httpcrawler",
+  // Category listings (/<animal>/<category>/page/N/) have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // One sitemap with the pages, articles, categories, brands and products,
+  // about 3300 products on 2026-11-08 at
+  // /<animal>/<category>/[<subcategory>/]<product>/, and the Christmas
+  // products at /jolavorur/<product>/. Articles are top level pages
+  // (/hvad-mega-hundar-ekki-borda/) and /lifandi-dyr/ is about live animals.
+  "sitemapUrls": ["https://dyrarikid.is/sitemap.xml"],
+  "urlWhitelist": [
+    "/hundar/",
+    "/kettir/",
+    "/fiskar/",
+    "/nagdyr/",
+    "/fuglar/",
+    "/hestar/",
+    "/jolavorur/"
+  ],
+  // Brand pages link the same products, /brand/<brand>/ is left out by
+  // the whitelist. Searches and sorting are not needed either.
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "main",
+    // The JSON-LD price is the current one. The JSON-LD description is the
+    // Lýsing tab, the Upplýsingar tab and the facts list are not used.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // <div class="pdp-price"><span class="now">689 kr.</span></div>, the
+    // site's CSS styles a struck through <span class="was"> beside it. No
+    // product was on sale on 2026-11-08.
+    "oldPrice": ".pdp-price .was"
+  }
+}

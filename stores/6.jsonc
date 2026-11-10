@@ -1,0 +1,43 @@
+{
+  "storeId": 6,
+  // Shopify with an old "Timber" theme. A browser is needed for sale prices:
+  // the old price is only in the product JSON until the theme's script
+  // renders it beside the price. There is no JSON-LD, only microdata.
+  "startUrl": "https://tolvutaekni.is",
+  "type": "crawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed every product, 375
+  // on 2026-11-06. Collections link to /collections/<c>/products/<handle>,
+  // which the whitelist leaves out so each product has one url.
+  "sitemapUrls": ["https://tolvutaekni.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "urlBlacklist": ["/products/gift-card"],
+  "selectors": {
+    "productPage": "[itemtype=\"http://schema.org/Product\"]",
+    "name": "h1[itemprop=\"name\"]",
+    // The variant SKUs are not unique, 40 products have "1" and some have
+    // none, so the Shopify product id is used, from the theme's product JSON
+    // (a script after the product element)
+    "sku": {
+      "source": "json",
+      "selector": "#ProductJson-product-template",
+      "path": "id"
+    },
+    // The script replaces the server rendered <small> price with
+    // <span>2.093 kr</span> <span><s>2.990 kr</s></span>, so this waits for
+    // it. Products with variants (lengths, colors) show the first one.
+    "listPrice": "#productPrice-product-template > span[aria-hidden=\"true\"]:first-child",
+    "oldPrice": "#productPrice-product-template s",
+    // Protocol relative, //tolvutaekni.is/cdn/shop/...
+    "image": "#productPhotoImg",
+    "description": "[itemprop=\"description\"]",
+    // "Bæta í körfu", the script changes it to "Ekki til á lager" when the
+    // variant is sold out
+    "inStock": "#addToCartText-product-template",
+    "inStockText": "Bæta í körfu"
+    // No categories, the breadcrumbs are Heim › <product>, and no brand, the
+    // vendor is only in scripts
+  }
+}

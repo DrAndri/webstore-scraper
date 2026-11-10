@@ -1,0 +1,56 @@
+{
+  "storeId": 68,
+  // Rubix & Verkfærasalan (vfs.is redirects here), a Next.js (app router)
+  // storefront. The pages are server rendered but streamed: the product is
+  // in a <div hidden id="S:n"> block that a script moves into place. There
+  // is no JSON-LD.
+  "startUrl": "https://rubix.is",
+  "type": "httpcrawler",
+  // Only product pages have a /vorur/ canonical url
+  "productPageIdentifier": "rel=\"canonical\" href=\"https://rubix.is/vorur/",
+  // The sitemap index links to /sitemap/0.xml (pages, categories, brands)
+  // and /sitemap/1.xml, 4277 products on 2026-11-09 at /vorur/<number>,
+  // with / in the number encoded: /vorur/1205ETN9%2FC3:SKF. Each size of a
+  // garment is a product of its own with its own number, stock and
+  // canonical url, the sitemap has one of them and its page links the
+  // others: /vorur/HH-70155-369-L/HH-70155-369-XS.
+  "sitemapUrls": ["https://rubix.is/sitemap.xml"],
+  "urlWhitelist": ["/vorur/", "/sitemap/"],
+  "keepQueryParams": [],
+  "selectors": {
+    // The whole page, for the og:image in <head>
+    "productPage": "html",
+    "name": "h1",
+    // <h1 …>Addvis regnjakki …</h1><div class="flex flex-wrap gap-1"><span
+    // …><span …>HH-70155-369-L</span></span></div>
+    "sku": "h1 + div > span",
+    // <div class="flex flex-1 flex-col items-start gap-2"><p
+    // class="text-title-xs …">Verð</p><p class="text-title-l …">19.900 kr.
+    // </p></div>. A sale is labelled "Útsöluverð" and has <div …><span
+    // class="text-title-s text-light-text-subdued line-through …">old
+    // price</span><span …>-N%</span></div> below the price (from the
+    // site's script). No product was on sale on 2026-11-09.
+    "listPrice": "div:has(> p.text-title-xs) > p.text-title-l",
+    "oldPrice": "div:has(> p.text-title-xs) span.line-through",
+    // The page shows the brand as a logo, its name is in the "Meira frá
+    // <brand>" heading of the products below
+    "brand": "h2:contains(\"Meira frá\") > span:last-child",
+    // The gallery images are /_next/image urls
+    "image": "meta[property=\"og:image\"]",
+    "imageAttribute": "content",
+    // The "Um vöruna" accordion. "Eiginleikar" is closed and empty in the
+    // HTML, so there are no attributes.
+    "description": "[data-slot=\"accordion-item\"]:has(button:contains(\"Um vöruna\")) [data-slot=\"accordion-content\"]",
+    // "Lagerstaða", one per store: <li data-stock-state="in-stock"><span>
+    // Vefverslun</span><span>Til á lager</span></li> ("Lítið til" when
+    // low), data-stock-state="none" and "Ekki til" when sold out. The h1
+    // only makes the selector match when no store has it, so the product
+    // comes out as not in stock instead of as an error.
+    "inStock": "li[data-stock-state=\"in-stock\"], h1",
+    "inStockText": "Vefverslun",
+    // <nav aria-label="Vöruleið"><div><a href="/voruflokkar/vinnufatnadur">
+    // Vinnufatnaður</a></div>…
+    "categories": "nav[aria-label=\"Vöruleið\"]",
+    "categoryItemLocator": "a"
+  }
+}

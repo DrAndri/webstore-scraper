@@ -129,5 +129,12 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-influxdb/
-config.js
+/logs
+
+/mongodb
+/mongodb-*
+/mysql
+/solr
+
+# Zipped copies of the configsets
+/solr-configsets/*.zip

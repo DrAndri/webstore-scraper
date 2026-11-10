@@ -1,0 +1,61 @@
+{
+  "storeId": 79,
+  // Snúran, Shopify with Out of the Sandbox's Flex theme, server rendered:
+  // the price and the compare-at price of the selected variant are in the
+  // HTML. The theme's own Product JSON-LD has the selected variant's SKU and
+  // offer.
+  "startUrl": "https://snuran.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed every product, 896
+  // on 2026-11-09. Collections link to /collections/<c>/products/<handle>,
+  // left out by the whitelist so each product has one url.
+  "sitemapUrls": ["https://snuran.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <div class="product_section js-product_section container …">, the
+    // images and the product information
+    "productPage": "div.product_section",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The JSON-LD "sku" is the selected variant's, see "sku" below
+        "sku": false,
+        // The CSS price is used with the old price beside it
+        "price": false,
+        // See "inStock" below
+        "inStock": false
+        // The JSON-LD description is the product's HTML, on most products
+        // the store's tabs <ul class="tabs"><li><a href="#tab1">Lýsing</a>
+        // … Upplýsingar … Merki</ul> before the tab contents, so it starts
+        // with the tab names.
+        // No categories, the breadcrumbs are Vörulína › Allar vörur ›
+        // <product> on every product
+      }
+    },
+    // Variant SKUs are missing or shared by products (61 missing and 15
+    // shared of 665 in the first 250 products on 2026-11-09), so the Shopify
+    // product id is used: <input type="hidden" name="product-id"
+    // value="15456128106738" />
+    "sku": {
+      "source": "attribute",
+      "selector": "input[name=\"product-id\"]",
+      "attribute": "value"
+    },
+    // <span class="price price--sale" data-price><span class="money"
+    // data-price>2.785 kr</span></span><span class="compare-at-price"
+    // data-compare-at-price><span class="money" data-price>5.570
+    // kr</span></span>, no .compare-at-price when not on sale
+    "listPrice": ".product__information .product-block--price .price .money",
+    "oldPrice": ".product__information .product-block--price .compare-at-price .money",
+    // <button type="submit" name="add" class="… button--add-to-cart"
+    // data-label="Bæta í körfu"><span class="text">Bæta í körfu</span>.
+    // Special order products say "Sérpöntun" there and are not counted as
+    // in stock (their JSON-LD says InStock), sold out products have no
+    // button, so the whole information column is searched for the text.
+    "inStock": ".product__information",
+    "inStockText": "Bæta í körfu"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "storeId": 53,
+  // A4, a server rendered Next.js (pages router) storefront by Roanuz on a
+  // Magento backend, with Product JSON-LD. Each variant is a product of its
+  // own.
+  "startUrl": "https://a4.is",
+  "type": "httpcrawler",
+  // Listings have no JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // One sitemap with the pages, categories and products, 16006 urls on
+  // 2026-11-09: 15358 top level /<url key>.html, nearly all of them
+  // products (about 25 are top level categories), and 523 subcategories
+  // at /<category>/<subcategory>.html. Products and top level categories
+  // look alike, so no whitelist can tell them apart.
+  // The sitemap and the links also lead to some content pages (/garn,
+  // /fyrirtaekjabjonusta/…), the account, cart, search and news are left out.
+  "sitemapUrls": ["https://a4.is/sitemap.xml"],
+  "urlBlacklist": [
+    "/customer/",
+    "/my-account/",
+    "/cart",
+    "/checkout",
+    "/catalogsearch/",
+    "/frettir"
+  ],
+  // Listing filters, sorting and paging only repeat the sitemap's products
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "main",
+    // The JSON-LD has sku (e.g. "BRHW230"), name, image, description and
+    // the price, the sale price when on sale, but no brand
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The text without its line breaks ("A4Innanmál: …"), the HTML one
+        // is used
+        "description": false,
+        // Always "https://schema.org/BackOrder", in stock or not
+        "inStock": false
+      }
+    },
+    // <div class="section-price"><div class="price-head-wrapper
+    // product-sale"><span class="discount …">- 35%</span><span
+    // class="regular-price …"><strike>2.899 kr</strike></span></div><h4
+    // …>1.884 kr</h4></div>
+    "oldPrice": "div.section-price .regular-price",
+    "description": "section.detail-desc div.rz-magento-html",
+    // In stock: a "Setja í körfu" button. Sold out: "Þessi vara er uppseld
+    // í vefverslun - hafðu samband …" and a "Senda fyrirspurn" button
+    "inStock": "div.section-action",
+    "inStockText": "Setja í körfu",
+    // <div class="page-breadcrumb"><ul><li><a href="/spil-og-pusl.html">
+    // <p>Spil og púsl</p></a></li>…<li><label>Lambada</label></li></ul>
+    "categories": "div.page-breadcrumb",
+    "categoryItemLocator": "li a",
+    // "Eiginleikar": <div><div class="product-spec-group-label"><p>General
+    // </p></div><div class="product-spec-group"><div
+    // class="product-spec-container"><div class="product-spec-label"><p
+    // class="product-spec-label …">Undirflokkur</p></div><div
+    // class="product-spec-content"><p class="product-spec-value …">
+    // Fjölskylduspil</p></div></div>…</div></div>
+    "attributes": {
+      "attributesTable": "section.detail-spec",
+      "attributeGroup": "div:has(> div.product-spec-group)",
+      "attributeGroupName": "div.product-spec-group-label",
+      "attribute": "div.product-spec-container",
+      "attributeLabel": "p.product-spec-label",
+      "attributeValue": "p.product-spec-value"
+    }
+  }
+}

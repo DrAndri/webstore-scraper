@@ -1,0 +1,61 @@
+{
+  "storeId": 73,
+  // Lumex, Shopify with a customized Dawn 11 theme, server rendered: the
+  // price and the compare-at price of the selected variant are in the HTML.
+  // Product JSON-LD.
+  "startUrl": "https://lumex.is",
+  "type": "httpcrawler",
+  // The price block, <div class="no-js-hidden"
+  // id="price-template--…__main" role="status">. Most products (147 of the
+  // first 250 on 2026-11-09, furniture and many lamps) cost 0 kr. and use a
+  // template without a price that says "Sendið fyrirspurn til að fá verð:"
+  // (ask for the price). They are not counted as product pages, a product
+  // without a price would fail.
+  "productPageIdentifier": "id=\"price-template--",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added. It listed every product, 816
+  // on 2026-11-09. The /en/ sitemaps list the same products in English and
+  // are left out by the whitelist, as are the collection urls
+  // /collections/<c>/products/<handle>, so each product has one url.
+  "sitemapUrls": ["https://lumex.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  "selectors": {
+    // <product-info id="ProductInfo-template--…__main"
+    // class="product__info-container">, the info beside the images
+    "productPage": "product-info[id^=\"ProductInfo-\"]",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The JSON-LD "sku" is the first variant's, see "sku" below
+        "sku": false,
+        // The JSON-LD offers are every variant, the first one may be sold
+        // out while the page shows the first available one. The CSS price
+        // describes the same variant as the old price.
+        "price": false
+      }
+    },
+    // Most variants have no SKU (803 of 983 in the first 250 products on
+    // 2026-11-09) and products with variants have one per variant, so the
+    // Shopify product id is used, from the installment form that every
+    // template has: <input type="hidden" name="product-id"
+    // value="15488714735933" />
+    "sku": {
+      "source": "attribute",
+      "selector": "input[name=\"product-id\"]",
+      "attribute": "value"
+    },
+    // <div class="price__sale"><span class="price-item price-item--sale
+    // price-item--last">10,850 kr.</span><span><s class="price-item
+    // price-item--regular">15,500 kr.</s></span></div>. There is no <s>
+    // when the variant is not on sale.
+    "listPrice": ".price__sale .price-item--sale",
+    "oldPrice": ".price__sale s.price-item--regular"
+    // The stock is the JSON-LD availability of the first variant (one in
+    // the first 250 products had a sold out first variant and others in
+    // stock on 2026-11-09). Products on the default template are sold in
+    // the showroom only and have no add to cart button, so it can not be
+    // used; their JSON-LD says InStock.
+    // No categories, there are no breadcrumbs and the product type is only
+    // in scripts
+  }
+}

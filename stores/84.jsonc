@@ -1,0 +1,47 @@
+{
+  "storeId": 84,
+  // Santé, a React single page app (Vite) on shop.sante.is (sante.is
+  // redirects there). The server HTML of a product page only has JSON-LD
+  // (sku, current price) and an SEO heading; the old price of a sale is
+  // only rendered in the browser, so Playwright is used.
+  "startUrl": "https://shop.sante.is",
+  "type": "crawler",
+  // The product heading, rendered by the app on product pages only
+  "productPageIdentifier": "data-testid=\"text-detail-name\"",
+  // The sitemap lists every product, 1534 on 2026-11-09 at
+  // /products/<slug>, besides collections, articles and pages
+  "sitemapUrls": ["https://shop.sante.is/sitemap.xml"],
+  "urlWhitelist": ["/products/"],
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "main#main-content",
+    "name": "[data-testid=\"text-detail-name\"]",
+    // The JSON-LD Product (first in @graph) stays in the page, sku
+    // "CAST2513"
+    "sku": {
+      "source": "json",
+      "selector": "script[type=\"application/ld+json\"]",
+      "path": "@graph.0.sku"
+    },
+    // <div data-testid="text-detail-price"><span class="… text-verd">Kr.
+    // 4.400</span><span class="… line-through" data-testid=
+    // "text-detail-previous-price"><span class="sr-only">Áður </span>Kr.
+    // 4.880</span> (/products/2013-castano-santa on 2026-11-09). Beer sold
+    // in packs shows the pack price ("Kr. 1.500", "Kr. 250/stk. · 6 stk. í
+    // pakka" below it), the JSON-LD has the bottle price.
+    "listPrice": "[data-testid=\"text-detail-price\"] span.text-verd",
+    "oldPrice": "[data-testid=\"text-detail-previous-price\"]",
+    // A relative url of the store's image proxy, /api/images/wos?src=…
+    "image": "[data-testid=\"img-product\"]",
+    "description": "[data-testid=\"text-detail-description\"]",
+    // Sold out products show a pre-order or "notify me" form instead of
+    // the buy row
+    "inStock": "[data-testid=\"button-add-to-cart\"]",
+    "inStockText": "Í KÖRFU",
+    // "Rauðvín · Spánn", type and country
+    "categories": "[data-testid=\"text-detail-category\"]",
+    "categorySplitter": " · "
+    // No brand: the producer is only on wine pages (a card further down),
+    // and a missing element makes Playwright wait for it
+  }
+}

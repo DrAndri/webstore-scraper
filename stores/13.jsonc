@@ -1,0 +1,29 @@
+{
+  "storeId": 13,
+  "startUrl": "https://nexus.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "product-gallery",
+  "urlWhitelist": ["/voruflokkur", "/vara"],
+  "selectors": {
+    "productPage": ".product-container",
+    "oldPrice": "",
+    "listPrice": ".product-page-price > .amount",
+    "name": "h1.product-title",
+    "sku": ".sku_wrapper > .sku",
+    "image": ".wp-post-image",
+    "description": ".product-page-sections div:nth-child(1) .panel",
+    "categories": ".breadcrumbs",
+    "inStock": ".stock",
+    "inStockText": "Á lager",
+    "categoryItemLocator": "a",
+    "brand": "span.tagged_as:contains(\"Vörumerki:\") > a:nth-child(1)",
+    "attributes": {
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr.woocommerce-product-attributes-item",
+      "attributeLabel": "th.woocommerce-product-attributes-item__label",
+      // WooCommerce wraps values in <p> followed by a newline, so the <p> gives
+      // the value without trailing whitespace
+      "attributeValue": "td.woocommerce-product-attributes-item__value > p"
+    }
+  }
+}

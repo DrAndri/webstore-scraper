@@ -1,0 +1,63 @@
+{
+  "storeId": 67,
+  // Múrbúðin, WooCommerce with the Flatsome theme, server rendered.
+  // WooCommerce's Product JSON-LD and All in One SEO's graph.
+  "startUrl": "https://murbudin.is",
+  "type": "httpcrawler",
+  // The shop, category and home pages have no Product JSON-LD
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  // robots.txt asks for "Crawl-delay: 3", one page every 3 seconds. A full
+  // crawl of the 2436 products takes a little over two hours.
+  "maxRequestsPerMinute": 20,
+  // The All in One SEO sitemap index links to product-sitemap.xml and
+  // product-sitemap2.xml, 2436 products on 2026-11-09, all at
+  // /vara/<product>/ (the <loc> urls are in CDATA, read in XML mode).
+  // Categories are /voruflokkur/…, the shop /shop/, neither is needed.
+  "sitemapUrls": ["https://murbudin.is/sitemap.xml"],
+  "urlWhitelist": ["/vara/", "/product-sitemap"],
+  // Variation, wishlist and add-to-cart links only repeat the product
+  "keepQueryParams": [],
+  "selectors": {
+    // Only product pages have this body class. The breadcrumbs are in the
+    // page title above the product, so the whole body is searched and the
+    // price selectors are kept to the summary (.product-info): the related
+    // products below have prices of their own.
+    "productPage": "body.single-product",
+    // The JSON-LD sku is the store's SKU ("gal-re110-w-ry400-gd"), set on
+    // all but 2 of 2437 products in the Store API on 2026-11-09, no
+    // duplicates (WooCommerce puts the post id there when it is missing).
+    // The price is the current one, the sale price on a sale, rounded
+    // (prices are stored with decimals, 2545.75).
+    "structuredData": {
+      "source": "jsonld",
+      "fields": {
+        // The page's title and Lýsing tab are read instead
+        "name": false,
+        "description": false
+      }
+    },
+    "name": ".product-info h1.product-title",
+    // <p class="price product-page-price price-on-sale"><del><span
+    // class="woocommerce-Price-amount amount"><bdi>2.995 kr.</bdi></span>
+    // </del> … <ins>…2.546 kr.…</ins></p>
+    "oldPrice": ".product-info p.price del .amount",
+    "listPrice": ".product-info p.price .amount:not(del .amount)",
+    // The Lýsing tab
+    "description": ".woocommerce-Tabs-panel--description",
+    // All in One SEO's breadcrumbs, Home » Shop » Byggingavörur »
+    // Þakrennur » Þakrennur - Hvítar » <product>, the categories are the
+    // links to /voruflokkur/. The JSON-LD BreadcrumbList has Home and Shop
+    // too, so it is not used.
+    "categories": "nav.breadcrumbs",
+    "categoryItemLocator": "a[href*=\"/voruflokkur/\"]",
+    // The Frekari upplýsingar tab, usually only Þyngd (weight). No <tbody>
+    // in the selectors, htmlparser2 does not add it.
+    "attributes": {
+      "attributesTable": "table.woocommerce-product-attributes",
+      "attribute": "tr",
+      "attributeLabel": "th",
+      "attributeValue": "td"
+    }
+    // No brand, the JSON-LD has none and the page shows none
+  }
+}

@@ -1,6 +1,8 @@
 **/.classpath
 **/.dockerignore
-#**/.env
+**/.env
+# Built in the image, a local build could hold files of deleted sources
+/dist
 **/.git
 **/.gitignore
 **/.project
@@ -22,3 +24,11 @@
 **/values.dev.yaml
 LICENSE
 README.md
+
+/mongodb
+/logs
+/mongodb-*
+/mysql
+/solr
+# The configsets are needed to sync the Solr schemas, the zips are not
+/solr-configsets/*.zip

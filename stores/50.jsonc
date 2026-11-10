@@ -1,0 +1,77 @@
+{
+  "storeId": 50,
+  // Everest, a Moya (Stefna) web shop, server rendered. No JSON-LD, every
+  // field is read from the HTML.
+  "startUrl": "https://www.everest.is",
+  "type": "httpcrawler",
+  // <body class="store productView product hideright">, category pages have
+  // "store categoryView"
+  "productPageIdentifier": "class=\"store productView",
+  // The sitemap only lists the category pages (169 on 2026-11-09, 21 of them
+  // gone), the products are found on the listings, 21 a page with
+  // ?page=N links. The 149 listings held 2,896 products on 2026-11-09, some
+  // of them in two categories (1,809 urls with 1,667 names on the first
+  // pages alone). Products are at
+  // /is/<section>/<category>/<product>, or /is/vefverslun/<category>/<product>
+  // for the categories without a page of their own (the menu links those as
+  // /is/vefverslun/<category>).
+  // Each in stock size or color has its own page,
+  // <a href="/is/hjol/fjallahjol/head-granger-10-29-blue-white/22088">,
+  // linked from the product page. The links cannot be told apart from
+  // product links by their start, so the variants are crawled and each one is
+  // saved as a product of its own (the product url shows the first variant,
+  // the same one as /<product>/<its id>).
+  "sitemapUrls": ["https://www.everest.is/sitemap.xml"],
+  "urlWhitelist": [
+    "/is/fatnadur",
+    "/is/feed",
+    "/is/hjol",
+    "/is/skidavorur",
+    "/is/utilegubunadur",
+    "/is/utivistarbunadur",
+    "/is/vefverslun/"
+  ],
+  // The "Til baka" link of a product, a second url of its category listing
+  "urlBlacklist": ["/is/vefverslun/category/"],
+  "keepQueryParams": ["page"],
+  // robots.txt asks for "Crawl-delay: 5". With the variant pages a full
+  // crawl is several thousand pages.
+  "maxRequestsPerMinute": 12,
+  "selectors": {
+    // The whole page, the breadcrumbs are outside <div id="store">
+    "productPage": "body.productView",
+    "name": "#store .product .main h1",
+    // <input type="hidden" name="variant" value="22087" id="variant">, the id
+    // of the variant the page shows. The "Vörunúmer" beside it
+    // (<div class="reference"><span class="value">1120000408152</span>) is
+    // also per variant.
+    "sku": {
+      "source": "attribute",
+      "selector": "#store form.cartAdd #variant",
+      "attribute": "value"
+    },
+    // <div class="priceDiff"><span class="price"><span class="n">104.996
+    // </span><span class="c s"> kr.</span></span> <span class="overwritten">
+    // <span class="title">Verð áður</span><span class="price"><span
+    // class="n">149.995</span>...</span></span></div> on sale, e.g.
+    // /is/hjol/fjallahjol/head-granger-10-29-blue-white on 2026-11-09. The
+    // variant list below it repeats the prices.
+    "listPrice": "#store .buyBox .priceValue .priceDiff > .price .n",
+    "oldPrice": "#store .buyBox .priceValue .priceDiff .overwritten .price .n",
+    // The full size image the thumbnail links to,
+    // /static/store/images/product_28344.jpg
+    "image": "#store .product .side .images .image a.fancybox",
+    "imageAttribute": "href",
+    // "Lýsing", often in English
+    "description": "#store .product .longDesc",
+    // <div class="availability"><span class="">3 Í boði</span></div> in the
+    // buy box, or <span class="none">Ekkert í boði</span> when sold out, e.g.
+    // /is/vefverslun/gotuhjol/wilier-triestina-jareen on 2026-11-09
+    "inStock": "#store .buyBox",
+    "inStockText": "Í boði",
+    // Forsíða / [Allir Flokkar /] Hjól / Fjallahjól / <product>, "Allir
+    // Flokkar" (/is/vefverslun) on the /is/vefverslun/ categories
+    "categories": "#breadcrumbs .boxText",
+    "categoryItemLocator": "a:not(.last):not([href=\"/is/vefverslun\"])"
+  }
+}

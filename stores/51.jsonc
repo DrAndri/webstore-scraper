@@ -1,0 +1,50 @@
+{
+  "storeId": 51,
+  // TRI, an Angular app on the same platform as Fjallakofinn (28), Stilling
+  // (35) and AB varahlutir (36). The HTML is empty (<app-root> </app-root>)
+  // until the scripts run, so a browser is needed.
+  "startUrl": "https://tri.is",
+  "type": "crawler",
+  // The product column, added once the item has loaded
+  "productPageIdentifier": "item-detail-info",
+  // robots.txt names https://ntc.is/api/sitemap/sitemap.xml, the store's own
+  // sitemap is at the same path on tri.is. It lists 2,718 products on
+  // 2026-11-09 at https://TRI.is/vara/<number>-<name> (the host is lower
+  // cased when the url is parsed), and the 162 categories at /voruflokkur/,
+  // which load their products with JavaScript and are not needed. Product
+  // numbers with a space are written as %20 in the urls,
+  // /vara/4300638%20002-castelli-espresso-w-shop-jersey.
+  "sitemapUrls": ["https://tri.is/api/sitemap/sitemap.xml"],
+  "urlWhitelist": ["/vara/"],
+  "selectors": {
+    "productPage": "app-item",
+    "name": "h1.item-name",
+    // "Vörunúmer: 751101" in span.item-no-text. Products with sizes pick the
+    // first size in stock, so the number may follow the variant; the url is
+    // unique per product (each color is a product of its own).
+    "sku": { "source": "url", "delimiter": "/vara/", "index": "last" },
+    // <h4 class="item-price"> 4.590<span class="price-currency">kr</span>
+    // </h4>, or on sale <div class="price-values"><h4
+    // class="discount-item-price"> 13.794<span ...>kr</span></h4><h4
+    // class="full-item-price"> 22.990<span ...>kr</span></h4></div>, e.g.
+    // /vara/9615-cube-football (6.392, was 7.990) on 2026-11-09
+    "listPrice": ".price-holder h4.item-price, .price-holder h4.discount-item-price",
+    "oldPrice": ".price-holder h4.full-item-price",
+    // The gallery stays empty while images are blocked, the app preloads
+    // the large images in hidden <img> tags beside it (not always in gallery
+    // order), /images/11553_3_<uuid>_large.webp
+    "image": ".item-page-layout > img[hidden]",
+    // Often only the name again
+    "description": ".item-description .description-container",
+    // "Setja í körfu" with a cart icon, or "Vakta vöru" with a bell when sold
+    // out. Products with sizes show a disabled "Veldu stærð" button (also
+    // when every size is sold out) and one radio button a size, a sold out
+    // size has a bell button (.sold-out-button) in it. In stock when either
+    // an enabled cart button or a size without a bell is found.
+    "inStock": "button.single-item-add-basket-button:not([disabled]):has(i.fa-shopping-cart), .productsection-variants mat-radio-button:not(:has(.sold-out-button))",
+    // "Forsíða/ Reiðhjól/ Ferðahjól/ Borgarhjól", <b>/ Reiðhjól</b> in each
+    // item, the last one is the category, not the product
+    "categories": "nav.main-breadcrumb ol.breadcrumb",
+    "categorySplitter": "/"
+  }
+}

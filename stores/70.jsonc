@@ -1,0 +1,45 @@
+{
+  "storeId": 70,
+  // Álfaborg, a Duda site with "dynamic pages" filled from a product
+  // collection, server rendered. No JSON-LD. The catalog under
+  // /voruflokkar/ has no prices (the product pages only offer an inquiry
+  // form), only the offers under /tilbodsvorur/ show a price, so only those
+  // are crawled. Every product read is on sale.
+  "startUrl": "https://www.alfaborg.is",
+  "type": "httpcrawler",
+  // The class of the offer page template, <div id="dmFirstContainer"
+  // class="dmBody u_dmStyle_template_tilbodsvorur/~page-item~">. Catalog
+  // pages use another template.
+  "productPageIdentifier": "dmStyle_template_tilbodsvorur/~page-item~",
+  // One sitemap with 7,227 urls on 2026-11-09: about 2,500 catalog products,
+  // each under several categories (7,130 urls under /voruflokkar/), and 30
+  // offers, each at /tilbodsvorur/<product> and again at
+  // /tilbodsvorur/flisar/<product>, left out by the blacklist.
+  "sitemapUrls": ["https://www.alfaborg.is/sitemap.xml"],
+  "urlWhitelist": ["/tilbodsvorur/"],
+  "urlBlacklist": ["/tilbodsvorur/flisar/"],
+  "keepQueryParams": [],
+  "selectors": {
+    "productPage": "#dm_content",
+    // The fields are <span class="inline-data-binding"
+    // data-inline-binding="dynamic_page_collection.<field>"> elements.
+    // "Product title", the "Product subtitle" below it holds the color or
+    // size ("ORLANDO", "60x60 cm") and is left out
+    "name": "span[data-inline-binding=\"dynamic_page_collection.Product title\"]",
+    // "BER-60002207"
+    "sku": "span[data-inline-binding=\"dynamic_page_collection.SKU\"]",
+    // "Tilboðsverð per fm: 4.320 kr" (also "pr. fm.", "per stk.", "per
+    // kassi:") and "Verð áður: 7.200 kr", e.g.
+    // /tilbodsvorur/zenn-click-comfort-30--lvt-vinylparket-smellt-orlando on
+    // 2026-11-09
+    "listPrice": "span[data-inline-binding=\"dynamic_page_collection.Tilboðstakki\"]",
+    "oldPrice": "span[data-inline-binding=\"dynamic_page_collection.Tilboðstexti\"]",
+    // Empty for most offers
+    "description": "span[data-inline-binding=\"dynamic_page_collection.Vörulýsing\"]",
+    // "Flísar", "Harðparket", "Verkfæri" or "VÍNYLPARKET || LVT SMELLT"
+    "categories": "span[data-inline-binding=\"dynamic_page_collection.Product Category (4web)\"]",
+    "categorySplitter": " || "
+    // No image: the product image is a CSS background-image in a style
+    // attribute. No stock: "LAGERSTAÐA: Hafðu samband" on every offer.
+  }
+}

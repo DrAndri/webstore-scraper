@@ -1,0 +1,42 @@
+{
+  "storeId": 17,
+  "startUrl": "https://vefverslun.siminn.is",
+  "type": "httpcrawler",
+  "productPageIdentifier": "productsimple",
+  "urlBlacklist": [
+    "/en",
+    "/is/filterSearch",
+    "/is/compareproducts",
+    "/is/wishlist",
+    "/is/register",
+    "/is/login",
+    "/is/cart",
+    "/startpakkinn-2"
+  ],
+  "selectors": {
+    "productPage": "#product-details-form > div.productsimple > div:nth-child(1) > div.product-essential.varacontainer",
+    "listPrice": ".product-price > p",
+    "name": "h1.varaheading",
+    // The visible sku span is filled in by JS, its id holds the product id (sku-1278)
+    "sku": {
+      "source": "attribute",
+      "selector": "span.vara-sku[id^=\"sku-\"]",
+      "attribute": "id"
+    },
+    "image": ".picture-gallery > .picture > img",
+    "description": ".short-description",
+    "categories": ".breadcrumb",
+    "inStock": ".lagerstadawrap",
+    "inStockText": "Til á lager",
+    "categoryItemLocator": "ul > li > a > span",
+    "brand": "div.vara-sku > span:nth-child(1)"
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "sku-",
+        "replace": ""
+      }
+    ]
+  }
+}

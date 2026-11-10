@@ -1,0 +1,42 @@
+{
+  "storeId": 58,
+  // ZO•ON, Shopify with a custom theme, server rendered, with Product
+  // JSON-LD. Icelandic and ISK at the root, English at /en/.
+  "startUrl": "https://zo-on.is",
+  "type": "httpcrawler",
+  // Only product pages have this og:type
+  "productPageIdentifier": "og:type\" content=\"product\"",
+  // The sitemap index links to sitemap_products_1.xml?from=<id>&to=<id>,
+  // whose bounds change as products are added, and to the same for /en/. It
+  // listed every product, 88 on 2026-11-09. Collections link to
+  // /collections/<c>/products/<handle>, left out by the whitelist so each
+  // product has one url.
+  "sitemapUrls": ["https://zo-on.is/sitemap.xml"],
+  "urlWhitelist": ["/sitemap_products", "/products/"],
+  // The gift card, 5.000 to 100.000 kr
+  "urlBlacklist": ["/products/gjafakort"],
+  "selectors": {
+    // <div class="product__top-container flex f-space-between">
+    "productPage": ".product__top-container",
+    // The theme's JSON-LD has the Shopify product id as sku (the variant
+    // SKUs differ by size, 220 of 1227 are empty), the product's price and
+    // its availability (OutOfStock only when every variant is sold out).
+    // Its description is escaped HTML (&lt;p&gt;), the page's is used.
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "description": false }
+    },
+    // <p class="product__price product-price"><span
+    // class="product-price--sale product__price"><span
+    // class="transcy-money">19,196 ISK</span></span><span
+    // class="product-price--original"><span class="transcy-money">39,990
+    // ISK</span></span></p>, of the product. All variants of a product had
+    // the same price on 2026-11-09 (9 products on sale).
+    "oldPrice": "p.product-price .product-price--original",
+    // Shown twice, for desktop and mobile
+    "description": ".product__description.above-mobile"
+    // No categories: the breadcrumbs are ZO ∙ ON / <collection> / <product>,
+    // where the collection is often a sale or a season ("LAGERSALA 2026",
+    // "Haust") rather than a category
+  }
+}

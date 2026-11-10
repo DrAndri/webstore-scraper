@@ -1,0 +1,23 @@
+{
+  "storeId": 4,
+  "startUrl": "https://elko.is",
+  "type": "httpcrawler",
+  // isProductPage is also in the page data of category pages
+  "productPageIdentifier": "\"@type\":\"Product\"",
+  "urlWhitelist": ["/vorur", "/voruflokkar"],
+  "selectors": {
+    "productPage": "main > div",
+    "structuredData": {
+      "source": "jsonld",
+      "fields": { "categories": "breadcrumbs" }
+    },
+    // First div is the price, the second holds the old price when on sale
+    "oldPrice": ".notDutyFree > div:nth-child(2) > span",
+    "attributes": {
+      "attributesTable": "dl",
+      "attribute": "div",
+      "attributeLabel": "dt",
+      "attributeValue": "dd"
+    }
+  }
+}

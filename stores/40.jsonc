@@ -1,0 +1,53 @@
+{
+  "storeId": 40,
+  // Umbraco site with a React shop, the HTML of a product page only has the
+  // title until the scripts load the product from /api/products/<id>
+  "startUrl": "https://www.eirvik.is",
+  "type": "crawler",
+  // The "Verð:" label, products without a price (only "Fá tilboð", 286 on
+  // 2026-11-07) are not product pages
+  "productPageIdentifier": "price-label",
+  // The category pages and the menu are React with links to #/<id>, the shop
+  // API lists every product, 1751 on 2026-11-07
+  "productFeed": {
+    "url": "/api/products?page=1&limit=10000&category=",
+    "items": "Data",
+    "productUrl": "/product/?id={Id}"
+  },
+  "urlWhitelist": ["/product/"],
+  "selectors": {
+    "productPage": "section.single-product",
+    // A discounted product has <span class="sale-price"> and
+    // <span class="original-price"> in .discount-price-wrapper
+    "listPrice": ".product-content .price .sale-price",
+    "oldPrice": ".product-content .price .original-price",
+    "name": ".product-content .product-title",
+    "sku": ".product-content .text-primary > small",
+    // The brand is only the alt text of its logo, and there are no
+    // breadcrumbs
+    // The first image is the large one, the slider's start with a clone of
+    // the last image
+    "image": ".columns > .column:first-child picture img",
+    "description": ".product-content .description",
+    // Only shown when TotalInventoryCount is above 0, the API's IsInStock is
+    // false for every product
+    "inStock": ".product-content .button-wrapper button",
+    "inStockText": "Setja í körfu",
+    "attributes": {
+      "attributesTable": "div:has(> .attributes)",
+      "attributeGroup": ".attributes",
+      "attributeGroupName": ".attributes-title",
+      "attribute": ".attributes-line",
+      "attributeLabel": ".attributes-key",
+      "attributeValue": ".attributes-value"
+    }
+  },
+  "sanitizers": {
+    "sku": [
+      {
+        "match": "Vörunúmer:",
+        "replace": ""
+      }
+    ]
+  }
+}
