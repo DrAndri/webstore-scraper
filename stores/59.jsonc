@@ -13,6 +13,13 @@
   // product has one url.
   "sitemapUrls": ["https://sportis.is/sitemap.xml"],
   "urlWhitelist": ["/sitemap_products", "/products/"],
+  // The gift card, in the sitemap and linked from every page
+  "urlBlacklist": ["/products/gjafabref"],
+  // The rendered product page links its recommendations with Shopify's
+  // tracking parameters (?pr_prod_strat=…&pr_request_id=<new on every page
+  // load>…) and with ?variant=<id>, so each product was queued again from
+  // every page that recommended it
+  "keepQueryParams": [],
   "selectors": {
     // <div class="product-<product id> has-padding-top">
     "productPage": "div[class^=\"product-\"].has-padding-top",
