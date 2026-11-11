@@ -34,6 +34,7 @@ import {
   SolrUpdateBuffer
 } from './SolrUtils.js';
 import { logger } from './logger.js';
+import { toStoredUrl } from './crawler/ProductUrl.js';
 
 const log = logger.child({ label: 'SQLStoreUpdater' });
 
@@ -703,8 +704,15 @@ export default class SQLStoreUpdater {
 
   async upsertProduct(
     productsConn: PoolConnection,
-    scrapedProduct: ProductSnapshot
+    snapshot: ProductSnapshot
   ): Promise<{ product: Product; result?: 'new' | 'updated' }> {
+    // The url is saved relative to the start url of the store
+    const scrapedProduct: ProductSnapshot = {
+      ...snapshot,
+      url:
+        snapshot.url &&
+        toStoredUrl(snapshot.url, this.storeConfig.options.startUrl)
+    };
     const existingProduct = await productsConn
       .query<Product[]>(
         'SELECT * FROM products WHERE sku = ? AND storeId = ? LIMIT 1',

@@ -17,6 +17,7 @@ import {
 import BaseCrawler from './crawler/BaseCrawler.js';
 import WebshopCrawler from './crawler/WebshopCrawler.js';
 import WebshopHtmlCrawler from './crawler/WebshopHtmlCrawler.js';
+import { fromStoredUrl } from './crawler/ProductUrl.js';
 import SQLStoreUpdater, {
   indexEverything,
   IndexProgress,
@@ -446,7 +447,9 @@ export default class JobRunner {
       );
       if (products.length === 0)
         return { errorMessage: 'No active products to scrape' };
-      urlList = products.map((product) => options.startUrl + product.url);
+      urlList = products.map((product) =>
+        fromStoredUrl(product.url, options.startUrl)
+      );
       log.info(`Scraping ${urlList.length} products for store ${store.name}`);
     } else {
       log.info(`Crawling store ${store.name}`);

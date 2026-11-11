@@ -20,11 +20,6 @@ export default abstract class BaseScraper {
     this.categoryBanList = categoryBanList;
   }
 
-  getRelativeUrl(url: string): string {
-    const urlObj = new URL(url);
-    return urlObj.pathname + urlObj.search + urlObj.hash;
-  }
-
   skuFromUrl(
     url: string,
     selector: Extract<ProductSelector, { source: 'url' }>

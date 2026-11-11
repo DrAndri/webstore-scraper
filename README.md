@@ -112,7 +112,18 @@ products, manufacturers and prices, the next full crawl fills in the rest. Run
 it only once, on an empty database, and use a copy of the production MongoDB
 since it creates indexes there.
 
+`products.url` is the url of the product page relative to the `startUrl` of
+the store, the rest of the url after it: `/vara/x` for
+`https://s4s.is/premium-outlet/vara/x` when the start url is
+`https://s4s.is/premium-outlet`. A page outside the start url, on another path
+or host, is saved as its absolute url. The `list` scan and the "View in store"
+link of the admin interface join them back the same way
+([ProductUrl.ts](crawler/ProductUrl.ts)), so changing the path or host of a
+`startUrl` can break the saved urls of the store until its next full crawl.
+
 `migrations/` holds data fixes and schema changes to run by hand.
+`migrations/2026-11-11-relative-product-urls.sql` changes the saved urls of the
+stores whose start url has a path, which were saved from the root of the site.
 `migrations/2026-11-08-lookup-indexes.sql` adds the indexes of the category and
 attribute lookups a scan makes for each product to an existing database.
 

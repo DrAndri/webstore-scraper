@@ -32,7 +32,7 @@ unless `maxRequestsPerMinute` is set.
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `storeId`               | Must match the file name, `11.jsonc` → `11`                                                                                                                        |
 | `type`                  | `httpcrawler`: downloads the HTML and parses it with Cheerio, fast. `crawler`: opens every page in Playwright, for content that only appears after JavaScript runs |
-| `startUrl`              | Where the crawl starts. Also sets the hostname, only links on the same host are followed (with or without `www.`)                                                  |
+| `startUrl`              | Where the crawl starts. Also sets the hostname, only links on the same host are followed (with or without `www.`), and product urls are saved relative to it       |
 | `productPageIdentifier` | Text that must be in the page source for the page to count as a product page, e.g. `"@type":"Product"`                                                             |
 | `selectors.productPage` | CSS selector of the product element, which must exist. Every other CSS selector is searched inside it                                                              |
 
@@ -250,6 +250,10 @@ Not checked anywhere, the field is just empty:
 
 ## Gotchas
 
+- Product urls are saved relative to `startUrl`. Changing its path or host
+  (e.g. adding `www.`) can break the saved urls of the store until the next full
+  crawl saves them again, the `list` scan and the "View in store" link use
+  them.
 - CSS selectors are searched inside `productPage`. A price outside it is not
   found. Structured data and the `json` SKU selector read the whole page.
 - With `httpcrawler` the selector is appended to `productPage`, so in a list

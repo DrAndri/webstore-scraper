@@ -37,6 +37,7 @@ export interface ProductSnapshot {
   description?: string;
   inStock?: boolean;
   attributes?: ProductAttributeGroup[];
+  // Absolute, saved relative to the start url (crawler/ProductUrl.ts)
   url?: string;
   categories?: string[];
 }

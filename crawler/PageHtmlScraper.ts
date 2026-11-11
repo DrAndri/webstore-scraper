@@ -305,7 +305,7 @@ export default class PageHtmlScraper extends BaseScraper {
       description: description,
       inStock: inStock,
       attributes: attributeGroups,
-      url: this.getRelativeUrl(url),
+      url: new URL(url).href,
       categories: categories,
       gtin: structured?.gtin
     };
