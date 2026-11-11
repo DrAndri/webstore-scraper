@@ -1,7 +1,10 @@
 # Debian 12, Playwright no longer supports Chromium on Debian 11 (bullseye)
-FROM node:24-bookworm AS base
+FROM node:26-bookworm AS base
 
 WORKDIR /usr/src/app
+
+# The Node 26 images no longer include Yarn, and yarn.lock is Yarn classic (v1)
+RUN npm install -g yarn@1.22.22
 
 # Compiles the TypeScript sources, which needs the dev dependencies.
 # NODE_ENV is not production here, yarn would skip them.
@@ -18,7 +21,7 @@ RUN yarn install --production --frozen-lockfile && yarn cache clean
 
 # The slim image leaves out the build tools, playwright installs the libraries
 # Chromium needs
-FROM node:24-bookworm-slim AS runner
+FROM node:26-bookworm-slim AS runner
 WORKDIR /usr/src/app
 ENV NODE_ENV=production
 
@@ -39,5 +42,4 @@ COPY --from=build /usr/src/app/dist ./dist
 COPY stores ./stores
 COPY solr-configsets ./solr-configsets
 
-EXPOSE 8080
 CMD [ "node", "dist/index.js" ]
